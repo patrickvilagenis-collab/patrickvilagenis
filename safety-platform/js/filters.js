@@ -55,6 +55,7 @@ export function filterActions(actions, visits) {
   const byId = Object.fromEntries(visits.map((v) => [v.id, v]));
   const noFilters = activeCount() === 0;
   return actions.filter((a) => {
+    if (a.accidentId) return true; // accident actions are not affected by visit filters
     const v = byId[a.visitId];
     if (!v) return noFilters; // orphan actions only show when nothing is filtered
     return matchVisit(v);

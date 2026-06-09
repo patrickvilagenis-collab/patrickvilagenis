@@ -7,10 +7,13 @@ import { renderVisitForm } from './views/visitForm.js';
 import { renderAnalysis } from './views/analysis.js';
 import { renderActions } from './views/actions.js';
 import { renderSettings } from './views/settings.js';
+import { renderAccidents, renderNewAccident } from './views/accidents.js';
+import { renderAccidentForm } from './views/accidentForm.js';
 
 const NAV = [
   ['#/dashboard', '📊', 'Dashboard'],
   ['#/visits', '📋', 'Field visits'],
+  ['#/accidents', '🚨', 'Accidents'],
   ['#/analysis', '📈', 'Analysis'],
   ['#/actions', '✅', 'Actions'],
   ['#/settings', '⚙️', 'Settings'],
@@ -61,6 +64,11 @@ async function route() {
       case 'new':
         return a ? renderVisitForm(view, { templateId: a }) : renderNewVisit(view);
       case 'visit': return renderVisitForm(view, { visitId: a });
+      case 'accidents':
+        return a === 'new'
+          ? (b ? renderAccidentForm(view, { type: b }) : renderNewAccident(view))
+          : renderAccidents(view);
+      case 'accident': return renderAccidentForm(view, { accidentId: a });
       case 'analysis': return renderAnalysis(view);
       case 'actions': return renderActions(view);
       case 'settings': return renderSettings(view);

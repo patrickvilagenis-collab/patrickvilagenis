@@ -2,8 +2,8 @@
 // Stores: visits, actions, photos, meta. No external dependencies.
 
 const DB_NAME = 'safety-platform';
-const DB_VERSION = 1;
-const STORES = ['visits', 'actions', 'photos', 'meta'];
+const DB_VERSION = 2;
+const STORES = ['visits', 'actions', 'photos', 'meta', 'accidents'];
 
 let _db = null;
 
