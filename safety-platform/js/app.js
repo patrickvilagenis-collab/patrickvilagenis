@@ -19,7 +19,10 @@ const NAV = [
 function shell() {
   document.getElementById('app').innerHTML = `
     <aside class="sidebar">
-      <div class="brand"><span class="logo">🛡️</span><div><b>Safety &amp; Health</b><small>Information Tool</small></div></div>
+      <div class="brand">
+        <img class="brand-logo" src="./assets/schindler.svg" alt="Schindler" />
+        <div class="brand-txt"><b>Safety &amp; Health</b><small>Information Tool</small></div>
+      </div>
       <nav class="nav">${NAV.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span>${l}</a>`).join('')}</nav>
       <div class="sidebar-foot">
         <span id="netState" class="net"></span>
@@ -79,7 +82,24 @@ async function boot() {
   route();
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Auto-update: when a new service worker takes control, reload once so the
+    // user always gets the latest version instead of a stale cached one.
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.update();
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage?.('skipWaiting');
+        });
+      });
+    }).catch(() => {});
   }
 }
 

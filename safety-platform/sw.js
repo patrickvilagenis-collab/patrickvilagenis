@@ -1,12 +1,14 @@
-// sw.js — offline app shell cache.
-// Precaches the static assets so the platform works with no connection.
+// sw.js — offline app shell with a network-first strategy.
+// Network-first means: when online, always fetch the latest from the network
+// (so users never get a stale build); when offline, fall back to the cache.
 
-const CACHE = 'sh-tool-v2';
+const CACHE = 'sh-tool-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
   './assets/icon.svg',
+  './assets/schindler.svg',
   './css/styles.css',
   './js/app.js',
   './js/db.js',
@@ -34,16 +36,19 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Cache-first for same-origin GETs; fall back to network and cache the result.
+self.addEventListener('message', (e) => { if (e.data === 'skipWaiting') self.skipWaiting(); });
+
+// Network-first for same-origin GETs; update the cache on every success and
+// fall back to the cached copy only when the network is unavailable.
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
-    caches.match(e.request).then((cached) =>
-      cached || fetch(e.request).then((res) => {
+    fetch(e.request)
+      .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
         return res;
-      }).catch(() => cached)
-    )
+      })
+      .catch(() => caches.match(e.request).then((cached) => cached || caches.match('./index.html')))
   );
 });

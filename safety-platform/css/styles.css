@@ -39,10 +39,10 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
   display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--line);
   border-top: 4px solid var(--brand);
 }
-.brand { display: flex; align-items: center; gap: 11px; padding: 6px 8px 16px; color: var(--ink); }
-.brand .logo { font-size: 1.1rem; width: 34px; height: 34px; flex: 0 0 34px; background: var(--brand); color: #fff; border-radius: 8px; display: grid; place-items: center; }
-.brand b { display: block; font-size: 1rem; line-height: 1.15; letter-spacing: -.01em; }
-.brand small { color: var(--muted); font-size: .72rem; }
+.brand { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 4px 8px 14px; margin-bottom: 4px; border-bottom: 1px solid var(--line); color: var(--ink); }
+.brand-logo { height: 26px; width: auto; display: block; }
+.brand-txt b { display: block; font-size: .92rem; line-height: 1.15; letter-spacing: -.01em; }
+.brand-txt small { color: var(--muted); font-size: .7rem; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav a { display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 8px; color: #3a3f46; font-weight: 600; font-size: .9rem; border-left: 3px solid transparent; }
 .nav a span { width: 20px; text-align: center; }

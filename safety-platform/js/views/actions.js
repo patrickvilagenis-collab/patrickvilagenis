@@ -58,6 +58,8 @@ export async function renderActions(root) {
 
     <div class="toolbar">
       <input id="q" class="search" placeholder="Search title, owner, site…"/>
+      <select id="fStatus" class="select"><option value="">All status</option>${['Open', 'In progress', 'Implemented', 'Closed'].map((s) => `<option>${s}</option>`).join('')}</select>
+      <select id="fPriority" class="select"><option value="">All priorities</option>${['High', 'Medium', 'Low'].map((s) => `<option>${s}</option>`).join('')}</select>
       <button class="btn small" id="bulkClose">Mass-close completed</button>
     </div>
 
@@ -80,14 +82,21 @@ export async function renderActions(root) {
   });
 
   const q = root.querySelector('#q');
-  q.addEventListener('input', () => {
+  const fStatus = root.querySelector('#fStatus');
+  const fPriority = root.querySelector('#fPriority');
+  const applyRowFilters = () => {
     const term = q.value.toLowerCase();
+    const st = fStatus.value, pr = fPriority.value;
     root.querySelectorAll('#rows tr[data-id]').forEach((tr) => {
       const a = actions.find((x) => x.id === tr.dataset.id);
       const hay = `${a.title} ${a.owner} ${a.site} ${a.description}`.toLowerCase();
-      tr.style.display = !term || hay.includes(term) ? '' : 'none';
+      const ok = (!term || hay.includes(term)) && (!st || a.status === st) && (!pr || a.priority === pr);
+      tr.style.display = ok ? '' : 'none';
     });
-  });
+  };
+  q.addEventListener('input', applyRowFilters);
+  fStatus.addEventListener('change', applyRowFilters);
+  fPriority.addEventListener('change', applyRowFilters);
 
   root.querySelector('#bulkClose').addEventListener('click', async () => {
     const implemented = actions.filter((a) => a.status === 'Implemented');
