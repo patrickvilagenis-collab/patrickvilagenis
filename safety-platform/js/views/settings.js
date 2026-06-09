@@ -2,13 +2,16 @@
 
 import { store } from '../store.js';
 import { db } from '../db.js';
-import { download, toast, confirmDialog } from '../utils.js';
+import * as sync from '../sync.js';
+import { download, toast, confirmDialog, esc } from '../utils.js';
+
+const escAttr = esc;
 
 export async function renderSettings(root) {
   const [visits, actions, photos] = await Promise.all([store.visits(), store.actions(), db.all('photos')]);
 
   root.innerHTML = `
-    <header class="view-head"><div><h1>Settings & data</h1><p class="muted">All data lives in this browser (IndexedDB). Nothing is sent to a server — works fully offline.</p></div></header>
+    <header class="view-head"><div><h1>Settings & data</h1><p class="muted">By default data lives in this browser and works fully offline. Connect a backend below to save on a server and share across users.</p></div></header>
 
     <section class="kpi-grid four">
       <div class="kpi"><div class="kpi-val">${visits.length}</div><div class="kpi-lbl">Visits</div></div>
@@ -16,6 +19,21 @@ export async function renderSettings(root) {
       <div class="kpi"><div class="kpi-val">${photos.length}</div><div class="kpi-lbl">Photos</div></div>
       <div class="kpi"><div class="kpi-val">${onlineLabel()}</div><div class="kpi-lbl">Connectivity</div></div>
     </section>
+
+    <div class="card">
+      <h3>🔌 Backend sync <span id="syncBadge"></span></h3>
+      <p class="hint">Connect a backend so data is saved on a server and shared across users and devices. Leave the URL empty to stay fully local. The app keeps working offline and syncs when reconnected.</p>
+      <div class="grid2">
+        <label class="fld"><span>API base URL</span><input id="apiUrl" type="url" placeholder="https://your-backend.onrender.com" value="${escAttr((sync.getConfig().url) || '')}"></label>
+        <label class="fld"><span>API key (optional)</span><input id="apiKey" type="text" placeholder="shared key" value="${escAttr((sync.getConfig().key) || '')}"></label>
+      </div>
+      <div class="row-gap" style="margin-top:10px">
+        <button class="btn" id="syncTest">Test connection</button>
+        <button class="btn primary" id="syncSave">Save & sync</button>
+        <button class="btn ghost" id="syncDisable">Disconnect</button>
+      </div>
+      <p class="hint" id="syncStatus"></p>
+    </div>
 
     <div class="card">
       <h3>Backup & restore</h3>
@@ -49,6 +67,55 @@ export async function renderSettings(root) {
       </ul>
     </div>
   `;
+
+  // --- Backend sync ---
+  const statusEl = root.querySelector('#syncStatus');
+  const badgeEl = root.querySelector('#syncBadge');
+  const refreshSyncStatus = () => {
+    const on = sync.enabled();
+    badgeEl.innerHTML = on ? '<span class="pill good">connected</span>' : '<span class="pill muted">local only</span>';
+    const ob = sync.outboxCount();
+    statusEl.textContent = on
+      ? `Syncing with the configured backend.${ob ? ` ${ob} change(s) queued (offline).` : ''}`
+      : 'Not connected — data stays in this browser only.';
+  };
+  refreshSyncStatus();
+
+  root.querySelector('#syncTest').addEventListener('click', async () => {
+    const url = root.querySelector('#apiUrl').value.trim();
+    const key = root.querySelector('#apiKey').value.trim();
+    if (!url) { toast('Enter the API URL first', 'bad'); return; }
+    sync.setConfig({ url, key });
+    try { const h = await sync.test(); toast('Connected ✓', 'good'); statusEl.textContent = 'Connection OK · server time ' + (h.time || ''); }
+    catch (e) { toast('Could not connect', 'bad'); statusEl.textContent = 'Connection failed: ' + e.message + '. Check the URL, the API key and CORS on the server.'; }
+  });
+
+  root.querySelector('#syncSave').addEventListener('click', async () => {
+    const url = root.querySelector('#apiUrl').value.trim();
+    const key = root.querySelector('#apiKey').value.trim();
+    sync.setConfig({ url, key });
+    if (url) {
+      try { await sync.test(); } catch { toast('Saved, but the server did not respond', 'bad'); return; }
+      // Push everything currently local up to the server, then reload to pull.
+      toast('Connected — syncing…', 'good');
+      for (const v of await store.visits()) sync.push('visits', v);
+      for (const a of await store.actions()) sync.push('actions', a);
+      for (const ac of await store.accidents()) sync.push('accidents', ac);
+      for (const p of await db.all('photos')) sync.push('photos', p);
+      setTimeout(() => location.reload(), 900);
+    } else {
+      toast('Backend disconnected — local only');
+      refreshSyncStatus();
+    }
+  });
+
+  root.querySelector('#syncDisable').addEventListener('click', () => {
+    sync.setConfig({ url: '', key: '' });
+    root.querySelector('#apiUrl').value = '';
+    root.querySelector('#apiKey').value = '';
+    toast('Disconnected — local only');
+    refreshSyncStatus();
+  });
 
   root.querySelector('#backup').addEventListener('click', async () => {
     const payload = { version: 1, exportedAt: new Date().toISOString(), visits, actions, photos };

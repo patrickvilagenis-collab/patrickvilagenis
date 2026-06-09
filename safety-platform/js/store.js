@@ -5,6 +5,7 @@ import { db } from './db.js';
 import { uid, nowISO, monthKey, daysBetween } from './utils.js';
 import { getTemplate, TEMPLATE_LIST } from './checklists.js';
 import { ACCIDENT_TYPES, getAccidentType, emptyRca } from './accidents.js';
+import * as sync from './sync.js';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -92,29 +93,30 @@ export function newAction(visit, partial = {}) {
 export const store = {
   visits: () => db.all('visits'),
   visit: (id) => db.get('visits', id),
-  async saveVisit(v) { v.updatedAt = nowISO(); return db.put('visits', v); },
-  delVisit: (id) => db.del('visits', id),
+  async saveVisit(v) { v.updatedAt = nowISO(); await db.put('visits', v); sync.push('visits', v); return v; },
+  async delVisit(id) { await db.del('visits', id); sync.remove('visits', id); },
 
   actions: () => db.all('actions'),
   action: (id) => db.get('actions', id),
-  async saveAction(a) { a.updatedAt = nowISO(); return db.put('actions', a); },
-  delAction: (id) => db.del('actions', id),
+  async saveAction(a) { a.updatedAt = nowISO(); await db.put('actions', a); sync.push('actions', a); return a; },
+  async delAction(id) { await db.del('actions', id); sync.remove('actions', id); },
 
   accidents: () => db.all('accidents'),
   accident: (id) => db.get('accidents', id),
-  async saveAccident(a) { a.updatedAt = nowISO(); return db.put('accidents', a); },
-  delAccident: (id) => db.del('accidents', id),
+  async saveAccident(a) { a.updatedAt = nowISO(); await db.put('accidents', a); sync.push('accidents', a); return a; },
+  async delAccident(id) { await db.del('accidents', id); sync.remove('accidents', id); },
 
   async savePhoto(dataURL) {
     const id = uid('ph');
-    await db.put('photos', { id, dataURL, createdAt: nowISO() });
+    const rec = { id, dataURL, createdAt: nowISO() };
+    await db.put('photos', rec); sync.push('photos', rec);
     return id;
   },
   photo: (id) => db.get('photos', id),
-  delPhoto: (id) => db.del('photos', id),
+  async delPhoto(id) { await db.del('photos', id); sync.remove('photos', id); },
 
   meta: (id) => db.get('meta', id),
-  setMeta: (id, value) => db.put('meta', { id, value }),
+  async setMeta(id, value) { const rec = { id, value }; await db.put('meta', rec); sync.push('meta', rec); return rec; },
 };
 
 // ---------------------------------------------------------------------------
@@ -302,6 +304,8 @@ export function accidentControlSplit(list) {
 // Seed data (only on first run) so dashboards/analytics are not empty.
 // ---------------------------------------------------------------------------
 export async function ensureSeed() {
+  // In backend mode the data comes from the server — never inject demo data.
+  if (sync.enabled()) return;
   const seeded = await store.meta('seeded');
   if (seeded && seeded.value) return;
 

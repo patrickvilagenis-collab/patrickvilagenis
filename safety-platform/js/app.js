@@ -1,7 +1,8 @@
 // app.js — application shell + hash router.
 
 import { ensureSeed } from './store.js';
-import { dbMode } from './db.js';
+import { db, dbMode } from './db.js';
+import * as sync from './sync.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderVisits, renderNewVisit } from './views/visits.js';
 import { renderVisitForm } from './views/visitForm.js';
@@ -99,12 +100,18 @@ function showStorageNotice() {
 
 async function boot() {
   shell();
+  // In backend mode, pull server data into the local cache before first render.
+  if (sync.enabled()) {
+    try { await sync.pullAll(db); await sync.flushOutbox(); }
+    catch (err) { console.warn('Backend sync unavailable:', err && err.message); }
+  }
   try {
     await ensureSeed();
   } catch (err) {
     console.error('Seed/DB error', err);
   }
   if (dbMode === 'memory') showStorageNotice();
+  window.addEventListener('online', () => sync.flushOutbox());
   window.addEventListener('hashchange', route);
   window.addEventListener('online', updateNet);
   window.addEventListener('offline', updateNet);
