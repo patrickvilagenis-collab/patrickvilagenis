@@ -59,30 +59,39 @@ async function route() {
   const [section, a, b] = parts;
   try {
     switch (section) {
-      case '': case 'dashboard': return renderDashboard(view);
-      case 'visits': return renderVisits(view);
+      case '': case 'dashboard': await renderDashboard(view); break;
+      case 'visits': await renderVisits(view); break;
       case 'new':
-        return a ? renderVisitForm(view, { templateId: a }) : renderNewVisit(view);
-      case 'visit': return renderVisitForm(view, { visitId: a });
+        a ? await renderVisitForm(view, { templateId: a }) : await renderNewVisit(view); break;
+      case 'visit': await renderVisitForm(view, { visitId: a }); break;
       case 'accidents':
-        return a === 'new'
-          ? (b ? renderAccidentForm(view, { type: b }) : renderNewAccident(view))
-          : renderAccidents(view);
-      case 'accident': return renderAccidentForm(view, { accidentId: a });
-      case 'analysis': return renderAnalysis(view);
-      case 'actions': return renderActions(view);
-      case 'settings': return renderSettings(view);
+        if (a === 'new') { b ? await renderAccidentForm(view, { type: b }) : renderNewAccident(view); }
+        else await renderAccidents(view);
+        break;
+      case 'accident': await renderAccidentForm(view, { accidentId: a }); break;
+      case 'analysis': await renderAnalysis(view); break;
+      case 'actions': await renderActions(view); break;
+      case 'settings': await renderSettings(view); break;
       default: location.hash = '#/dashboard';
     }
   } catch (err) {
     console.error(err);
-    view.innerHTML = `<div class="empty">Something went wrong rendering this view.<br><code>${err.message}</code></div>`;
+    view.innerHTML = `<div class="empty">Something went wrong rendering this view.<br><code>${esc(err.message)}</code>
+      <br><br><a class="btn primary" href="./reset.html">Refresh the app</a></div>`;
   }
 }
 
+function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
 async function boot() {
   shell();
-  await ensureSeed();
+  try {
+    await ensureSeed();
+  } catch (err) {
+    console.error('Seed/DB error', err);
+    const view = document.getElementById('view');
+    if (view) view.innerHTML = `<div class="empty">The local database could not be opened.<br><code>${esc(err.message)}</code><br><br><a class="btn primary" href="./reset.html">Refresh the app</a></div>`;
+  }
   window.addEventListener('hashchange', route);
   window.addEventListener('online', updateNet);
   window.addEventListener('offline', updateNet);
