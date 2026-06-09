@@ -32,7 +32,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print(f"SafeField Safety Platform → http://localhost:{PORT}")
+    print(f"Safety & Health Information Tool → http://localhost:{PORT}")
     print("Press Ctrl+C to stop.")
     try:
         httpd.serve_forever()

@@ -1,13 +1,13 @@
 {
-  "name": "SafeField — Safety Platform",
-  "short_name": "SafeField",
-  "description": "Mobile-first, offline-capable field safety reporting platform.",
+  "name": "Safety & Health Information Tool",
+  "short_name": "S&H Tool",
+  "description": "Mobile-first, offline-capable field safety & health information tool.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0b3a82",
-  "theme_color": "#0b3a82",
+  "background_color": "#ffffff",
+  "theme_color": "#E2001A",
   "icons": [
     { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

@@ -5,10 +5,14 @@ import { store, buildKpis, visitsByMonth, visitsByFamily, actionsByStatus,
 import { barChart, lineChart, donutChart, legend, gauge, PALETTE } from '../charts.js';
 import { monthLabel } from '../utils.js';
 import { ENERGY_TYPES, CONTROL_HIERARCHY } from '../checklists.js';
+import { filterButton, filterVisits, filterActions, activeFilterChips } from '../filters.js';
 
 export async function renderDashboard(root) {
-  const [visits, actions] = await Promise.all([store.visits(), store.actions()]);
+  const [allVisits, allActions] = await Promise.all([store.visits(), store.actions()]);
+  const submittedAll = allVisits.filter((v) => v.status === 'submitted');
+  const visits = filterVisits(allVisits);
   const submitted = visits.filter((v) => v.status === 'submitted');
+  const actions = filterActions(allActions, submitted);
   const k = buildKpis(visits, actions);
 
   const months = visitsByMonth(submitted).map(([m, n]) => [monthLabel(m), n]);
@@ -31,8 +35,9 @@ export async function renderDashboard(root) {
         <h1>Safety cockpit</h1>
         <p class="muted">Live view of field safety activity, controls and open actions.</p>
       </div>
-      <a class="btn primary" href="#/new">+ New field visit</a>
+      <div class="row-gap"><span id="filterMount"></span><a class="btn primary" href="#/new">+ New field visit</a></div>
     </header>
+    <div id="chipMount"></div>
 
     <section class="kpi-grid">
       ${kpi('Visits (total)', k.totalVisits, `${k.visitsThisMonth} this month`)}
@@ -46,7 +51,7 @@ export async function renderDashboard(root) {
     <section class="card-grid">
       <div class="card span2">
         <h3>Visits per month</h3>
-        ${lineChart(months, { color: '#2563eb' })}
+        ${lineChart(months, { color: '#E2001A' })}
       </div>
       <div class="card">
         <h3>Avg. compliance</h3>
@@ -60,7 +65,7 @@ export async function renderDashboard(root) {
       </div>
       <div class="card">
         <h3>Actions by status</h3>
-        ${barChart(actStatus, { color: '#0ea5e9' })}
+        ${barChart(actStatus, { color: '#2b2f36' })}
       </div>
       <div class="card">
         <h3>Hierarchy of controls used</h3>
@@ -80,4 +85,9 @@ export async function renderDashboard(root) {
       </div>
     </section>
   `;
+
+  const rerender = () => renderDashboard(root);
+  root.querySelector('#filterMount').append(filterButton(submittedAll, rerender));
+  const chips = activeFilterChips(rerender);
+  if (chips) root.querySelector('#chipMount').append(chips);
 }

@@ -1,8 +1,8 @@
-# 🛡️ SafeField — Safety Platform
+# 🛡️ Safety & Health Information Tool
 
-A **mobile-first, offline-capable safety reporting platform** for field safety
-visits, inspired by **Enablon** and built specifically to fix the pain points
-collected from the Hubs about the current **SRS** tool.
+A **mobile-first, offline-capable safety & health information tool** for field
+safety visits, inspired by **Enablon** and built specifically to fix the pain
+points collected from the Hubs about the current **SRS** tool.
 
 It runs entirely in the browser — **no backend, no login, no install** — so it
 works where safety actually happens: on a phone, on site, with or without a

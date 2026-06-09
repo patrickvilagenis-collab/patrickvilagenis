@@ -143,6 +143,8 @@ function buildGeneral() {
     field('Supervisor', 'supervisor', g, { disabled: dis }),
     field('Branch / Delegation', 'branch', g, { disabled: dis }),
     field('City', 'city', g, { disabled: dis }),
+    field('Zone / Hub', 'zone', g, { disabled: dis }),
+    field('Region', 'region', g, { disabled: dis }),
   ].join('');
   bindFields('#generalFields', _visit.general);
 }

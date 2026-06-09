@@ -19,7 +19,7 @@ const NAV = [
 function shell() {
   document.getElementById('app').innerHTML = `
     <aside class="sidebar">
-      <div class="brand"><span class="logo">🛡️</span><div><b>SafeField</b><small>Safety Platform</small></div></div>
+      <div class="brand"><span class="logo">🛡️</span><div><b>Safety &amp; Health</b><small>Information Tool</small></div></div>
       <nav class="nav">${NAV.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span>${l}</a>`).join('')}</nav>
       <div class="sidebar-foot">
         <span id="netState" class="net"></span>

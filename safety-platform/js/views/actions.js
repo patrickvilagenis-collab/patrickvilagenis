@@ -3,9 +3,12 @@
 import { store, actionsByStatus } from '../store.js';
 import { stackedBar, PALETTE } from '../charts.js';
 import { fmtDate, esc, daysBetween, toast, download, toCSV } from '../utils.js';
+import { filterButton, filterActions, activeFilterChips } from '../filters.js';
 
 export async function renderActions(root) {
-  const actions = (await store.actions()).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
+  const [allActions, allVisits] = await Promise.all([store.actions(), store.visits()]);
+  const actions = filterActions(allActions, allVisits)
+    .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'));
   const open = actions.filter((a) => a.status !== 'Closed' && a.status !== 'Implemented');
   const overdue = open.filter((a) => a.dueDate && daysBetween(a.dueDate) > 0);
   const dueSoon = open.filter((a) => a.dueDate && daysBetween(a.dueDate) <= 0 && daysBetween(a.dueDate) >= -7);
@@ -36,8 +39,9 @@ export async function renderActions(root) {
   root.innerHTML = `
     <header class="view-head">
       <div><h1>Action tracker</h1><p class="muted">Closed-loop follow-up of corrective & preventive actions (CAPA).</p></div>
-      <button class="btn" id="exportActions">⬇ Export CSV</button>
+      <div class="row-gap"><span id="filterMount"></span><button class="btn" id="exportActions">⬇ Export CSV</button></div>
     </header>
+    <div id="chipMount"></div>
 
     <section class="kpi-grid four">
       <div class="kpi"><div class="kpi-val">${open.length}</div><div class="kpi-lbl">Open</div></div>
@@ -101,4 +105,9 @@ export async function renderActions(root) {
     download('actions.csv', toCSV(rows), 'text/csv');
     toast('Exported actions.csv', 'good');
   });
+
+  const rerender = () => renderActions(root);
+  root.querySelector('#filterMount').append(filterButton(allVisits.filter((v) => v.status === 'submitted'), rerender));
+  const chips = activeFilterChips(rerender);
+  if (chips) root.querySelector('#chipMount').append(chips);
 }

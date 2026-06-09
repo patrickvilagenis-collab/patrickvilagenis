@@ -1,7 +1,7 @@
 // sw.js — offline app shell cache.
 // Precaches the static assets so the platform works with no connection.
 
-const CACHE = 'safefield-v1';
+const CACHE = 'sh-tool-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const ASSETS = [
   './js/utils.js',
   './js/charts.js',
   './js/checklists.js',
+  './js/filters.js',
   './js/views/dashboard.js',
   './js/views/visits.js',
   './js/views/visitForm.js',

@@ -19,7 +19,8 @@ export function newVisit(templateId) {
     general: {
       observer: '', observerId: '', technician: '', employeeType: 'Schindler',
       technicianId: '', equipmentNumber: '', workType: '', address: '',
-      supervisor: '', branch: '', city: '', date: new Date().toISOString().slice(0, 10),
+      supervisor: '', branch: '', city: '', region: '', zone: '',
+      date: new Date().toISOString().slice(0, 10),
     },
     technical: { installationType: '', tractionType: '' },
     responses: {},          // { sectionId: { itemId: { answer, remark, photos:[id] } } }
@@ -223,11 +224,11 @@ export async function ensureSeed() {
     ['Carlos Méndez', 'S40988'], ['Anke Müller', 'S55012'],
   ];
   const cities = [
-    ['Madrid', 'Iberia Hub', 'Calle Gran Vía 21'],
-    ['Milano', 'South Europe Hub', 'Via Torino 14'],
-    ['Shanghai', 'China Hub', 'Nanjing Road 88'],
-    ['São Paulo', 'LatAm Hub', 'Av. Paulista 1500'],
-    ['Berlin', 'DACH Hub', 'Alexanderplatz 3'],
+    ['Madrid', 'Iberia Hub', 'Calle Gran Vía 21', 'Europe'],
+    ['Milano', 'South Europe Hub', 'Via Torino 14', 'Europe'],
+    ['Shanghai', 'China Hub', 'Nanjing Road 88', 'Asia Pacific'],
+    ['São Paulo', 'LatAm Hub', 'Av. Paulista 1500', 'Americas'],
+    ['Berlin', 'DACH Hub', 'Alexanderplatz 3', 'Europe'],
   ];
   const templates = ['safe_ni_trans', 'safe_ei', 'safety_inspection_ei', 'safety_inspection_ni', 'mini_ole'];
   const energies = ['gravity', 'motion', 'electrical', 'mechanical', 'pressure'];
@@ -240,7 +241,7 @@ export async function ensureSeed() {
     const t = getTemplate(tplId);
     const v = newVisit(tplId);
     const [name, id] = rand(observers);
-    const [city, branch, addr] = rand(cities);
+    const [city, branch, addr, region] = rand(cities);
     const daysAgo = Math.floor(Math.random() * 150);
     const date = new Date(Date.now() - daysAgo * 86400000).toISOString().slice(0, 10);
 
@@ -253,7 +254,7 @@ export async function ensureSeed() {
       equipmentNumber: 'EQ' + (200000 + Math.floor(Math.random() * 9999)),
       workType: rand(['New installation (NI)', 'Existing installation / Maintenance (EI)', 'Modernization (MOD)']),
       address: addr, supervisor: rand(['L. Romano', 'S. Becker', 'D. Alvarez']),
-      branch, city, date,
+      branch, city, region, zone: branch, date,
     };
     v.technical = { installationType: rand(['MR (Machine Room)', 'MRL (Machine Room-Less)']), tractionType: rand(['EG (one speed)', 'VF (variable frequency drive)']) };
 

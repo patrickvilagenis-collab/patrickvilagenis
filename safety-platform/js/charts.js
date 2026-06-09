@@ -1,13 +1,13 @@
 // charts.js — dependency-free SVG charts (works offline).
 // Each function returns an SVG string.
 
-const PALETTE = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#64748b'];
+const PALETTE = ['#E2001A', '#2b2f36', '#0073a8', '#e08600', '#1b9e5a', '#7a3b8f', '#c0392b', '#0e9aa7', '#e67e22', '#7f8c8d'];
 
 function svg(w, h, inner) {
   return `<svg viewBox="0 0 ${w} ${h}" class="chart" preserveAspectRatio="xMidYMid meet" role="img">${inner}</svg>`;
 }
 
-export function barChart(data, { w = 520, h = 220, color = '#2563eb', valueFmt = (v) => v } = {}) {
+export function barChart(data, { w = 520, h = 220, color = '#E2001A', valueFmt = (v) => v } = {}) {
   if (!data.length) return emptyChart(w, h);
   const pad = { l: 36, r: 12, t: 12, b: 28 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
@@ -27,7 +27,7 @@ export function barChart(data, { w = 520, h = 220, color = '#2563eb', valueFmt =
   return svg(w, h, grid + bars);
 }
 
-export function lineChart(data, { w = 520, h = 220, color = '#2563eb' } = {}) {
+export function lineChart(data, { w = 520, h = 220, color = '#E2001A' } = {}) {
   if (data.length < 1) return emptyChart(w, h);
   const pad = { l: 36, r: 12, t: 12, b: 28 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
