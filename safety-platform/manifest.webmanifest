@@ -1,0 +1,14 @@
+{
+  "name": "SafeField — Safety Platform",
+  "short_name": "SafeField",
+  "description": "Mobile-first, offline-capable field safety reporting platform.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b3a82",
+  "theme_color": "#0b3a82",
+  "icons": [
+    { "src": "./assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
