@@ -1,6 +1,7 @@
 // app.js — application shell + hash router.
 
 import { ensureSeed } from './store.js';
+import { dbMode } from './db.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderVisits, renderNewVisit } from './views/visits.js';
 import { renderVisitForm } from './views/visitForm.js';
@@ -57,6 +58,7 @@ async function route() {
   window.scrollTo(0, 0);
   const parts = hash.slice(2).split('/'); // drop "#/"
   const [section, a, b] = parts;
+  view.innerHTML = '<div class="empty">Loading…</div>';
   try {
     switch (section) {
       case '': case 'dashboard': await renderDashboard(view); break;
@@ -83,15 +85,26 @@ async function route() {
 
 function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
 
+function showStorageNotice() {
+  const foot = document.querySelector('.sidebar-foot');
+  if (foot && !document.getElementById('memNotice')) {
+    const n = document.createElement('div');
+    n.id = 'memNotice';
+    n.className = 'mem-notice';
+    n.title = 'This browser blocks persistent storage (common on corporate devices). The app works, but changes are not saved after you close it.';
+    n.textContent = '⚠ Temporary storage';
+    foot.prepend(n);
+  }
+}
+
 async function boot() {
   shell();
   try {
     await ensureSeed();
   } catch (err) {
     console.error('Seed/DB error', err);
-    const view = document.getElementById('view');
-    if (view) view.innerHTML = `<div class="empty">The local database could not be opened.<br><code>${esc(err.message)}</code><br><br><a class="btn primary" href="./reset.html">Refresh the app</a></div>`;
   }
+  if (dbMode === 'memory') showStorageNotice();
   window.addEventListener('hashchange', route);
   window.addEventListener('online', updateNet);
   window.addEventListener('offline', updateNet);

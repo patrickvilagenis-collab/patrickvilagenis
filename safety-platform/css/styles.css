@@ -382,3 +382,5 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
   .tripod-trio, .tripod-causes { grid-template-columns: 1fr; }
   .why-row { grid-template-columns: 56px 1fr auto; }
 }
+
+.mem-notice { font-size: .7rem; font-weight: 700; color: #b45309; background: var(--warn-bg); border: 1px solid #f3d8a8; padding: 5px 9px; border-radius: 7px; margin-bottom: 8px; cursor: help; }
