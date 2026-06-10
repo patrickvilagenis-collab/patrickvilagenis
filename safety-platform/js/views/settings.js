@@ -105,7 +105,7 @@ export async function renderSettings(root) {
     } catch { toast('Could not reach the server', 'bad'); statusEl.textContent = 'Could not reach ' + url + '. Check the URL is exact, the server is deployed, and try again (it may be waking up).'; }
   });
 
-  // Join the shared backend: clear stale local cache, then reload to pull server data.
+  // Join the shared backend — never destroys local data when the server is empty.
   root.querySelector('#syncConnect').addEventListener('click', async () => {
     const url = root.querySelector('#apiUrl').value.trim();
     const key = root.querySelector('#apiKey').value.trim();
@@ -114,9 +114,31 @@ export async function renderSettings(root) {
     try { auth = await reachAndAuth(url, key); }
     catch { toast('Server did not respond', 'bad'); statusEl.textContent = 'The server did not respond — check the URL and try again.'; return; }
     if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'The API key is invalid. Copy it from Render → Environment → API_KEY.'; return; }
-    toast('Connecting — loading shared data…', 'good');
-    await sync.clearLocal(db);   // drop local demo/stale cache so the pull mirrors the server
-    setTimeout(() => location.reload(), 700);
+
+    const serverCount = await sync.serverCount();
+    const localCount = (await store.visits()).length + (await store.accidents()).length;
+
+    if (serverCount > 0) {
+      // Server already has the shared data → mirror it locally.
+      toast('Loading shared data…', 'good');
+      await sync.clearLocal(db);
+      setTimeout(() => location.reload(), 700);
+    } else if (localCount > 0) {
+      // Server empty: NEVER wipe local. Offer to upload this device's data.
+      if (await confirmDialog('The server is empty. Upload THIS device\'s data so it becomes the shared data? (Choose Cancel to just connect and keep your data.)')) {
+        statusEl.textContent = 'Uploading your data to the server…';
+        const res = await sync.pushBulk(db);
+        if (res.unauthorized) { toast('API key invalid', 'bad'); return; }
+        toast(`Uploaded ${res.pushed} record(s)`, 'good');
+      } else {
+        toast('Connected — your local data was kept', 'good');
+      }
+      setTimeout(() => location.reload(), 800);
+    } else {
+      // Both empty — just connect.
+      toast('Connected', 'good');
+      setTimeout(() => location.reload(), 600);
+    }
   });
 
   // Seed the server from this device's data (use once, from the device that holds the real records).

@@ -53,6 +53,16 @@ export async function pushBulk(db) {
 // Clear the local cache so the next pull mirrors the server exactly.
 export async function clearLocal(db) { for (const c of COLLECTIONS) await db.clear(c); }
 
+// How many records the server currently holds (visits + accidents is enough
+// to decide whether the server already has data).
+export async function serverCount() {
+  let total = 0;
+  for (const c of ['visits', 'accidents']) {
+    try { const l = await api('/api/' + c); total += (l || []).length; } catch {}
+  }
+  return total;
+}
+
 // Pull every collection from the server into the local cache (db).
 export async function pullAll(db) {
   if (!enabled()) return { pulled: 0 };
