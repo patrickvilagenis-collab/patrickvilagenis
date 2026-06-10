@@ -467,8 +467,11 @@ async function seedAccidents(rand, observers, cities) {
 
     // Populate a light RCA for the chosen methodology.
     if (acc.methodology === 'five_whys') {
-      acc.rca.five_whys = { problem: acc.description, whys: ['Procedure step skipped', 'Time pressure on site', 'Crew under-resourced', 'Planning did not allocate enough time', ''], root: 'Planning standard not enforced' };
-      acc.rootCauses = 'Planning standard not enforced';
+      acc.rca.five_whys = { problem: acc.description, branches: [
+        { factor: 'Procedure step skipped', whys: ['Procedure step skipped', 'Time pressure on site', 'Crew under-resourced', 'Planning did not allocate enough time'], root: 'Planning standard not enforced' },
+        { factor: 'Secondary safety device not used', whys: ['Device not applied', 'Crew not briefed on the step', 'Supervision gap'], root: 'Supervision standard gap' },
+      ] };
+      acc.rootCauses = 'Planning standard not enforced; supervision standard gap';
     } else if (acc.methodology === 'fishbone') {
       acc.rca.fishbone.effect = acc.description;
       acc.rca.fishbone.causes.People = ['Inadequate supervision', 'Fatigue'];

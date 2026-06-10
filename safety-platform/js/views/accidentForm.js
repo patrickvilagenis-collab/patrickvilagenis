@@ -4,7 +4,7 @@ import { store, newAccident, newAccidentAction } from '../store.js';
 import {
   ACCIDENT_TYPES, getAccidentType, INCIDENT_CATEGORIES, INJURY_NATURES, BODY_PARTS,
   METHODOLOGIES, getMethodology, FISHBONE_CATEGORIES, TAPROOT_CATEGORIES,
-  newTripodBarrier, newTaprootFactor,
+  newWhyBranch, newTripodBarrier, newTaprootFactor,
 } from '../accidents.js';
 import { ENERGY_TYPES } from '../checklists.js';
 import { EMPLOYEE_TYPES, WORK_TYPES } from '../checklists.js';
@@ -272,25 +272,45 @@ function buildRca() {
   ({ five_whys: rcaFiveWhys, fishbone: rcaFishbone, tripod: rcaTripod, taproot: rcaTapRoot }[_acc.methodology])(host);
 }
 
-// 5 Whys -------------------------------------------------------------------
+// 5 Whys — supports multiple causal factors (branches), each a why-chain -----
 function rcaFiveWhys(host) {
   const d = _acc.rca.five_whys;
+  // migrate older single-chain data {problem, whys, root} → branches
+  if (!d.branches) d.branches = [{ factor: '', whys: d.whys || ['', '', ''], root: d.root || '' }];
+  if (!d.branches.length) d.branches.push(newWhyBranch());
   const wrap = el('div', { class: 'rca five-whys' });
+
   const render = () => {
-    wrap.innerHTML = `<label class="fld"><span>Problem statement</span><textarea data-k="problem" placeholder="The problem to investigate">${esc(d.problem || '')}</textarea></label>`;
-    const chain = el('div', { class: 'why-chain' });
-    d.whys.forEach((w, i) => {
-      const r = el('div', { class: 'why-row' });
-      r.innerHTML = `<span class="why-n">Why ${i + 1}?</span><textarea data-i="${i}" placeholder="Because…">${esc(w)}</textarea>${d.whys.length > 1 ? `<button class="icon-btn" data-del="${i}">🗑</button>` : ''}`;
-      chain.append(r);
+    wrap.innerHTML = `<label class="fld"><span>Problem statement</span><textarea data-k="problem" placeholder="The problem to investigate">${esc(d.problem || '')}</textarea></label>
+      <p class="hint">A problem can have several causal factors. Add a branch per causal factor, each with its own chain of whys down to a root cause.</p>`;
+
+    d.branches.forEach((br, bi) => {
+      const card = el('div', { class: 'why-branch' });
+      const chainHtml = br.whys.map((w, i) =>
+        `<div class="why-row"><span class="why-n">Why ${i + 1}?</span><textarea data-i="${i}" placeholder="Because…">${esc(w)}</textarea>${br.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${i}">🗑</button>` : ''}</div>`).join('');
+      card.innerHTML = `
+        <div class="why-branch-head">
+          <b>Causal factor ${bi + 1}</b>
+          ${d.branches.length > 1 ? '<button class="icon-btn" data-delbranch>🗑 Remove</button>' : ''}
+        </div>
+        <label class="fld"><span>Causal factor (immediate cause)</span><input data-k="factor" value="${esc(br.factor || '')}" placeholder="What contributed to the problem"/></label>
+        <div class="why-chain">${chainHtml}</div>
+        <button class="btn small" data-addwhy>+ Add why</button>
+        <label class="fld why-root"><span>Root cause of this branch</span><textarea data-k="root" placeholder="The root cause this chain leads to">${esc(br.root || '')}</textarea></label>`;
+
+      card.querySelector('[data-k="factor"]').addEventListener('input', (e) => { br.factor = e.target.value; scheduleSave(); });
+      card.querySelector('[data-k="root"]').addEventListener('input', (e) => { br.root = e.target.value; scheduleSave(); });
+      card.querySelectorAll('textarea[data-i]').forEach((ta) => ta.addEventListener('input', () => { br.whys[+ta.dataset.i] = ta.value; scheduleSave(); }));
+      card.querySelectorAll('[data-delwhy]').forEach((b) => b.addEventListener('click', () => { br.whys.splice(+b.dataset.delwhy, 1); scheduleSave(); render(); }));
+      card.querySelector('[data-addwhy]').addEventListener('click', () => { br.whys.push(''); scheduleSave(); render(); });
+      const delB = card.querySelector('[data-delbranch]');
+      if (delB) delB.addEventListener('click', () => { d.branches.splice(bi, 1); scheduleSave(); render(); });
+      wrap.append(card);
     });
-    wrap.append(chain);
-    const add = el('button', { class: 'btn small', onClick: () => { d.whys.push(''); scheduleSave(); render(); } }, '+ Add why');
-    wrap.append(add);
-    wrap.append(field('Root cause', d.root, (v) => { d.root = v; scheduleSave(); }, { textarea: true }));
+
+    const addBranch = el('button', { class: 'btn', onClick: () => { d.branches.push(newWhyBranch()); scheduleSave(); render(); } }, '+ Add causal factor');
+    wrap.append(addBranch);
     wrap.querySelector('[data-k="problem"]').addEventListener('input', (e) => { d.problem = e.target.value; scheduleSave(); });
-    chain.querySelectorAll('textarea[data-i]').forEach((ta) => ta.addEventListener('input', () => { d.whys[+ta.dataset.i] = ta.value; scheduleSave(); }));
-    chain.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { d.whys.splice(+b.dataset.del, 1); scheduleSave(); render(); }));
   };
   render();
   host.append(wrap);

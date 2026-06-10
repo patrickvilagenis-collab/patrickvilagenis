@@ -84,12 +84,13 @@ export const TAPROOT_CATEGORIES = [
 // switch methodology without losing what they entered.
 export function emptyRca() {
   return {
-    five_whys: { problem: '', whys: ['', '', '', '', ''], root: '' },
+    five_whys: { problem: '', branches: [newWhyBranch()] }, // multiple causal factors, each a why-chain
     fishbone: { effect: '', causes: Object.fromEntries(FISHBONE_CATEGORIES.map((c) => [c, ['']])) },
     tripod: { agent: '', event: '', target: '', barriers: [] }, // barrier: {desc, active, precondition, latent}
     taproot: { events: [''], factors: [] },                     // factor: {desc, category, root}
   };
 }
 
+export const newWhyBranch = () => ({ factor: '', whys: ['', '', ''], root: '' });
 export const newTripodBarrier = () => ({ desc: '', active: '', precondition: '', latent: '' });
 export const newTaprootFactor = () => ({ desc: '', category: '', root: '' });

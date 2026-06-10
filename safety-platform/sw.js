@@ -2,7 +2,7 @@
 // Network-first means: when online, always fetch the latest from the network
 // (so users never get a stale build); when offline, fall back to the cache.
 
-const CACHE = 'sh-tool-v12';
+const CACHE = 'sh-tool-v13';
 const ASSETS = [
   './',
   './index.html',
