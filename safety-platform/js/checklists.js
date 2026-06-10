@@ -33,22 +33,31 @@ export const TRACTION_TYPES = [
 ];
 
 // ---------------------------------------------------------------------------
-// Energy-Based Safety (EBS)
-// The "energy wheel": identify the hazardous energies present in the task,
-// whether a *direct control* targeting the high-energy source is in place,
-// and classify the control on the Hierarchy of Controls.
+// Energy-Based Safety (EBS) — the Schindler Hazard Wheel
+// Ten types of high-energy hazards ("STKY — Stuff That Kills You"). For each
+// hazard present in the task you record the danger zone, whether a direct
+// control exists and its condition, plus the hierarchy-of-controls level.
 // ---------------------------------------------------------------------------
 export const ENERGY_TYPES = [
-  { id: 'gravity', label: 'Gravity', icon: '⬇️', hint: 'Falls from height, dropped/falling objects, counterweights' },
-  { id: 'motion', label: 'Motion', icon: '🔄', hint: 'Car / counterweight movement, moving vehicles, rotating parts' },
-  { id: 'mechanical', label: 'Mechanical', icon: '⚙️', hint: 'Springs, machinery, sheaves, brakes, stored mechanical energy' },
-  { id: 'electrical', label: 'Electrical', icon: '⚡', hint: 'Live conductors, capacitors, drives, control panels' },
-  { id: 'pressure', label: 'Pressure', icon: '💨', hint: 'Hydraulic systems, pneumatic tools, stored pressure' },
-  { id: 'temperature', label: 'Temperature', icon: '🌡️', hint: 'Hot work, welding, hot surfaces, cold environments' },
-  { id: 'chemical', label: 'Chemical', icon: '🧪', hint: 'Oils, solvents, adhesives, dust, fumes' },
-  { id: 'radiation', label: 'Radiation', icon: '☢️', hint: 'Welding arc, lasers, X-ray, UV' },
-  { id: 'sound', label: 'Sound', icon: '🔊', hint: 'High noise tools, machinery noise' },
-  { id: 'biological', label: 'Biological', icon: '🦠', hint: 'Mold, sewage, pests, sanitary risks' },
+  { id: 'gravity', label: 'Gravity', icon: '⬇️', hint: 'Falling from height ≥2 m · standing below/near hoisted loads · dropped objects during dismantling' },
+  { id: 'motion', label: 'Motion', icon: '🔄', hint: 'Collision with vehicles >50 km/h · adjacent elevators running · counterweight movement on car roof · ejected debris from tools · steps/pallets movement' },
+  { id: 'mechanical', label: 'Mechanical', icon: '⚙️', hint: 'Rotating equipment >100 rpm · entanglement in rotating parts · entrapment on chains/sprockets/belts · fly-off fragments · spring-loaded/tensioning releases' },
+  { id: 'electrical', label: 'Electrical', icon: '⚡', hint: 'Contact with live circuits >50 V · arc flash · step & touch potential · charged capacitors · induced voltage · wrong LOTO' },
+  { id: 'sound', label: 'Sound', icon: '🔊', hint: 'Miscommunication from loud noise · noise >150 dB (hearing loss) · surrounding noise masking warnings' },
+  { id: 'biological', label: 'Biological', icon: '🦠', hint: 'Toxic gases inhalation · infectious diseases (needles/waste) · rodent infestation · bacteria in pit water · toxic dense gases trapped in pit' },
+  { id: 'chemical', label: 'Chemical', icon: '🧪', hint: 'Asbestos in older equipment/walls · dust inhalation · skin & eye irritation' },
+  { id: 'pressure', label: 'Pressure', icon: '💨', hint: 'Blast/explosion (compressor, flammable gases in pit) · hydraulic jack/rod release · hose damage · steam/chemical burns · pressurized buffers' },
+  { id: 'temperature', label: 'Temperature', icon: '🌡️', hint: 'Surfaces ≥70 °C → 3rd-degree burns in ~2 s (brake drums/discs, motor) · overheated REP areas · just-cut/welded surfaces · arc-flash thermal energy' },
+  { id: 'radiation', label: 'Radiation', icon: '☢️', hint: 'Welding arc · laser level eye contact · high-intensity light · prolonged sun (outdoor/glass lifts) · non-ionizing sources (antennas, transmitters)' },
+];
+
+// The danger zones where these hazards are typically found.
+export const DANGER_ZONES = [
+  { id: 'machine_room', label: 'Machine Room', icon: '⚙️' },
+  { id: 'car_top', label: 'Car top', icon: '🛗' },
+  { id: 'shaft_pit', label: 'Shaft / Pit', icon: '🕳️' },
+  { id: 'escalator', label: 'Escalator', icon: '🪜' },
+  { id: 'motor_vehicle', label: 'Motor vehicle', icon: '🚐' },
 ];
 
 // Hierarchy of Controls — most effective at the top.
@@ -60,18 +69,45 @@ export const CONTROL_HIERARCHY = [
   { id: 'ppe', label: 'PPE', rank: 5, tone: 'bad', hint: 'Protect the worker with equipment (harness, gloves)' },
 ];
 
+// Condition of the control found in the field ("be aware of controls condition").
+export const CONTROL_CONDITION = [
+  { id: 'works', label: 'Exists and works', tone: 'good' },
+  { id: 'inadequate', label: 'Exists but inadequate', tone: 'warn' },
+  { id: 'unreliable', label: 'Exists but unreliable', tone: 'warn' },
+  { id: 'not_working', label: 'Exists and does not work', tone: 'bad' },
+  { id: 'absent', label: 'Does not exist', tone: 'bad' },
+];
+
+// A control is effective only when it exists and works (back-compat with the
+// older conform/variability flag used by earlier records and seed data).
+export function isControlEffective(e) {
+  if (e.controlCondition) return e.controlCondition === 'works';
+  return e.directControl && e.controlInPlace === 'conform';
+}
+
 // A "direct control" in EBS specifically targets the high-energy source and
 // is effective even if a mistake is made. Used as a flag on each energy row.
 export const ENERGY_ROW = () => ({
   energyId: '',
   present: true,
-  highEnergy: false,      // > ~1500 ft-lb / serious-harm potential
+  dangerZone: '',
+  highEnergy: false,      // serious-harm potential
   directControl: false,   // a control that targets the high-energy source
   controlType: '',        // hierarchy of controls id
+  controlCondition: '',   // condition of the control found
   controlInPlace: 'conform',
   notes: '',
   photos: [],
 });
+
+// Error traps (Field Hazard Assessment) — conditions that make errors more
+// likely. Used by the Job Hazard Analysis.
+export const ERROR_TRAPS = [
+  { group: 'Individual', items: ['Training and experience level', 'Fitness for duty', 'Communication barriers', 'Dilemmas'] },
+  { group: 'Task-related', items: ['Unpredictability', 'Task complexity', 'Time pressure', 'Repetition / monotony'] },
+  { group: 'Technical', items: ['Documentation quality', 'Information clarity', 'Equipment and tools', 'Environment and access'] },
+  { group: 'Organizational', items: ['Clarity of roles', 'Resources and staffing', 'Communication & collaboration', 'Trade-offs'] },
+];
 
 // ---------------------------------------------------------------------------
 // Reusable checklist sections

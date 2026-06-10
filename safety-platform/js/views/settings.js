@@ -1,6 +1,6 @@
 // views/settings.js — data management & platform info.
 
-import { store } from '../store.js';
+import { store, seedDemoData } from '../store.js';
 import { db } from '../db.js';
 import * as sync from '../sync.js';
 import { download, toast, confirmDialog, esc } from '../utils.js';
@@ -47,9 +47,9 @@ export async function renderSettings(root) {
 
     <div class="card">
       <h3>Demo data</h3>
-      <p class="hint">The platform seeds sample visits on first run so dashboards aren't empty. Reset wipes everything and re-seeds.</p>
+      <p class="hint">Load a set of sample visits and accidents so dashboards aren't empty. When a backend is connected, this also uploads the samples to the server so every device sees them.</p>
       <div class="row-gap">
-        <button class="btn danger" id="reset">Reset & reseed demo data</button>
+        <button class="btn primary" id="loadSample">Load sample data${sync.enabled() ? ' → server' : ''}</button>
         <button class="btn ghost danger" id="wipe">Wipe all data</button>
       </div>
     </div>
@@ -164,12 +164,20 @@ export async function renderSettings(root) {
     } catch { toast('Invalid backup file', 'bad'); }
   });
 
-  root.querySelector('#reset').addEventListener('click', async () => {
-    if (!(await confirmDialog('Reset all data and reload demo data?'))) return;
-    await wipe();
-    await store.setMeta('seeded', false);
-    location.hash = '#/dashboard';
-    location.reload();
+  root.querySelector('#loadSample').addEventListener('click', async () => {
+    const onServer = sync.enabled();
+    if (!(await confirmDialog(onServer ? 'Load sample data and upload it to the server?' : 'Load sample data into this browser?'))) return;
+    toast('Generating sample data…');
+    await seedDemoData();
+    if (onServer) {
+      statusEl.textContent = 'Uploading sample data to the server…';
+      const res = await sync.pushBulk(db);
+      if (res.unauthorized) { toast('API key invalid — could not upload', 'bad'); return; }
+      toast(`Sample data uploaded (${res.pushed} records)`, 'good');
+    } else {
+      toast('Sample data loaded', 'good');
+    }
+    setTimeout(() => location.reload(), 800);
   });
 
   root.querySelector('#wipe').addEventListener('click', async () => {

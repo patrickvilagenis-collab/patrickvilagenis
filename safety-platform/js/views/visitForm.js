@@ -4,9 +4,10 @@
 
 import { store, newVisit, newAction, visitScore, visitVariabilities } from '../store.js';
 import { getTemplate, ANSWERS, WORK_TYPES, EMPLOYEE_TYPES, INSTALLATION_TYPES,
-  TRACTION_TYPES, ENERGY_TYPES, CONTROL_HIERARCHY, ENERGY_ROW, ACTION_DEFAULTS,
-  REMARK_PLACEHOLDER } from '../checklists.js';
+  TRACTION_TYPES, ENERGY_TYPES, DANGER_ZONES, CONTROL_HIERARCHY, CONTROL_CONDITION,
+  ERROR_TRAPS, ENERGY_ROW, ACTION_DEFAULTS, REMARK_PLACEHOLDER } from '../checklists.js';
 import { el, esc, fmtDateTime, toast, fileToCompressedDataURL, confirmDialog } from '../utils.js';
+import { openHumbleInquiry } from '../humbleInquiry.js';
 
 let _saveTimer = null;
 let _visit = null;
@@ -56,6 +57,7 @@ function paint() {
       <div class="form-head-actions">
         <div class="score-chip ${s.score == null ? 'muted' : s.score >= 90 ? 'good' : s.score >= 75 ? 'warn' : 'bad'}">
           <b>${s.score == null ? '—' : s.score + '%'}</b><span>compliance</span></div>
+        <button class="btn" id="humbleBtn" title="Humble Inquiry — how to ask">💬 How to ask</button>
         ${v.status === 'draft'
           ? '<button class="btn primary" id="submitBtn">Submit visit</button>'
           : '<button class="btn" id="reopenBtn">Reopen</button>'}
@@ -77,17 +79,24 @@ function paint() {
 
     ${t.hasEBS ? `
     <section class="card" id="sec-ebs">
-      <div class="card-head"><h3>⚡ Controls present — Energy-Based Safety</h3>
-        <button class="btn small" id="addEnergy">+ Add energy source</button></div>
-      <p class="hint">Identify the hazardous energies in this task. For each, confirm whether a <b>direct control</b> targeting the high-energy source is in place, and classify it on the hierarchy of controls.</p>
+      <div class="card-head"><h3>⚡ Hazard Wheel — Energy-Based Safety</h3>
+        <button class="btn small" id="addEnergy">+ Add hazard</button></div>
+      <p class="hint">Identify the high-energy hazards present (Schindler Hazard Wheel — "STKY"). For each, set the danger zone, whether a <b>direct control</b> exists and its condition.</p>
       <div id="energyRows"></div>
+    </section>` : ''}
+
+    ${t.isJHA ? `
+    <section class="card" id="sec-errortraps">
+      <h3>🪤 Error traps</h3>
+      <p class="hint">Tick the conditions present today that make an error more likely.</p>
+      <div id="errorTraps"></div>
     </section>` : ''}
 
     <div id="checklist"></div>
 
     ${t.isJHA ? `
     <section class="card" id="sec-jhasteps">
-      <div class="card-head"><h3>🧩 Job steps · hazards · controls</h3><button class="btn small" id="addStep">+ Add step</button></div>
+      <div class="card-head"><h3>🧩 Job steps · zone · hazards · controls</h3><button class="btn small" id="addStep">+ Add step</button></div>
       <div id="jhaSteps"></div>
     </section>` : ''}
 
@@ -107,11 +116,33 @@ function paint() {
   buildGeneral();
   if (t.hasTechnicalData) buildTechnical();
   if (t.hasEBS) buildEnergy();
+  if (t.isJHA) buildErrorTraps();
   buildChecklist();
   if (t.isJHA) buildJHASteps();
   if (t.hasActions) buildActions();
   buildNav();
   bindHeader();
+  const hb = _root.querySelector('#humbleBtn');
+  if (hb) hb.addEventListener('click', openHumbleInquiry);
+}
+
+// --- Error traps (JHA) ------------------------------------------------------
+function buildErrorTraps() {
+  const host = _root.querySelector('#errorTraps');
+  if (!host) return;
+  _visit.errorTraps = _visit.errorTraps || {};
+  const dis = _visit.status !== 'draft';
+  host.innerHTML = `<div class="trap-grid">${ERROR_TRAPS.map((g) => `
+    <div class="trap-cat"><h4>${esc(g.group)}</h4>
+      ${g.items.map((it) => {
+        const id = g.group + '::' + it;
+        return `<label class="trap-chk"><input type="checkbox" data-trap="${esc(id)}" ${_visit.errorTraps[id] ? 'checked' : ''} ${dis ? 'disabled' : ''}/> ${esc(it)}</label>`;
+      }).join('')}
+    </div>`).join('')}</div>`;
+  host.querySelectorAll('[data-trap]').forEach((inp) => inp.addEventListener('change', () => {
+    _visit.errorTraps[inp.dataset.trap] = inp.checked;
+    scheduleSave();
+  }));
 }
 
 // --- General / technical ----------------------------------------------------
@@ -305,9 +336,13 @@ function energyRow(row, idx, dis, rerender) {
   const e = ENERGY_TYPES.find((x) => x.id === row.energyId);
   node.innerHTML = `
     <div class="energy-grid">
-      <label class="fld"><span>Energy type</span>
+      <label class="fld"><span>Hazard (energy)</span>
         <select data-k="energyId" ${dis ? 'disabled' : ''}><option value="">— select —</option>
           ${ENERGY_TYPES.map((et) => `<option value="${et.id}" ${row.energyId === et.id ? 'selected' : ''}>${et.icon} ${et.label}</option>`).join('')}
+        </select></label>
+      <label class="fld"><span>Danger zone</span>
+        <select data-k="dangerZone" ${dis ? 'disabled' : ''}><option value="">—</option>
+          ${DANGER_ZONES.map((z) => `<option value="${z.id}" ${row.dangerZone === z.id ? 'selected' : ''}>${z.icon} ${z.label}</option>`).join('')}
         </select></label>
       <label class="chk"><input type="checkbox" data-k="highEnergy" ${row.highEnergy ? 'checked' : ''} ${dis ? 'disabled' : ''}/> High-energy (serious-harm potential)</label>
       <label class="chk"><input type="checkbox" data-k="directControl" ${row.directControl ? 'checked' : ''} ${dis ? 'disabled' : ''}/> Direct control present</label>
@@ -315,9 +350,9 @@ function energyRow(row, idx, dis, rerender) {
         <select data-k="controlType" ${dis ? 'disabled' : ''}><option value="">—</option>
           ${CONTROL_HIERARCHY.map((c) => `<option value="${c.id}" ${row.controlType === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
         </select></label>
-      <label class="fld"><span>Control verified in place</span>
-        <select data-k="controlInPlace" ${dis ? 'disabled' : ''}>
-          ${ANSWERS.map((a) => `<option value="${a.id}" ${row.controlInPlace === a.id ? 'selected' : ''}>${a.label}</option>`).join('')}
+      <label class="fld"><span>Control condition</span>
+        <select data-k="controlCondition" ${dis ? 'disabled' : ''}><option value="">—</option>
+          ${CONTROL_CONDITION.map((c) => `<option value="${c.id}" ${row.controlCondition === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
         </select></label>
     </div>
     ${e ? `<p class="hint">${e.icon} ${esc(e.hint)}</p>` : ''}
@@ -344,12 +379,13 @@ function buildJHASteps() {
   const wrap = _root.querySelector('#jhaSteps');
   const dis = _visit.status !== 'draft';
   const render = () => {
-    wrap.innerHTML = `<div class="jha-grid jha-head"><span>Job step</span><span>Potential hazards</span><span>Controls</span><span>Residual risk</span><span></span></div>`;
+    wrap.innerHTML = `<div class="jha-grid jha-head"><span>Job step</span><span>Danger zone</span><span>Potential hazards</span><span>Controls</span><span>Residual risk</span><span></span></div>`;
     if (!_visit.jhaSteps.length) wrap.innerHTML += '<p class="hint empty-row">No steps yet.</p>';
     _visit.jhaSteps.forEach((st, i) => {
       const r = el('div', { class: 'jha-grid' });
       r.innerHTML = `
         <textarea data-k="step" placeholder="Describe the step" ${dis ? 'disabled' : ''}>${esc(st.step || '')}</textarea>
+        <select data-k="zone" ${dis ? 'disabled' : ''}><option value="">—</option>${DANGER_ZONES.map((z) => `<option value="${z.id}" ${st.zone === z.id ? 'selected' : ''}>${z.icon} ${z.label}</option>`).join('')}</select>
         <textarea data-k="hazard" placeholder="Hazards" ${dis ? 'disabled' : ''}>${esc(st.hazard || '')}</textarea>
         <textarea data-k="control" placeholder="Controls" ${dis ? 'disabled' : ''}>${esc(st.control || '')}</textarea>
         <select data-k="risk" ${dis ? 'disabled' : ''}>${['Low', 'Medium', 'High'].map((x) => `<option ${st.risk === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
@@ -361,7 +397,7 @@ function buildJHASteps() {
     });
   };
   const add = _root.querySelector('#addStep');
-  if (add) add.addEventListener('click', () => { _visit.jhaSteps.push({ step: '', hazard: '', control: '', risk: 'Low' }); scheduleSave(); render(); });
+  if (add) add.addEventListener('click', () => { _visit.jhaSteps.push({ step: '', zone: '', hazard: '', control: '', risk: 'Low' }); scheduleSave(); render(); });
   render();
 }
 
@@ -431,7 +467,8 @@ function updateHeaderScore() {
 function buildNav() {
   const nav = _root.querySelector('#secNav');
   const links = [['General', 'sec-general']];
-  if (_template.hasEBS) links.push(['⚡ EBS', 'sec-ebs']);
+  if (_template.hasEBS) links.push(['⚡ Hazard Wheel', 'sec-ebs']);
+  if (_template.isJHA) links.push(['🪤 Error traps', 'sec-errortraps']);
   for (const sec of _template.sections) links.push([sec.title, `sec-${sec.id}`]);
   if (_template.isJHA) links.push(['🧩 Steps', 'sec-jhasteps']);
   if (_template.hasActions) links.push(['✅ Actions', 'sec-actions']);

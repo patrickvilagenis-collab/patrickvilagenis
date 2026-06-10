@@ -3,7 +3,7 @@
 // carries across views ("te vaya cambiando") during a session.
 
 import { el, esc } from './utils.js';
-import { ENERGY_TYPES } from './checklists.js';
+import { ENERGY_TYPES, isControlEffective } from './checklists.js';
 
 const KEY = 'shi_filters';
 const DEFAULT = {
@@ -27,7 +27,7 @@ export function resetFilters() { Object.assign(filters, DEFAULT); save(); }
 export function visitControlStatus(v) {
   const present = (v.energy || []).filter((e) => e.present);
   if (!present.length) return 'none';
-  const missing = present.some((e) => !(e.directControl && e.controlInPlace === 'conform'));
+  const missing = present.some((e) => !isControlEffective(e));
   return missing ? 'missing' : 'with';
 }
 

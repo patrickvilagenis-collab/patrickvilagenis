@@ -3,7 +3,7 @@
 
 import { db } from './db.js';
 import { uid, nowISO, monthKey, daysBetween } from './utils.js';
-import { getTemplate, TEMPLATE_LIST } from './checklists.js';
+import { getTemplate, TEMPLATE_LIST, isControlEffective, DANGER_ZONES } from './checklists.js';
 import { ACCIDENT_TYPES, getAccidentType, emptyRca } from './accidents.js';
 import * as sync from './sync.js';
 
@@ -182,10 +182,11 @@ export function buildKpis(visits, actions) {
     for (const e of v.energy || []) {
       if (!e.present) continue;
       energyPresent++;
-      if (e.directControl && e.controlInPlace === 'conform') energyControlled++;
+      const eff = isControlEffective(e);
+      if (eff) energyControlled++;
       if (e.highEnergy) {
         highEnergy++;
-        if (!(e.directControl && e.controlInPlace === 'conform')) highUncontrolled++;
+        if (!eff) highUncontrolled++;
       }
     }
   }
@@ -308,6 +309,13 @@ export async function ensureSeed() {
   if (sync.enabled()) return;
   const seeded = await store.meta('seeded');
   if (seeded && seeded.value) return;
+  await seedDemoData();
+}
+
+// Generate the sample data set. Exposed so it can be loaded on demand (e.g. to
+// populate an empty backend). In backend mode each write is mirrored to the
+// server by the store, and pushBulk can be used afterwards to be sure.
+export async function seedDemoData() {
 
   const observers = [
     ['Marta Ruiz', 'S10231'], ['Jon Eriksen', 'S20144'], ['Li Wei', 'S33120'],
@@ -374,8 +382,9 @@ export async function ensureSeed() {
         const high = Math.random() < 0.45;
         const controlled = Math.random() < 0.8;
         v.energy.push({
-          energyId: eid, present: true, highEnergy: high, directControl: controlled,
+          energyId: eid, present: true, dangerZone: rand(DANGER_ZONES).id, highEnergy: high, directControl: controlled,
           controlType: controlled ? rand(['engineering', 'engineering', 'administrative', 'ppe']) : rand(['administrative', 'ppe']),
+          controlCondition: controlled ? 'works' : rand(['inadequate', 'unreliable', 'not_working', 'absent']),
           controlInPlace: controlled ? 'conform' : 'variability',
           notes: '', photos: [],
         });
