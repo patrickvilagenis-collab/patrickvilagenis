@@ -5,6 +5,7 @@ import { db } from './db.js';
 import { uid, nowISO, monthKey, daysBetween } from './utils.js';
 import { getTemplate, TEMPLATE_LIST, isControlEffective, DANGER_ZONES } from './checklists.js';
 import { ACCIDENT_TYPES, getAccidentType, emptyRca, accidentHighEnergy, accidentDirectControl } from './accidents.js';
+import { emptyAip } from './aip.js';
 import { newStep, newFinding, oleFindings } from './ole.js';
 import * as sync from './sync.js';
 
@@ -49,6 +50,7 @@ export function newAccident(type = '') {
     energyType: '', energyTypes: [], highEnergy: false, directControlPresent: false,
     description: '', immediateActions: '', photos: [],
     methodology: '', rca: emptyRca(), rootCauses: '',
+    aip: emptyAip(),
     investigationLead: '', dueDate: '',
     createdAt: nowISO(), updatedAt: nowISO(),
   };
@@ -629,6 +631,18 @@ async function seedAccidents(rand, observers, cities) {
     }));
     acc.description = descByType[type] || 'Incident under review.';
     acc.immediateActions = 'Area secured, work stopped, supervisor and safety team notified.';
+    acc.aip = emptyAip();
+    acc.aip.incidentDefinition = t.sif ? rand(['Fatality (FAT)', 'Severe injury', 'Injury']) : rand(['Near miss (NM)', 'Unsafe act', 'Unsafe condition', 'Injury']);
+    acc.aip.equipmentType = rand(['Elevator', 'Elevator', 'Escalator']);
+    acc.aip.accidentClass = acc.aip.equipmentType === 'Escalator' ? rand(['Fall on steps', 'Squeeze finger', 'Pulled in', 'Malfunction']) : rand(['Fall from height', 'Crushed by car', 'Hit by door', 'Entrapment', 'Electrocution']);
+    acc.aip.severityRating = t.sif ? rand(['Serious', 'Fatality']) : rand(['None', 'Minor', 'Moderate']);
+    acc.aip.business = rand(['NI', 'EI', 'MOD', 'REP']);
+    acc.aip.process = rand(['NI', 'EI', 'Repair', 'MOD', 'SAIS']);
+    acc.aip.personType = rand(['Employee', 'Subcontractor', 'User']);
+    acc.aip.product.buildingType = rand(['Residential', 'Commercial', 'Hotel', 'Mall', 'Hospital']);
+    acc.aip.product.manufacturer = 'Schindler';
+    acc.aip.product.traction = rand(['Rope', 'Hydraulic']);
+    if (Math.random() < 0.25) acc.aip.involvedBodies = [rand(['Police', 'Ambulance', 'Authority'])];
     acc.investigationLead = lead;
     acc.methodology = acc.status === 'closed' || acc.status === 'investigation' ? rand(methods.filter(Boolean)) : rand(methods);
 

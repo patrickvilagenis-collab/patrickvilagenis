@@ -8,6 +8,7 @@ import {
 } from '../accidents.js';
 import { ENERGY_TYPES, DANGER_ZONES, CONTROL_HIERARCHY, CONTROL_CONDITION, ENERGY_ROW,
   EMPLOYEE_TYPES, WORK_TYPES } from '../checklists.js';
+import * as AIP from '../aip.js';
 import { el, esc, fmtDateTime, toast, fileToCompressedDataURL, confirmDialog } from '../utils.js';
 import { hazardWheelSVG } from '../hazardWheel.js';
 
@@ -94,6 +95,28 @@ function paint() {
       <div class="grid2" id="catFields"></div>
     </section>
 
+    <section class="card" id="sec-aip">
+      <div class="card-head"><h3>🏷️ Classification (AIP)</h3><span id="iirBadge"></span></div>
+      <div class="grid2" id="aipFields"></div>
+    </section>
+
+    <section class="card" id="sec-impact">
+      <h3>🧍 Impacted person</h3>
+      <div class="grid4" id="impactFields"></div>
+    </section>
+
+    <section class="card" id="sec-notify">
+      <h3>🚨 External bodies & media</h3>
+      <p class="hint">If any external body is involved (or it is a fatality), an Immediate Incident Report (IIR) is required.</p>
+      <div class="fld"><span>Involved bodies</span><div class="energy-chips" id="bodyChips"></div></div>
+      <div id="mediaFlags" class="media-flags"></div>
+    </section>
+
+    <details class="card aip-product" id="sec-product">
+      <summary><h3 style="display:inline">🛗 Equipment & product details</h3></summary>
+      <div class="grid4" id="productFields" style="margin-top:12px"></div>
+    </details>
+
     <section class="card" id="sec-energy">
       <div class="card-head"><h3>⚡ Hazard Wheel — Energy & control</h3>
         <button class="btn small" id="addEnergyAcc">+ Add hazard</button></div>
@@ -127,9 +150,14 @@ function paint() {
     </div>
   `;
 
+  if (!_acc.aip) _acc.aip = AIP.emptyAip();
   buildTypeGrid();
   buildWhat();
   buildCategorisation();
+  buildAip();
+  buildImpact();
+  buildNotify();
+  buildProduct();
   buildEnergy();
   buildPhotos();
   buildMethodPicker();
@@ -204,6 +232,79 @@ function buildCategorisation() {
     field('Body part', _acc.bodyPart, (v) => { _acc.bodyPart = v; scheduleSave(); }, { options: BODY_PARTS }),
     field('Nature of injury', _acc.injuryNature, (v) => { _acc.injuryNature = v; scheduleSave(); }, { options: INJURY_NATURES }),
     field('Investigation lead', _acc.investigationLead, (v) => { _acc.investigationLead = v; scheduleSave(); }),
+  );
+}
+
+// --- AIP classification -----------------------------------------------------
+function refreshIir() {
+  const badge = _root.querySelector('#iirBadge');
+  if (badge) badge.innerHTML = AIP.iirRequired(_acc.aip) ? '<span class="pill bad">IIR required</span>' : '';
+}
+function buildAip() {
+  const a = _acc.aip;
+  const f = _root.querySelector('#aipFields');
+  f.innerHTML = '';
+  f.append(
+    field('Incident definition', a.incidentDefinition, (v) => { a.incidentDefinition = v; scheduleSave(); refreshIir(); }, { options: AIP.INCIDENT_DEFINITION }),
+    field('Equipment type', a.equipmentType, (v) => { a.equipmentType = v; a.accidentClass = ''; scheduleSave(); buildAip(); }, { options: AIP.EQUIPMENT_TYPES }),
+    field('Accident classification', a.accidentClass, (v) => { a.accidentClass = v; scheduleSave(); }, { options: AIP.classificationsFor(a.equipmentType) }),
+    field('Severity rating', a.severityRating, (v) => { a.severityRating = v; scheduleSave(); refreshIir(); }, { options: AIP.SEVERITY_RATING }),
+    field('Hazard potential (near miss)', a.hazardPotential, (v) => { a.hazardPotential = v; scheduleSave(); }, { options: AIP.HAZARD_POTENTIAL }),
+    field('Business', a.business, (v) => { a.business = v; scheduleSave(); }, { options: AIP.BUSINESS }),
+    field('Process / LC phase', a.process, (v) => { a.process = v; scheduleSave(); }, { options: AIP.PROCESS_PHASE }),
+  );
+  refreshIir();
+}
+
+function buildImpact() {
+  const a = _acc.aip;
+  const f = _root.querySelector('#impactFields');
+  f.append(
+    field('Person type', a.personType, (v) => { a.personType = v; scheduleSave(); }, { options: AIP.PERSON_TYPE }),
+    field('Gender', a.gender, (v) => { a.gender = v; scheduleSave(); }, { options: AIP.GENDER }),
+    field('Age range', a.ageRange, (v) => { a.ageRange = v; scheduleSave(); }, { options: AIP.AGE_RANGES }),
+    field('Experience', a.experience, (v) => { a.experience = v; scheduleSave(); }, { options: AIP.EXPERIENCE }),
+    field('Handicap', a.handicap, (v) => { a.handicap = v; scheduleSave(); }, { options: AIP.HANDICAP }),
+  );
+}
+
+function buildNotify() {
+  const a = _acc.aip;
+  const chips = _root.querySelector('#bodyChips');
+  chips.innerHTML = AIP.INVOLVED_BODIES.map((bd) =>
+    `<button type="button" class="energy-chip ${a.involvedBodies.includes(bd) ? 'on' : ''}" data-body="${esc(bd)}">${esc(bd)}</button>`).join('');
+  chips.querySelectorAll('[data-body]').forEach((b) => b.addEventListener('click', () => {
+    const v = b.dataset.body;
+    if (a.involvedBodies.includes(v)) a.involvedBodies = a.involvedBodies.filter((x) => x !== v);
+    else a.involvedBodies.push(v);
+    b.classList.toggle('on'); scheduleSave(); refreshIir();
+  }));
+  const mf = _root.querySelector('#mediaFlags');
+  mf.innerHTML = AIP.MEDIA_FLAGS.map(([k, label]) =>
+    `<label class="chk"><input type="checkbox" data-media="${k}" ${a.media[k] ? 'checked' : ''}/> ${esc(label)}</label>`).join('');
+  mf.querySelectorAll('[data-media]').forEach((inp) => inp.addEventListener('change', () => { a.media[inp.dataset.media] = inp.checked; scheduleSave(); }));
+}
+
+function buildProduct() {
+  const p = _acc.aip.product;
+  const f = _root.querySelector('#productFields');
+  const set = (k) => (v) => { p[k] = v; scheduleSave(); };
+  f.append(
+    field('Building type', p.buildingType, set('buildingType'), { options: AIP.BUILDING_TYPES }),
+    field('Elevator type', p.elevatorType, set('elevatorType'), { options: AIP.ELEVATOR_TYPES }),
+    field('Manufacturer', p.manufacturer, set('manufacturer'), { options: AIP.MANUFACTURERS }),
+    field('Traction', p.traction, set('traction'), { options: AIP.TRACTION }),
+    field('Control type', p.controlType, set('controlType'), { options: AIP.CONTROL_TYPES }),
+    field('Model', p.model, set('model')),
+    field('Install year', p.installYear, set('installYear')),
+    field('Machine room', p.machineRoom, set('machineRoom'), { options: ['Yes', 'No', 'MRL'] }),
+    field('Rated load (kg)', p.ratedLoad, set('ratedLoad')),
+    field('Rated speed (m/s)', p.ratedSpeed, set('ratedSpeed')),
+    field('Travel height (m)', p.travelHeight, set('travelHeight')),
+    field('Levels served', p.levels, set('levels')),
+    field('Units in group', p.units, set('units'), { options: AIP.UNITS_IN_GROUP }),
+    field('Commission Nr', p.commissionNr, set('commissionNr')),
+    field('Order Nr', p.orderNr, set('orderNr')),
   );
 }
 
@@ -564,6 +665,7 @@ function actionRow(a) {
 function buildNav() {
   const nav = _root.querySelector('#secNav');
   const links = [['Classification', 'sec-class'], ['What happened', 'sec-what'], ['Categorisation', 'sec-cat'],
+    ['🏷️ AIP', 'sec-aip'], ['🚨 Bodies & media', 'sec-notify'],
     ['⚡ Energy', 'sec-energy'], ['📷 Evidence', 'sec-photos'], ['🔎 RCA', 'sec-rca'], ['✅ Actions', 'sec-actions']];
   nav.innerHTML = links.map(([l, id]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join('');
   nav.addEventListener('click', (e) => {

@@ -537,3 +537,12 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
   .att-row { grid-template-columns: 1fr 1fr; }
   .fa-row { grid-template-columns: 1fr 1fr; }
 }
+
+/* AIP classification extras */
+.media-flags { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.media-flags .chk { font-size: .84rem; }
+.aip-product > summary { cursor: pointer; list-style: none; }
+.aip-product > summary::-webkit-details-marker { display: none; }
+.aip-product > summary::before { content: '▸ '; color: var(--brand); font-weight: 700; }
+.aip-product[open] > summary::before { content: '▾ '; }
+@media (max-width: 760px) { .media-flags { grid-template-columns: 1fr; } }

@@ -4,11 +4,13 @@
 import { el, esc } from './utils.js';
 import { ACCIDENT_TYPES, METHODOLOGIES, accidentEnergyIds } from './accidents.js';
 import { ENERGY_TYPES } from './checklists.js';
+import { INCIDENT_DEFINITION, EQUIPMENT_TYPES } from './aip.js';
 
 const KEY = 'shi_acc_filters';
 const DEFAULT = {
   type: '', status: '', region: '', zone: '', city: '', category: '',
-  energyType: '', control: '', employeeType: '', methodology: '', from: '', to: '',
+  energyType: '', control: '', employeeType: '', methodology: '',
+  incidentDefinition: '', equipmentType: '', from: '', to: '',
 };
 
 export const accFilters = load();
@@ -30,6 +32,8 @@ export function matchAccident(a) {
   if (accFilters.city && l.city !== accFilters.city) return false;
   if (accFilters.category && a.category !== accFilters.category) return false;
   if (accFilters.energyType && !accidentEnergyIds(a).includes(accFilters.energyType)) return false;
+  if (accFilters.incidentDefinition && (a.aip || {}).incidentDefinition !== accFilters.incidentDefinition) return false;
+  if (accFilters.equipmentType && (a.aip || {}).equipmentType !== accFilters.equipmentType) return false;
   if (accFilters.employeeType && a.employeeType !== accFilters.employeeType) return false;
   if (accFilters.methodology && a.methodology !== accFilters.methodology) return false;
   if (accFilters.control === 'with' && !a.directControlPresent) return false;
@@ -84,6 +88,12 @@ function openDrawer(accidents, onChange) {
         <select data-fkey="status"><option value="">All</option>
         ${['reported', 'investigation', 'closed'].map((s) => `<option ${accFilters.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
       ${FIELD_DEFS.map(fieldSelect).join('')}
+      <label class="fdrawer-fld"><span>Incident definition</span>
+        <select data-fkey="incidentDefinition"><option value="">All</option>
+        ${INCIDENT_DEFINITION.map((d) => `<option ${accFilters.incidentDefinition === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>
+      <label class="fdrawer-fld"><span>Equipment type</span>
+        <select data-fkey="equipmentType"><option value="">All</option>
+        ${EQUIPMENT_TYPES.map((d) => `<option ${accFilters.equipmentType === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>
       <label class="fdrawer-fld"><span>Energy involved</span>
         <select data-fkey="energyType"><option value="">All</option>
         ${ENERGY_TYPES.map((e) => `<option value="${e.id}" ${accFilters.energyType === e.id ? 'selected' : ''}>${e.icon} ${esc(e.label)}</option>`).join('')}</select></label>
