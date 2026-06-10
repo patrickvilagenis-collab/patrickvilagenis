@@ -2,7 +2,7 @@
 // Filtering is driven by the shared filter drawer (see filters.js).
 
 import { store, visitScore, visitVariabilities, countPhotos } from '../store.js';
-import { barChart, donutChart, legend } from '../charts.js';
+import { hbarChart, donutChart, legend } from '../charts.js';
 import { fmtDate, esc, download, toCSV, toast } from '../utils.js';
 import { filterButton, filterVisits, activeFilterChips } from '../filters.js';
 
@@ -63,9 +63,9 @@ export async function renderAnalysis(root) {
     </section>
 
     <section class="card-grid">
-      <div class="card"><h3>Compliance by type</h3>${barChart(byFam, { color: '#E2001A', valueFmt: (x) => x + '%' })}</div>
-      <div class="card"><h3>Compliance by zone / hub</h3>${barChart(byZone, { color: '#2b2f36', valueFmt: (x) => x + '%' })}</div>
-      <div class="card"><h3>Compliance by city</h3>${barChart(byCity, { color: '#0073a8', valueFmt: (x) => x + '%' })}</div>
+      <div class="card"><h3>Compliance by type</h3>${hbarChart(byFam, { color: '#E2001A', valueFmt: (x) => x + '%' })}</div>
+      <div class="card"><h3>Compliance by zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36', valueFmt: (x) => x + '%' })}</div>
+      <div class="card"><h3>Compliance by city</h3>${hbarChart(byCity, { color: '#0073a8', valueFmt: (x) => x + '%' })}</div>
       <div class="card"><h3>Schindler vs subcontractor</h3><div class="center">${donutChart(empEntries)}</div>${legend(empEntries)}</div>
       <div class="card span2"><h3>Most frequent variabilities</h3>${top.length
         ? `<ul class="rank wide">${top.map(([txt, n], i) => `<li><span class="rank-n">${i + 1}</span><span class="rank-lbl">${esc(txt)}</span><b>${n}</b></li>`).join('')}</ul>`

@@ -1,6 +1,6 @@
 // app.js — application shell + hash router.
 
-import { ensureSeed } from './store.js';
+import { ensureSeed, store } from './store.js';
 import { db, dbMode } from './db.js';
 import * as sync from './sync.js';
 import { renderLogin } from './auth.js';
@@ -37,6 +37,7 @@ const NAV_GROUPS = [
 const NAV = NAV_GROUPS.flatMap(([, items]) => items);
 
 function shell() {
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   document.getElementById('app').innerHTML = `
     <aside class="sidebar">
       <div class="brand">
@@ -47,15 +48,26 @@ function shell() {
         `${label ? `<div class="nav-label">${label}</div>` : ''}` +
         items.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span>${l}</a>`).join('')
       ).join('')}</nav>
-      <div class="sidebar-foot">
-        <div id="userBox" class="user-box"></div>
-        <span id="netState" class="net"></span>
-      </div>
+      <div class="sidebar-foot"></div>
     </aside>
-    <main class="content"><div id="view"></div></main>
+    <main class="content">
+      <header class="topbar">
+        <div class="tb-crumb"><span id="tbSection">Dashboard</span><span class="tb-date">${today}</span></div>
+        <div class="tb-search">
+          <span class="tb-search-ic">🔍</span>
+          <input id="globalSearch" placeholder="Search visits, accidents, OLEs, actions…" autocomplete="off"/>
+          <kbd class="tb-kbd">Ctrl K</kbd>
+          <div class="tb-results" id="tbResults"></div>
+        </div>
+        <div class="tb-right"><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
+      </header>
+      <div id="view"></div>
+    </main>
     <nav class="tabbar">${NAV.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span><small>${l}</small></a>`).join('')}</nav>
   `;
   updateNet();
+  initSearch();
+  initTooltip();
 }
 
 function setActive(hash) {
@@ -63,7 +75,78 @@ function setActive(hash) {
   document.querySelectorAll('[data-nav]').forEach((a) => {
     a.classList.toggle('active', a.dataset.nav === base);
   });
+  const item = NAV.find(([h]) => h === base) || NAV.find(([h]) => base.startsWith(h.replace(/s$/, '')));
+  const tb = document.getElementById('tbSection');
+  if (tb && item) tb.textContent = item[2];
 }
+
+// --- floating chart tooltip (driven by data-tip attributes) -----------------
+function initTooltip() {
+  if (document.getElementById('tipbox')) return;
+  const tip = document.createElement('div');
+  tip.id = 'tipbox'; tip.className = 'tipbox';
+  document.body.append(tip);
+  document.addEventListener('mouseover', (e) => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (t) { tip.textContent = t.dataset.tip; tip.classList.add('show'); }
+    else tip.classList.remove('show');
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!tip.classList.contains('show')) return;
+    const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 10);
+    const y = Math.min(e.clientY + 16, window.innerHeight - tip.offsetHeight - 10);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  });
+}
+
+// --- global search (Ctrl/Cmd+K) ---------------------------------------------
+function initSearch() {
+  const input = document.getElementById('globalSearch');
+  const results = document.getElementById('tbResults');
+  if (!input) return;
+  let timer = null;
+  const close = () => { results.classList.remove('open'); results.innerHTML = ''; };
+
+  const run = async () => {
+    const q = input.value.trim().toLowerCase();
+    if (q.length < 2) { close(); return; }
+    const [visits, accidents, oles, actions] = await Promise.all([store.visits(), store.accidents(), store.oles(), store.actions()]);
+    const out = [];
+    const push = (icon, label, sub, href) => out.push({ icon, label, sub, href });
+    for (const v of visits) {
+      const hay = `${v.templateName} ${v.general.observer} ${v.general.technician} ${v.general.city} ${v.general.zone || ''}`.toLowerCase();
+      if (hay.includes(q)) push('📋', v.templateName, `${v.general.observer || ''} · ${v.general.city || ''}`, `#/visit/${v.id}`);
+    }
+    for (const a of accidents) {
+      const hay = `${a.refNo} ${a.description} ${a.injuredPerson} ${(a.location || {}).city || ''}`.toLowerCase();
+      if (hay.includes(q)) push('🚨', `${a.refNo} — ${(a.description || '').slice(0, 40)}`, (a.location || {}).city || '', `#/accident/${a.id}`);
+    }
+    for (const o of oles) {
+      const hay = `${o.refNo} ${o.title} ${o.task} ${o.facilitator} ${(o.location || {}).city || ''}`.toLowerCase();
+      if (hay.includes(q)) push('🎓', `${o.refNo} — ${o.title || o.task}`, o.facilitator || '', `#/ole/${o.id}`);
+    }
+    for (const a of actions) {
+      const hay = `${a.title} ${a.owner} ${a.site}`.toLowerCase();
+      if (hay.includes(q)) push('✅', a.title || '(action)', `${a.owner || ''} · ${a.status}`, a.accidentId ? `#/accident/${a.accidentId}` : a.oleId ? `#/ole/${a.oleId}` : a.visitId ? `#/visit/${a.visitId}` : '#/actions');
+    }
+    const top = out.slice(0, 8);
+    if (!top.length) { results.innerHTML = '<div class="tb-empty">No matches</div>'; results.classList.add('open'); return; }
+    results.innerHTML = top.map((r) => `<a class="tb-hit" href="${r.href}"><span class="tb-hit-ic">${r.icon}</span><span class="tb-hit-tx"><b>${escHtml(r.label)}</b><small>${escHtml(r.sub)}</small></span></a>`).join('');
+    results.classList.add('open');
+  };
+
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 180); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { input.blur(); close(); }
+    if (e.key === 'Enter') { const first = results.querySelector('.tb-hit'); if (first) { location.hash = first.getAttribute('href'); input.value = ''; close(); input.blur(); } }
+  });
+  results.addEventListener('click', () => { input.value = ''; close(); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.tb-search')) close(); });
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); input.focus(); input.select(); }
+  });
+}
+function escHtml(s) { return String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 function updateNet() {
   const n = document.getElementById('netState');

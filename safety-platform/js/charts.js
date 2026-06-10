@@ -22,7 +22,7 @@ export function barChart(data, { w = 520, h = 220, color = '#E2001A', valueFmt =
     const x = pad.l + i * bw + bw * 0.16;
     const y = pad.t + ch - bh;
     const ww = bw * 0.68;
-    bars += `<rect class="bar" x="${x}" y="${y}" width="${ww}" height="${bh}" rx="5" fill="url(#${gid})"><title>${d[0]}: ${d[1]}</title></rect>`;
+    bars += `<rect class="bar anim" x="${x}" y="${y}" width="${ww}" height="${bh}" rx="5" fill="url(#${gid})" data-tip="${escTxt(d[0])}: ${d[1]}" style="animation-delay:${i * 35}ms"/>`;
     bars += `<text x="${x + ww / 2}" y="${pad.t + ch + 18}" text-anchor="middle" class="ax">${shorten(d[0])}</text>`;
     if (d[1] > 0) bars += `<text x="${x + ww / 2}" y="${y - 5}" text-anchor="middle" class="val">${valueFmt(d[1])}</text>`;
   });
@@ -55,16 +55,29 @@ export function lineChart(data, { w = 520, h = 220, color = '#E2001A' } = {}) {
   let dots = '';
   pts.forEach((p, i) => {
     const last = i === pts.length - 1;
-    dots += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last ? 4.5 : 3}" fill="${last ? color : '#fff'}" stroke="${color}" stroke-width="2"><title>${data[i][0]}: ${data[i][1]}</title></circle>`;
+    dots += `<circle class="dot" cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last ? 4.5 : 3.5}" fill="${last ? color : '#fff'}" stroke="${color}" stroke-width="2" data-tip="${escTxt(data[i][0])}: ${data[i][1]}"/>`;
     dots += `<text x="${p[0].toFixed(1)}" y="${pad.t + ch + 18}" text-anchor="middle" class="ax">${shorten(data[i][0])}</text>`;
   });
   const grid = gridLines(pad, cw, ch, max);
   return svg(w, h,
     `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="0.22"/><stop offset="1" stop-color="${color}" stop-opacity="0.01"/></linearGradient></defs>` +
     grid +
-    `<path d="${area}" fill="url(#${gid})"/>` +
-    `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` +
+    `<path class="area-fade" d="${area}" fill="url(#${gid})"/>` +
+    `<path class="line-draw" pathLength="1" d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` +
     dots);
+}
+
+// Horizontal bars — full labels, animated, tooltip-enabled. Best for
+// categorical breakdowns where vertical bars would truncate names.
+export function hbarChart(data, { color = '#E2001A', valueFmt = (v) => v, max = null } = {}) {
+  if (!data.length) return '<p class="hint">No data yet</p>';
+  const m = max || Math.max(...data.map((d) => d[1]), 1);
+  return `<div class="hbar">${data.map(([label, v], i) => `
+    <div class="hbar-row" data-tip="${escTxt(label)}: ${valueFmt(v)}">
+      <span class="hbar-label">${escTxt(label)}</span>
+      <span class="hbar-track"><i style="width:${((v / m) * 100).toFixed(1)}%; background:linear-gradient(90deg, ${color}, ${color}cc); animation-delay:${i * 45}ms"></i></span>
+      <span class="hbar-val">${valueFmt(v)}</span>
+    </div>`).join('')}</div>`;
 }
 
 // Tiny inline trend for KPI cards.
@@ -97,7 +110,7 @@ export function donutChart(entries, { w = 220, h = 220, thickness = 34, colors =
     const large = frac > 0.5 ? 1 : 0;
     const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
     const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-    arcs += `<path d="M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${colors[i % colors.length]}" stroke-width="${thickness}"><title>${e[0]}: ${e[1]} (${Math.round(frac * 100)}%)</title></path>`;
+    arcs += `<path class="donut-seg" d="M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${colors[i % colors.length]}" stroke-width="${thickness}" data-tip="${escTxt(e[0])}: ${e[1]} (${Math.round(frac * 100)}%)"/>`;
     a0 = a1;
   });
   const inner = `<text x="${cx}" y="${cy - 2}" text-anchor="middle" class="donut-num">${total}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" class="donut-lbl">total</text>`;
@@ -159,7 +172,7 @@ export function heatmap(rowLabels, colLabels, cells, { max = 0, cell = 40, pad =
       const cellData = (cells[r] && cells[r][c]) || { v: 0 };
       const x = pad + c * cell, y = topPad + r * cell;
       const dark = cellData.v / m > 0.55;
-      out += `<rect x="${x + 1}" y="${y + 1}" width="${cell - 2}" height="${cell - 2}" rx="4" fill="${color(cellData.v)}"><title>${esc2(rl)} · ${esc2(cl)}: ${cellData.label != null ? cellData.label : cellData.v}</title></rect>`;
+      out += `<rect class="hm-cell" x="${x + 1}" y="${y + 1}" width="${cell - 2}" height="${cell - 2}" rx="4" fill="${color(cellData.v)}" data-tip="${esc2(rl)} · ${esc2(cl)}: ${cellData.label != null ? cellData.label : cellData.v}"/>`;
       if (cellData.v) out += `<text x="${x + cell / 2}" y="${y + cell / 2 + 4}" text-anchor="middle" class="hm-val" fill="${dark ? '#fff' : '#475569'}">${cellData.label != null ? cellData.label : cellData.v}</text>`;
     });
   });

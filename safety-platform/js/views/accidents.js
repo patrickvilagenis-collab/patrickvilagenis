@@ -3,7 +3,7 @@
 import { store, buildAccidentKpis, accidentsByType, accidentsByMonth, accidentsBy, accidentControlSplit } from '../store.js';
 import { ACCIDENT_TYPES, getAccidentType, getMethodology, METHODOLOGIES, accidentEnergyIds } from '../accidents.js';
 import { ENERGY_TYPES } from '../checklists.js';
-import { barChart, lineChart, donutChart, legend, PALETTE } from '../charts.js';
+import { hbarChart, lineChart, donutChart, legend, PALETTE } from '../charts.js';
 import { monthLabel, fmtDate, esc, toast, confirmDialog } from '../utils.js';
 import { accFilterButton, filterAccidents, accActiveChips } from '../accidentFilters.js';
 
@@ -62,10 +62,10 @@ export async function renderAccidents(root) {
 
     <section class="card-grid">
       <div class="card span2"><h3>Incidents per month</h3>${lineChart(months, { color: '#E2001A' })}</div>
-      <div class="card"><h3>By classification (SIF)</h3>${barChart(byType, { color: '#E2001A' })}</div>
+      <div class="card"><h3>By classification (SIF)</h3>${hbarChart(byType, { color: '#E2001A' })}</div>
       <div class="card"><h3>Direct control present?</h3><div class="center">${donutChart(ctrl, { colors: ['#1b9e5a', '#cc1122'] })}</div>${legend(ctrl, { colors: ['#1b9e5a', '#cc1122'] })}</div>
-      <div class="card"><h3>Energy involved</h3>${barChart(byEnergy, { color: '#e08600' })}</div>
-      <div class="card"><h3>By zone / hub</h3>${barChart(byZone, { color: '#2b2f36' })}</div>
+      <div class="card"><h3>Energy involved</h3>${hbarChart(byEnergy, { color: '#e08600' })}</div>
+      <div class="card"><h3>By zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36' })}</div>
     </section>
 
     <div class="table-wrap">

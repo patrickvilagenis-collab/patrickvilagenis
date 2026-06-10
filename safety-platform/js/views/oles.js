@@ -2,7 +2,7 @@
 
 import { store, buildOleKpis, olesByStatus, olesByMonth } from '../store.js';
 import { OLE_STATUSES, getOleStatus, FOUR_D, oleFindings, oleVariabilityCount, oleOutsideFindings, oleFourDTotals } from '../ole.js';
-import { barChart, lineChart, donutChart, legend } from '../charts.js';
+import { hbarChart, lineChart, donutChart, legend } from '../charts.js';
 import { monthLabel, fmtDate, esc, toast, confirmDialog } from '../utils.js';
 
 export async function renderOles(root) {
@@ -55,7 +55,7 @@ export async function renderOles(root) {
     <section class="card-grid">
       <div class="card span2"><h3>OLEs per month</h3>${lineChart(months, { color: '#E2001A' })}</div>
       <div class="card"><h3>By status</h3><div class="center">${donutChart(byStatus)}</div>${legend(byStatus)}</div>
-      <div class="card span3"><h3>Findings by 4D</h3>${barChart(fourD, { color: '#e08600' })}</div>
+      <div class="card span3"><h3>Findings by 4D</h3>${hbarChart(fourD, { color: '#e08600' })}</div>
     </section>
 
     <div class="toolbar">

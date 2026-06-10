@@ -2,7 +2,7 @@
 
 import { store, buildKpis, visitsByMonth, visitsByFamily, actionsByStatus,
   energyDistribution, controlHierarchyDistribution, topVariabilitySections } from '../store.js';
-import { barChart, lineChart, donutChart, legend, gauge, sparkline, PALETTE } from '../charts.js';
+import { hbarChart, lineChart, donutChart, legend, gauge, sparkline, PALETTE } from '../charts.js';
 import { monthLabel } from '../utils.js';
 import { ENERGY_TYPES, CONTROL_HIERARCHY } from '../checklists.js';
 import { filterButton, filterVisits, filterActions, activeFilterChips } from '../filters.js';
@@ -72,17 +72,17 @@ export async function renderDashboard(root) {
       </div>
       <div class="card">
         <h3>Actions by status</h3>
-        ${barChart(actStatus, { color: '#2b2f36' })}
+        ${hbarChart(actStatus, { color: '#2b2f36' })}
       </div>
       <div class="card">
         <h3>Hierarchy of controls used</h3>
-        ${barChart(ctrlEntries, { color: '#10b981' })}
-        <p class="hint">Higher bars on the left (elimination / engineering) mean stronger controls.</p>
+        ${hbarChart(ctrlEntries, { color: '#1b9e5a' })}
+        <p class="hint">Stronger controls (elimination / engineering) at the top.</p>
       </div>
 
       <div class="card span2">
         <h3>Hazardous energies present (EBS)</h3>
-        ${barChart(energy, { color: '#f59e0b' })}
+        ${hbarChart(energy, { color: '#e08600' })}
       </div>
       <div class="card">
         <h3>Top areas with variabilities</h3>

@@ -690,3 +690,73 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 /* section nav pills (forms) */
 .section-nav a { transition: all .12s; }
 .section-nav a:hover { transform: translateY(-1px); }
+
+/* ============================================================
+   Topbar + global search + chart interactivity
+   ============================================================ */
+.content { padding-top: 0; }
+.topbar { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 16px;
+  background: rgba(245,245,247,.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  margin: 0 -30px 20px; padding: 12px 30px; border-bottom: 1px solid var(--line); }
+.tb-crumb { display: flex; flex-direction: column; min-width: 130px; }
+.tb-crumb #tbSection { font-weight: 800; font-size: .95rem; letter-spacing: -.01em; }
+.tb-date { font-size: .7rem; color: var(--muted); }
+.tb-search { position: relative; flex: 1; max-width: 440px; display: flex; align-items: center; }
+.tb-search-ic { position: absolute; left: 11px; font-size: .8rem; opacity: .55; pointer-events: none; }
+.tb-search input { width: 100%; padding: 9px 64px 9px 32px; border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: .86rem; background: var(--surface); transition: box-shadow .15s, border-color .15s; }
+.tb-search input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(226,0,26,.12); }
+.tb-kbd { position: absolute; right: 9px; font-family: inherit; font-size: .64rem; font-weight: 700; color: #9aa0a6;
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 2px 6px; background: #fafafa; pointer-events: none; }
+.tb-results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 12px 36px rgba(20,20,20,.16); overflow: hidden; display: none; }
+.tb-results.open { display: block; animation: viewIn .15s ease both; }
+.tb-hit { display: flex; align-items: center; gap: 10px; padding: 9px 12px; color: var(--ink); border-bottom: 1px solid #f4f4f6; }
+.tb-hit:last-child { border-bottom: none; }
+.tb-hit:hover { background: #fafafb; }
+.tb-hit-ic { font-size: 1rem; }
+.tb-hit-tx { display: flex; flex-direction: column; min-width: 0; }
+.tb-hit-tx b { font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-hit-tx small { font-size: .72rem; color: var(--muted); }
+.tb-empty { padding: 12px; font-size: .8rem; color: var(--muted); text-align: center; }
+.tb-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.tb-right .user-box { margin: 0; }
+.tb-right .user-row { gap: 10px; }
+
+/* floating chart tooltip */
+.tipbox { position: fixed; z-index: 300; pointer-events: none; background: #1a1a1a; color: #fff;
+  font-size: .76rem; font-weight: 600; padding: 6px 10px; border-radius: 7px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+  opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s; max-width: 280px; }
+.tipbox.show { opacity: 1; transform: none; }
+[data-tip] { cursor: default; }
+
+/* horizontal bars */
+.hbar { display: flex; flex-direction: column; gap: 9px; padding: 4px 0; }
+.hbar-row { display: grid; grid-template-columns: minmax(110px, 38%) 1fr 44px; align-items: center; gap: 10px; font-size: .82rem; }
+.hbar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #3a3f46; font-weight: 600; }
+.hbar-track { background: #f1f1f4; border-radius: 6px; height: 16px; overflow: hidden; }
+.hbar-track i { display: block; height: 100%; border-radius: 6px; min-width: 3px;
+  animation: hbarGrow .5s cubic-bezier(.2,.7,.3,1) both; transform-origin: left; }
+.hbar-val { font-weight: 800; font-size: .8rem; text-align: right; color: var(--ink); }
+@keyframes hbarGrow { from { transform: scaleX(0); } }
+
+/* chart entrance animations + hover states */
+.chart .bar.anim { transform-box: fill-box; transform-origin: bottom; animation: barGrow .5s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes barGrow { from { transform: scaleY(0); } }
+.chart .line-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: lineDraw .9s ease-out forwards; }
+@keyframes lineDraw { to { stroke-dashoffset: 0; } }
+.chart .area-fade { animation: fadeIn .9s ease-out both; }
+@keyframes fadeIn { from { opacity: 0; } }
+.chart .dot { transition: r .12s; cursor: pointer; }
+.chart .dot:hover { r: 6; }
+.chart .donut-seg { transition: stroke-width .15s, opacity .15s; cursor: pointer; }
+.chart .donut-seg:hover { stroke-width: 40; }
+.chart .hm-cell { transition: opacity .12s; cursor: pointer; }
+.chart .hm-cell:hover { opacity: .8; stroke: #1a1a1a; stroke-width: 1.5; }
+
+@media (max-width: 760px) {
+  .topbar { margin: 0 -14px 16px; padding: 10px 14px; gap: 10px; }
+  .tb-crumb { display: none; }
+  .tb-kbd { display: none; }
+  .tb-right .user-name { display: none; }
+}
