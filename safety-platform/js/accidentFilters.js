@@ -3,6 +3,7 @@
 
 import { el, esc } from './utils.js';
 import { ACCIDENT_TYPES, METHODOLOGIES } from './accidents.js';
+import { ENERGY_TYPES } from './checklists.js';
 
 const KEY = 'shi_acc_filters';
 const DEFAULT = {
@@ -28,7 +29,10 @@ export function matchAccident(a) {
   if (accFilters.zone && l.zone !== accFilters.zone) return false;
   if (accFilters.city && l.city !== accFilters.city) return false;
   if (accFilters.category && a.category !== accFilters.category) return false;
-  if (accFilters.energyType && a.energyType !== accFilters.energyType) return false;
+  if (accFilters.energyType) {
+    const list = Array.isArray(a.energyTypes) && a.energyTypes.length ? a.energyTypes : (a.energyType ? [a.energyType] : []);
+    if (!list.includes(accFilters.energyType)) return false;
+  }
   if (accFilters.employeeType && a.employeeType !== accFilters.employeeType) return false;
   if (accFilters.methodology && a.methodology !== accFilters.methodology) return false;
   if (accFilters.control === 'with' && !a.directControlPresent) return false;
@@ -46,7 +50,6 @@ const FIELD_DEFS = [
   { key: 'zone', label: 'Zone / Hub', get: (a) => a.location.zone },
   { key: 'city', label: 'Location (city)', get: (a) => a.location.city },
   { key: 'category', label: 'Category', get: (a) => a.category },
-  { key: 'energyType', label: 'Energy involved', get: (a) => a.energyType },
   { key: 'employeeType', label: 'Employee', get: (a) => a.employeeType },
 ];
 
@@ -84,6 +87,9 @@ function openDrawer(accidents, onChange) {
         <select data-fkey="status"><option value="">All</option>
         ${['reported', 'investigation', 'closed'].map((s) => `<option ${accFilters.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
       ${FIELD_DEFS.map(fieldSelect).join('')}
+      <label class="fdrawer-fld"><span>Energy involved</span>
+        <select data-fkey="energyType"><option value="">All</option>
+        ${ENERGY_TYPES.map((e) => `<option value="${e.id}" ${accFilters.energyType === e.id ? 'selected' : ''}>${e.icon} ${esc(e.label)}</option>`).join('')}</select></label>
       <label class="fdrawer-fld"><span>Direct control</span>
         <select data-fkey="control"><option value="">All</option>
           <option value="with" ${accFilters.control === 'with' ? 'selected' : ''}>Control present</option>

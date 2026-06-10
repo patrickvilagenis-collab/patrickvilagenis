@@ -16,7 +16,12 @@ export async function renderAccidents(root) {
 
   const byType = accidentsByType(reported);
   const months = accidentsByMonth(reported).map(([m, n]) => [monthLabel(m), n]);
-  const byEnergy = accidentsBy(reported, (a) => a.energyType).map(([id, n]) => {
+  const energyCounts = {};
+  for (const a of reported) {
+    const list = Array.isArray(a.energyTypes) && a.energyTypes.length ? a.energyTypes : (a.energyType ? [a.energyType] : []);
+    for (const id of list) energyCounts[id] = (energyCounts[id] || 0) + 1;
+  }
+  const byEnergy = Object.entries(energyCounts).sort((x, y) => y[1] - x[1]).map(([id, n]) => {
     const e = ENERGY_TYPES.find((x) => x.id === id); return [e ? `${e.icon} ${e.label}` : id, n];
   });
   const byZone = accidentsBy(reported, (a) => a.location.zone || '—');

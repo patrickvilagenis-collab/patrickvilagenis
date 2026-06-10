@@ -45,7 +45,7 @@ export function newAccident(type = '') {
     category: '',
     injuredPerson: '', role: '', employeeType: 'Schindler', workType: '',
     equipmentNumber: '', bodyPart: '', injuryNature: '',
-    energyType: '', highEnergy: false, directControlPresent: false,
+    energyType: '', energyTypes: [], highEnergy: false, directControlPresent: false,
     description: '', immediateActions: '', photos: [],
     methodology: '', rca: emptyRca(), rootCauses: '',
     investigationLead: '', dueDate: '',
@@ -457,7 +457,7 @@ async function seedAccidents(rand, observers, cities) {
     acc.equipmentNumber = 'EQ' + (200000 + Math.floor(Math.random() * 9999));
     acc.bodyPart = rand(['Hand / fingers', 'Back', 'Head', 'Leg', 'Multiple']);
     acc.injuryNature = t.sif ? rand(['Fracture', 'Crush', 'Amputation']) : rand(['None', 'Bruise / contusion', 'Cut / laceration']);
-    acc.energyType = rand(energies);
+    acc.energyTypes = [...new Set([rand(energies), ...(Math.random() < 0.4 ? [rand(energies)] : [])])];
     acc.highEnergy = t.highEnergy != null ? t.highEnergy : Math.random() < 0.5;
     acc.directControlPresent = t.control != null ? t.control : Math.random() < 0.5;
     acc.description = descByType[type] || 'Incident under review.';

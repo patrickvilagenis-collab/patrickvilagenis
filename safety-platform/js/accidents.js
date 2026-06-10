@@ -93,4 +93,4 @@ export function emptyRca() {
 
 export const newWhyBranch = () => ({ factor: '', whys: ['', '', ''], root: '' });
 export const newTripodBarrier = () => ({ desc: '', active: '', precondition: '', latent: '' });
-export const newTaprootFactor = () => ({ desc: '', category: '', root: '' });
+export const newTaprootFactor = () => ({ desc: '', whys: [''], category: '', root: '' });

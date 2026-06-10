@@ -440,3 +440,9 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
 .why-branch-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .why-branch-head b { color: var(--ink-2); }
 .why-root { margin-top: 8px; }
+
+/* multi-select energy chips (accident) */
+.energy-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.energy-chip { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: .82rem; font-weight: 600; cursor: pointer; color: var(--ink); }
+.energy-chip:hover { border-color: var(--brand); }
+.energy-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }

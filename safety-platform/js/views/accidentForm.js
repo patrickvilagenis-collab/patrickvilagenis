@@ -206,10 +206,24 @@ function buildCategorisation() {
 // --- Energy & control -------------------------------------------------------
 function buildEnergy() {
   const f = _root.querySelector('#energyFields');
-  f.innerHTML = '';
+  // migrate the old single energyType into the multi-select array
+  if (!Array.isArray(_acc.energyTypes)) _acc.energyTypes = [];
+  if (_acc.energyType && !_acc.energyTypes.includes(_acc.energyType)) { _acc.energyTypes.push(_acc.energyType); _acc.energyType = ''; }
+
+  f.innerHTML = `
+    <div class="fld" style="grid-column:1/-1">
+      <span>Energies involved <span class="opt">(select all that apply)</span></span>
+      <div class="energy-chips">${ENERGY_TYPES.map((e) =>
+        `<button type="button" class="energy-chip ${_acc.energyTypes.includes(e.id) ? 'on' : ''}" data-energy="${e.id}">${e.icon} ${esc(e.label)}</button>`).join('')}</div>
+    </div>`;
+  f.querySelectorAll('[data-energy]').forEach((btn) => btn.addEventListener('click', () => {
+    const id = btn.dataset.energy;
+    if (_acc.energyTypes.includes(id)) _acc.energyTypes = _acc.energyTypes.filter((x) => x !== id);
+    else _acc.energyTypes.push(id);
+    btn.classList.toggle('on');
+    scheduleSave();
+  }));
   f.append(
-    field('Energy involved', _acc.energyType, (v) => { _acc.energyType = v; scheduleSave(); },
-      { options: ENERGY_TYPES.map((e) => ({ value: e.id, label: `${e.icon} ${e.label}` })) }),
     checkField('High energy (serious-harm potential)', _acc.highEnergy, (v) => { _acc.highEnergy = v; scheduleSave(); }),
     checkField('Direct control present at the time', _acc.directControlPresent, (v) => { _acc.directControlPresent = v; scheduleSave(); }),
   );
@@ -423,16 +437,26 @@ function rcaTapRoot(host) {
     facWrap.innerHTML = '<h4>Causal factors → root causes</h4>';
     if (!d.factors.length) facWrap.innerHTML += '<p class="hint empty-row">No causal factors yet.</p>';
     d.factors.forEach((f, i) => {
+      if (!Array.isArray(f.whys)) f.whys = [''];
       const card = el('div', { class: 'factor-card' });
+      const chainHtml = f.whys.map((w, wi) =>
+        `<div class="why-row"><span class="why-n">Why ${wi + 1}?</span><textarea data-why="${wi}" placeholder="Because…">${esc(w)}</textarea>${f.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${wi}">🗑</button>` : ''}</div>`).join('');
       card.innerHTML = `
         <div class="barrier-head"><b>Causal factor ${i + 1}</b><button class="icon-btn" data-del>🗑</button></div>
         <label class="fld"><span>Causal factor</span><input data-k="desc" value="${esc(f.desc)}"/></label>
-        <div class="grid2">
+        <div class="why-chain">${chainHtml}</div>
+        <button class="btn small" data-addwhy>+ Add why</button>
+        <div class="grid2" style="margin-top:8px">
           <label class="fld"><span>Root cause category</span><select data-k="category"><option value="">—</option>${TAPROOT_CATEGORIES.map((c) => `<option ${f.category === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
           <label class="fld"><span>Root cause</span><input data-k="root" value="${esc(f.root)}"/></label>
         </div>`;
-      card.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', () => { f[inp.dataset.k] = inp.value; scheduleSave(); }));
-      card.querySelector('select').addEventListener('change', (e) => { f.category = e.target.value; scheduleSave(); });
+      card.querySelectorAll('input[data-k], [data-k="root"]').forEach(() => {});
+      card.querySelector('[data-k="desc"]').addEventListener('input', (e) => { f.desc = e.target.value; scheduleSave(); });
+      card.querySelector('[data-k="root"]').addEventListener('input', (e) => { f.root = e.target.value; scheduleSave(); });
+      card.querySelector('[data-k="category"]').addEventListener('change', (e) => { f.category = e.target.value; scheduleSave(); });
+      card.querySelectorAll('textarea[data-why]').forEach((ta) => ta.addEventListener('input', () => { f.whys[+ta.dataset.why] = ta.value; scheduleSave(); }));
+      card.querySelectorAll('[data-delwhy]').forEach((b) => b.addEventListener('click', () => { f.whys.splice(+b.dataset.delwhy, 1); scheduleSave(); renderFac(); }));
+      card.querySelector('[data-addwhy]').addEventListener('click', () => { f.whys.push(''); scheduleSave(); renderFac(); });
       card.querySelector('[data-del]').addEventListener('click', () => { d.factors.splice(i, 1); scheduleSave(); renderFac(); });
       facWrap.append(card);
     });
