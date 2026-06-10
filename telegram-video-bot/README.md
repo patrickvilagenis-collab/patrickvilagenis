@@ -56,9 +56,31 @@ El bot funciona por *polling*: no necesita servidor ni dominio, basta con
 dejarlo corriendo en cualquier máquina con internet (tu PC, una Raspberry
 Pi, un VPS…).
 
-## Mantenerlo corriendo 24/7 (opcional)
+## Desplegarlo 24/7 (sin tu PC)
 
-En un servidor Linux con `systemd`:
+El bot funciona por *polling* y es un proceso de larga duración, así que
+necesita una plataforma que permita procesos siempre encendidos (no vale
+serverless ni los planes gratuitos que "duermen"). Hay `Dockerfile`
+incluido, por lo que sirve cualquier host de contenedores.
+
+| Opción | Precio | Comentario |
+|---|---|---|
+| **Railway** | ~5 $/mes | La más fácil: conectas el repo de GitHub y despliega solo |
+| **Fly.io** | ~2-4 $/mes | VM pequeña, `fly launch` desde esta carpeta |
+| **VPS (Hetzner, OVH…)** | ~4 €/mes | Control total, usa el servicio systemd de abajo |
+| **Oracle Cloud Free** | 0 € | VM "Always Free"; el registro es algo engorroso |
+| **Raspberry Pi en casa** | 0 €/mes | IP residencial: YouTube bloquea menos (ver nota) |
+
+> **Nota sobre IPs de datacenter:** YouTube a veces bloquea descargas
+> desde IPs de nube ("Sign in to confirm you're not a bot"). Si pasa,
+> exporta las cookies de tu navegador y móntalas en el servidor
+> (`yt-dlp --cookies`), o usa una IP residencial (Pi/casa).
+
+En Railway/Fly define las variables `TELEGRAM_BOT_TOKEN` (o
+`Telegram_bot_token`) y opcionalmente `ALLOWED_USER_IDS` (o
+`telegram_user_id`) en el panel de la plataforma.
+
+### Servicio systemd (para VPS / Raspberry Pi)
 
 ```ini
 # /etc/systemd/system/ytbot.service

@@ -44,8 +44,17 @@ YOUTUBE_URL_RE = re.compile(
 )
 
 
+def _env(*names: str) -> str:
+    """Devuelve la primera variable de entorno definida, sin importar mayúsculas."""
+    lowered = {k.lower(): v for k, v in os.environ.items()}
+    for name in names:
+        if value := lowered.get(name.lower(), "").strip():
+            return value
+    return ""
+
+
 def _allowed_ids() -> set[int]:
-    raw = os.environ.get("ALLOWED_USER_IDS", "").strip()
+    raw = _env("ALLOWED_USER_IDS", "telegram_user_id")
     return {int(x) for x in raw.split(",") if x.strip()} if raw else set()
 
 
@@ -194,7 +203,7 @@ async def _process(update: Update, url: str, audio: bool) -> None:
 
 
 def main() -> None:
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    token = _env("TELEGRAM_BOT_TOKEN", "Telegram_bot_token")
     if not token:
         raise SystemExit(
             "Falta la variable de entorno TELEGRAM_BOT_TOKEN.\n"
