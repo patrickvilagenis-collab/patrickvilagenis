@@ -2,7 +2,7 @@
 // Mirrors filters.js but works on the accident data shape.
 
 import { el, esc } from './utils.js';
-import { ACCIDENT_TYPES, METHODOLOGIES } from './accidents.js';
+import { ACCIDENT_TYPES, METHODOLOGIES, accidentEnergyIds } from './accidents.js';
 import { ENERGY_TYPES } from './checklists.js';
 
 const KEY = 'shi_acc_filters';
@@ -29,10 +29,7 @@ export function matchAccident(a) {
   if (accFilters.zone && l.zone !== accFilters.zone) return false;
   if (accFilters.city && l.city !== accFilters.city) return false;
   if (accFilters.category && a.category !== accFilters.category) return false;
-  if (accFilters.energyType) {
-    const list = Array.isArray(a.energyTypes) && a.energyTypes.length ? a.energyTypes : (a.energyType ? [a.energyType] : []);
-    if (!list.includes(accFilters.energyType)) return false;
-  }
+  if (accFilters.energyType && !accidentEnergyIds(a).includes(accFilters.energyType)) return false;
   if (accFilters.employeeType && a.employeeType !== accFilters.employeeType) return false;
   if (accFilters.methodology && a.methodology !== accFilters.methodology) return false;
   if (accFilters.control === 'with' && !a.directControlPresent) return false;

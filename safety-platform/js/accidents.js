@@ -71,6 +71,28 @@ export const METHODOLOGIES = [
 
 export const getMethodology = (id) => METHODOLOGIES.find((m) => m.id === id) || null;
 
+// Energy helpers — read from the detailed per-energy rows when present, falling
+// back to the older single/array fields and the classification flags.
+export function accidentEnergyRows(a) {
+  return Array.isArray(a.energy) ? a.energy.filter((e) => e.energyId) : [];
+}
+export function accidentEnergyIds(a) {
+  const rows = accidentEnergyRows(a);
+  if (rows.length) return rows.map((e) => e.energyId);
+  if (Array.isArray(a.energyTypes) && a.energyTypes.length) return a.energyTypes;
+  return a.energyType ? [a.energyType] : [];
+}
+export function accidentHighEnergy(a) {
+  const rows = accidentEnergyRows(a);
+  if (rows.length) return rows.some((e) => e.highEnergy);
+  return !!a.highEnergy;
+}
+export function accidentDirectControl(a) {
+  const rows = accidentEnergyRows(a);
+  if (rows.length) return rows.every((e) => e.directControl);
+  return !!a.directControlPresent;
+}
+
 // Fishbone 6M
 export const FISHBONE_CATEGORIES = ['People', 'Method', 'Machine', 'Material', 'Measurement', 'Environment'];
 

@@ -6,9 +6,10 @@ import {
   METHODOLOGIES, getMethodology, FISHBONE_CATEGORIES, TAPROOT_CATEGORIES,
   newWhyBranch, newTripodBarrier, newTaprootFactor,
 } from '../accidents.js';
-import { ENERGY_TYPES } from '../checklists.js';
-import { EMPLOYEE_TYPES, WORK_TYPES } from '../checklists.js';
+import { ENERGY_TYPES, DANGER_ZONES, CONTROL_HIERARCHY, CONTROL_CONDITION, ENERGY_ROW,
+  EMPLOYEE_TYPES, WORK_TYPES } from '../checklists.js';
 import { el, esc, fmtDateTime, toast, fileToCompressedDataURL, confirmDialog } from '../utils.js';
+import { hazardWheelSVG } from '../hazardWheel.js';
 
 let _acc = null, _root = null, _saveTimer = null;
 
@@ -94,8 +95,11 @@ function paint() {
     </section>
 
     <section class="card" id="sec-energy">
-      <h3>⚡ Energy & control</h3>
-      <div class="grid2" id="energyFields"></div>
+      <div class="card-head"><h3>⚡ Hazard Wheel — Energy & control</h3>
+        <button class="btn small" id="addEnergyAcc">+ Add hazard</button></div>
+      <p class="hint">Add each hazardous energy involved (e.g. a fall from a moving ladder = Mechanical + Gravity). For each, set the danger zone, whether a direct control existed and its condition.</p>
+      <details class="wheel-details"><summary>🛞 Schindler Hazard Wheel</summary><div class="wheel-host">${hazardWheelSVG(280)}</div></details>
+      <div id="energyRowsAcc"></div>
     </section>
 
     <section class="card" id="sec-photos">
@@ -203,36 +207,91 @@ function buildCategorisation() {
   );
 }
 
-// --- Energy & control -------------------------------------------------------
+// --- Energy & control (per-energy rows, like the field-visit Hazard Wheel) ---
 function buildEnergy() {
-  const f = _root.querySelector('#energyFields');
-  // migrate the old single energyType into the multi-select array
-  if (!Array.isArray(_acc.energyTypes)) _acc.energyTypes = [];
-  if (_acc.energyType && !_acc.energyTypes.includes(_acc.energyType)) { _acc.energyTypes.push(_acc.energyType); _acc.energyType = ''; }
-
-  f.innerHTML = `
-    <div class="fld" style="grid-column:1/-1">
-      <span>Energies involved <span class="opt">(select all that apply)</span></span>
-      <div class="energy-chips">${ENERGY_TYPES.map((e) =>
-        `<button type="button" class="energy-chip ${_acc.energyTypes.includes(e.id) ? 'on' : ''}" data-energy="${e.id}">${e.icon} ${esc(e.label)}</button>`).join('')}</div>
-    </div>`;
-  f.querySelectorAll('[data-energy]').forEach((btn) => btn.addEventListener('click', () => {
-    const id = btn.dataset.energy;
-    if (_acc.energyTypes.includes(id)) _acc.energyTypes = _acc.energyTypes.filter((x) => x !== id);
-    else _acc.energyTypes.push(id);
-    btn.classList.toggle('on');
-    scheduleSave();
-  }));
-  f.append(
-    checkField('High energy (serious-harm potential)', _acc.highEnergy, (v) => { _acc.highEnergy = v; scheduleSave(); }),
-    checkField('Direct control present at the time', _acc.directControlPresent, (v) => { _acc.directControlPresent = v; scheduleSave(); }),
-  );
+  const host = _root.querySelector('#energyRowsAcc');
+  if (!Array.isArray(_acc.energy)) _acc.energy = [];
+  // migrate older single/multi energy fields into detailed rows
+  if (!_acc.energy.length) {
+    const olds = Array.isArray(_acc.energyTypes) && _acc.energyTypes.length ? _acc.energyTypes : (_acc.energyType ? [_acc.energyType] : []);
+    for (const id of olds) _acc.energy.push({ ...ENERGY_ROW(), energyId: id, highEnergy: !!_acc.highEnergy, directControl: !!_acc.directControlPresent });
+  }
+  const render = () => {
+    host.innerHTML = '';
+    if (!_acc.energy.length) host.innerHTML = '<p class="hint empty-row">No hazards added yet — tap “+ Add hazard”.</p>';
+    _acc.energy.forEach((row, idx) => host.append(accEnergyRow(row, idx, render)));
+  };
+  const addBtn = _root.querySelector('#addEnergyAcc');
+  if (addBtn && !addBtn._bound) {
+    addBtn._bound = true;
+    addBtn.addEventListener('click', () => { _acc.energy.push(ENERGY_ROW()); scheduleSave(); render(); });
+  }
+  render();
 }
-function checkField(label, value, onchange) {
-  const wrap = el('label', { class: 'chk energy-check' });
-  wrap.innerHTML = `<input type="checkbox" ${value ? 'checked' : ''}/> ${esc(label)}`;
-  wrap.querySelector('input').addEventListener('change', (e) => onchange(e.target.checked));
-  return wrap;
+
+function accEnergyRow(row, idx, rerender) {
+  const node = el('div', { class: `energy-row ${row.highEnergy ? 'high' : ''}` });
+  const e = ENERGY_TYPES.find((x) => x.id === row.energyId);
+  node.innerHTML = `
+    <div class="energy-grid">
+      <label class="fld"><span>Hazard (energy)</span>
+        <select data-k="energyId"><option value="">— select —</option>
+          ${ENERGY_TYPES.map((et) => `<option value="${et.id}" ${row.energyId === et.id ? 'selected' : ''}>${et.icon} ${et.label}</option>`).join('')}
+        </select></label>
+      <label class="fld"><span>Danger zone</span>
+        <select data-k="dangerZone"><option value="">—</option>
+          ${DANGER_ZONES.map((z) => `<option value="${z.id}" ${row.dangerZone === z.id ? 'selected' : ''}>${z.icon} ${z.label}</option>`).join('')}
+        </select></label>
+      <label class="chk"><input type="checkbox" data-k="highEnergy" ${row.highEnergy ? 'checked' : ''}/> High-energy (serious-harm potential)</label>
+      <label class="chk"><input type="checkbox" data-k="directControl" ${row.directControl ? 'checked' : ''}/> Direct control present</label>
+      <label class="fld"><span>Control type (hierarchy)</span>
+        <select data-k="controlType"><option value="">—</option>
+          ${CONTROL_HIERARCHY.map((c) => `<option value="${c.id}" ${row.controlType === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
+        </select></label>
+      <label class="fld"><span>Control condition</span>
+        <select data-k="controlCondition"><option value="">—</option>
+          ${CONTROL_CONDITION.map((c) => `<option value="${c.id}" ${row.controlCondition === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
+        </select></label>
+    </div>
+    ${e ? `<p class="hint">${e.icon} ${esc(e.hint)}</p>` : ''}
+    <textarea class="remark" data-k="notes" placeholder="Notes on the control…">${esc(row.notes || '')}</textarea>
+    <div class="photos" data-photos></div>
+    <div class="energy-row-foot"><label class="photo-add">📷 Add photo<input type="file" accept="image/*" capture="environment" hidden></label><button class="icon-btn del" data-del>🗑 Remove</button></div>`;
+
+  node.querySelectorAll('[data-k]').forEach((inp) => {
+    inp.addEventListener(inp.type === 'checkbox' ? 'change' : 'input', () => {
+      row[inp.dataset.k] = inp.type === 'checkbox' ? inp.checked : inp.value;
+      if (inp.dataset.k === 'highEnergy') node.classList.toggle('high', inp.checked);
+      scheduleSave();
+    });
+  });
+  node.querySelector('[data-del]').addEventListener('click', () => { _acc.energy.splice(idx, 1); scheduleSave(); rerender(); });
+  bindRowPhotos(node, row);
+  return node;
+}
+
+// Photo binder for an energy row (shared pattern with the evidence section).
+function bindRowPhotos(node, holder) {
+  const cont = node.querySelector('[data-photos]');
+  const render = async () => {
+    cont.innerHTML = '';
+    for (const pid of holder.photos || []) {
+      const p = await store.photo(pid); if (!p) continue;
+      const thumb = el('div', { class: 'thumb' });
+      thumb.innerHTML = `<img src="${p.dataURL}"/><button class="thumb-del" data-pid="${pid}">×</button>`;
+      thumb.querySelector('img').addEventListener('click', () => { const lb = el('div', { class: 'lightbox', onClick: () => lb.remove() }); lb.innerHTML = `<img src="${p.dataURL}"/>`; document.body.append(lb); });
+      thumb.querySelector('.thumb-del').addEventListener('click', async () => { holder.photos = holder.photos.filter((x) => x !== pid); await store.delPhoto(pid); scheduleSave(); render(); });
+      cont.append(thumb);
+    }
+  };
+  node.querySelector('input[type=file]').addEventListener('change', async (ev) => {
+    for (const file of ev.target.files) {
+      try { const url = await fileToCompressedDataURL(file); const id = await store.savePhoto(url); holder.photos = holder.photos || []; holder.photos.push(id); }
+      catch { toast('Could not read image', 'bad'); }
+    }
+    ev.target.value = ''; scheduleSave(); render();
+  });
+  render();
 }
 
 // --- Photos -----------------------------------------------------------------

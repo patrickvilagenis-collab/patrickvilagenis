@@ -4,7 +4,7 @@
 import { db } from './db.js';
 import { uid, nowISO, monthKey, daysBetween } from './utils.js';
 import { getTemplate, TEMPLATE_LIST, isControlEffective, DANGER_ZONES } from './checklists.js';
-import { ACCIDENT_TYPES, getAccidentType, emptyRca } from './accidents.js';
+import { ACCIDENT_TYPES, getAccidentType, emptyRca, accidentHighEnergy, accidentDirectControl } from './accidents.js';
 import * as sync from './sync.js';
 
 // ---------------------------------------------------------------------------
@@ -273,7 +273,7 @@ export function buildAccidentKpis(accidents, actions) {
   const month = reported.filter((a) => monthKey(a.occurredAt || a.createdAt) === thisMonth).length;
   const sif = reported.filter((a) => { const t = getAccidentType(a.type); return t && t.sif; }).length;
   const psif = reported.filter((a) => a.type === 'serious_near_miss').length;
-  const highEnergyNoControl = reported.filter((a) => a.highEnergy && !a.directControlPresent).length;
+  const highEnergyNoControl = reported.filter((a) => accidentHighEnergy(a) && !accidentDirectControl(a)).length;
   const openInv = reported.filter((a) => a.status === 'investigation').length;
   const accActions = actions.filter((x) => x.accidentId);
   const open = accActions.filter((x) => x.status !== 'Closed' && x.status !== 'Implemented');
@@ -296,8 +296,8 @@ export function accidentsBy(list, keyFn) {
   return Object.entries(groupCount(list, keyFn)).sort((a, b) => b[1] - a[1]);
 }
 export function accidentControlSplit(list) {
-  const hi = list.filter((a) => a.highEnergy);
-  const withC = hi.filter((a) => a.directControlPresent).length;
+  const hi = list.filter((a) => accidentHighEnergy(a));
+  const withC = hi.filter((a) => accidentDirectControl(a)).length;
   return [['Direct control present', withC], ['No direct control', hi.length - withC]];
 }
 
@@ -460,6 +460,12 @@ async function seedAccidents(rand, observers, cities) {
     acc.energyTypes = [...new Set([rand(energies), ...(Math.random() < 0.4 ? [rand(energies)] : [])])];
     acc.highEnergy = t.highEnergy != null ? t.highEnergy : Math.random() < 0.5;
     acc.directControlPresent = t.control != null ? t.control : Math.random() < 0.5;
+    acc.energy = acc.energyTypes.map((id) => ({
+      energyId: id, present: true, dangerZone: rand(DANGER_ZONES).id, highEnergy: acc.highEnergy,
+      directControl: acc.directControlPresent, controlType: acc.directControlPresent ? 'engineering' : 'administrative',
+      controlCondition: acc.directControlPresent ? 'works' : rand(['absent', 'not_working', 'inadequate']),
+      controlInPlace: acc.directControlPresent ? 'conform' : 'variability', notes: '', photos: [],
+    }));
     acc.description = descByType[type] || 'Incident under review.';
     acc.immediateActions = 'Area secured, work stopped, supervisor and safety team notified.';
     acc.investigationLead = lead;

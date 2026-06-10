@@ -1,7 +1,7 @@
 // views/accidents.js — Accident Reporting overview: dashboard, filters, list.
 
 import { store, buildAccidentKpis, accidentsByType, accidentsByMonth, accidentsBy, accidentControlSplit } from '../store.js';
-import { ACCIDENT_TYPES, getAccidentType, getMethodology, METHODOLOGIES } from '../accidents.js';
+import { ACCIDENT_TYPES, getAccidentType, getMethodology, METHODOLOGIES, accidentEnergyIds } from '../accidents.js';
 import { ENERGY_TYPES } from '../checklists.js';
 import { barChart, lineChart, donutChart, legend, PALETTE } from '../charts.js';
 import { monthLabel, fmtDate, esc, toast, confirmDialog } from '../utils.js';
@@ -18,8 +18,7 @@ export async function renderAccidents(root) {
   const months = accidentsByMonth(reported).map(([m, n]) => [monthLabel(m), n]);
   const energyCounts = {};
   for (const a of reported) {
-    const list = Array.isArray(a.energyTypes) && a.energyTypes.length ? a.energyTypes : (a.energyType ? [a.energyType] : []);
-    for (const id of list) energyCounts[id] = (energyCounts[id] || 0) + 1;
+    for (const id of accidentEnergyIds(a)) energyCounts[id] = (energyCounts[id] || 0) + 1;
   }
   const byEnergy = Object.entries(energyCounts).sort((x, y) => y[1] - x[1]).map(([id, n]) => {
     const e = ENERGY_TYPES.find((x) => x.id === id); return [e ? `${e.icon} ${e.label}` : id, n];
