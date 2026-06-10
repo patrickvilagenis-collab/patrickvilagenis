@@ -546,3 +546,57 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
 .aip-product > summary::before { content: '▸ '; color: var(--brand); font-weight: 700; }
 .aip-product[open] > summary::before { content: '▾ '; }
 @media (max-width: 760px) { .media-flags { grid-template-columns: 1fr; } }
+
+/* ===== Predictive Safety Intelligence ===== */
+.hero-sif { background: linear-gradient(135deg, #2b0a0d, #4a0d14); color: #fff; border-radius: 14px; padding: 22px 24px; margin-bottom: 18px; box-shadow: var(--shadow); }
+.hero-sif-main { display: flex; align-items: center; gap: 22px; }
+.hero-sif-num { font-size: 3.4rem; font-weight: 800; line-height: 1; color: #ff5a6a; flex: 0 0 auto; }
+.hero-sif h2 { margin: 0 0 4px; font-size: 1.2rem; }
+.hero-sif p { margin: 0; color: #f0d4d7; font-size: .9rem; }
+.hero-sif-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-top: 16px; }
+.precursor { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px 12px; }
+.precursor-energy { font-weight: 700; font-size: .9rem; }
+.precursor-meta { color: #e7b9bd; font-size: .76rem; margin: 2px 0 6px; }
+.precursor-stats { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.risk-score { font-size: .72rem; color: #ffd0d4; font-weight: 700; margin-left: auto; }
+
+.focus-card .focus-list { margin: 0; padding-left: 18px; }
+.focus-list li { font-size: .9rem; line-height: 1.5; margin-bottom: 8px; }
+
+.funnel { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 8px 0; }
+.funnel-step { background: var(--ink-2); color: #fff; border-radius: 8px; padding: 10px 12px; text-align: center; min-width: 40%; }
+.funnel-step.warn { background: var(--warn); } .funnel-step.bad { background: var(--bad); } .funnel-step.ok { background: #2b2f36; }
+.funnel-step b { display: block; font-size: 1.3rem; line-height: 1; }
+.funnel-step span { font-size: .72rem; opacity: .92; }
+
+.heatmap-wrap { overflow-x: auto; }
+.chart .hm-col { fill: #475569; font-size: 10px; }
+.chart .hm-row { fill: #475569; font-size: 10px; }
+.chart .hm-val { font-size: 11px; font-weight: 700; }
+
+.hot-why { color: var(--muted); font-weight: 400; }
+.pattern-list { display: flex; flex-direction: column; gap: 8px; }
+.pattern { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; background: #fbfcfe; flex-wrap: wrap; }
+.pattern-combo { font-size: .86rem; font-weight: 600; }
+.pattern-stats { display: flex; gap: 6px; align-items: center; }
+
+.whatif { align-items: end; }
+.whatif-out { margin-top: 12px; }
+.wf-result { display: inline-flex; align-items: center; gap: 14px; border-radius: 12px; padding: 14px 22px; }
+.wf-result.good { background: var(--good-bg); } .wf-result.warn { background: var(--warn-bg); } .wf-result.bad { background: var(--bad-bg); }
+.wf-pct { font-size: 2.2rem; font-weight: 800; }
+.wf-result.good .wf-pct { color: #047857; } .wf-result.warn .wf-pct { color: #b45309; } .wf-result.bad .wf-pct { color: var(--bad); }
+.wf-word { font-weight: 700; font-size: .9rem; }
+.intel-note { font-size: .76rem; color: #94a3b8; margin-top: 16px; line-height: 1.5; }
+@media (max-width: 760px) { .hero-sif-main { flex-direction: column; align-items: flex-start; gap: 10px; } .hero-sif-num { font-size: 2.6rem; } }
+
+/* model driver diverging bars */
+.drivers { display: flex; flex-direction: column; gap: 7px; }
+.driver-row { display: grid; grid-template-columns: 1fr 90px 48px; gap: 8px; align-items: center; font-size: .8rem; }
+.driver-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.driver-bar { background: #f1f1f3; border-radius: 5px; height: 12px; overflow: hidden; }
+.driver-bar i { display: block; height: 100%; border-radius: 5px; }
+.driver-bar i.up { background: var(--bad); }
+.driver-bar i.down { background: var(--good); }
+.driver-w { text-align: right; font-weight: 700; font-size: .76rem; }
+.driver-w.up { color: var(--bad); } .driver-w.down { color: var(--good); }
