@@ -415,3 +415,22 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
   .jha-grid { grid-template-columns: 1fr; }
   .hi-4d { grid-template-columns: 1fr; }
 }
+
+/* ===== Hazard wheel + Humble Inquiry question bank ===== */
+.wheel-details { border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; margin: 6px 0 14px; background: #fbfcfe; }
+.wheel-details > summary { cursor: pointer; font-weight: 700; font-size: .86rem; padding: 6px 2px; list-style: none; }
+.wheel-details > summary::-webkit-details-marker { display: none; }
+.wheel-details > summary::before { content: '▸ '; color: var(--brand); }
+.wheel-details[open] > summary::before { content: '▾ '; }
+.wheel-host { display: flex; justify-content: center; padding: 6px 0; }
+.hazard-wheel { width: 300px; max-width: 90%; height: auto; }
+.wheel-cap { text-align: center; margin: 4px 0 8px; }
+
+.hi-qgroup { border: 1px solid var(--line); border-radius: 9px; margin-bottom: 8px; background: #fbfcfe; }
+.hi-qgroup > summary { cursor: pointer; font-weight: 700; font-size: .86rem; padding: 10px 12px; list-style: none; display: flex; justify-content: space-between; align-items: center; color: var(--ink-2); }
+.hi-qgroup > summary::-webkit-details-marker { display: none; }
+.hi-qn { background: var(--bad-bg); color: var(--brand); font-size: .72rem; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+.hi-qlist { margin: 0; padding: 0 16px 12px 30px; font-size: .85rem; line-height: 1.55; }
+.hi-qlist li { margin-bottom: 5px; }
+.hi-qlist b { color: var(--brand); }
+.hi-src { font-size: .72rem; color: #94a3b8; margin-top: 14px; }

@@ -8,6 +8,7 @@ import { getTemplate, ANSWERS, WORK_TYPES, EMPLOYEE_TYPES, INSTALLATION_TYPES,
   ERROR_TRAPS, ENERGY_ROW, ACTION_DEFAULTS, REMARK_PLACEHOLDER } from '../checklists.js';
 import { el, esc, fmtDateTime, toast, fileToCompressedDataURL, confirmDialog } from '../utils.js';
 import { openHumbleInquiry } from '../humbleInquiry.js';
+import { hazardWheelSVG } from '../hazardWheel.js';
 
 let _saveTimer = null;
 let _visit = null;
@@ -82,6 +83,11 @@ function paint() {
       <div class="card-head"><h3>⚡ Hazard Wheel — Energy-Based Safety</h3>
         <button class="btn small" id="addEnergy">+ Add hazard</button></div>
       <p class="hint">Identify the high-energy hazards present (Schindler Hazard Wheel — "STKY"). For each, set the danger zone, whether a <b>direct control</b> exists and its condition.</p>
+      <details class="wheel-details" open>
+        <summary>🛞 Schindler Hazard Wheel</summary>
+        <div class="wheel-host">${hazardWheelSVG(300)}</div>
+        <p class="hint wheel-cap">10 high-energy hazard types — use the wheel to systematically check what could hurt you in this task.</p>
+      </details>
       <div id="energyRows"></div>
     </section>` : ''}
 
