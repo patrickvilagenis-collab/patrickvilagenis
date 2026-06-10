@@ -3,6 +3,7 @@
 import { ensureSeed } from './store.js';
 import { db, dbMode } from './db.js';
 import * as sync from './sync.js';
+import { renderLogin } from './auth.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderVisits, renderNewVisit } from './views/visits.js';
 import { renderVisitForm } from './views/visitForm.js';
@@ -30,6 +31,7 @@ function shell() {
       </div>
       <nav class="nav">${NAV.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span>${l}</a>`).join('')}</nav>
       <div class="sidebar-foot">
+        <div id="userBox" class="user-box"></div>
         <span id="netState" class="net"></span>
       </div>
     </aside>
@@ -49,6 +51,16 @@ function setActive(hash) {
 function updateNet() {
   const n = document.getElementById('netState');
   if (n) { n.textContent = navigator.onLine ? '● Online' : '● Offline'; n.className = `net ${navigator.onLine ? 'on' : 'off'}`; }
+  renderUserBox();
+}
+
+function renderUserBox() {
+  const box = document.getElementById('userBox');
+  if (!box) return;
+  const u = sync.currentUser();
+  if (!u) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="user-row"><span class="user-name" title="${u.role}">👤 ${u.username}${u.role === 'admin' ? ' <span class="user-role">admin</span>' : ''}</span><button class="signout" id="signOut">Sign out</button></div>`;
+  box.querySelector('#signOut').addEventListener('click', async () => { await sync.logout(); location.reload(); });
 }
 
 async function route() {
@@ -99,6 +111,16 @@ function showStorageNotice() {
 }
 
 async function boot() {
+  // Access gate: when a backend is configured, require a valid login first.
+  if (sync.enabled()) {
+    const session = await sync.checkSession();
+    if (!session) {
+      document.getElementById('app').innerHTML = '';
+      renderLogin(document.getElementById('app'), () => location.reload());
+      registerServiceWorker();
+      return;
+    }
+  }
   shell();
   // In backend mode, pull server data into the local cache before first render.
   if (sync.enabled()) {
@@ -117,27 +139,30 @@ async function boot() {
   window.addEventListener('offline', updateNet);
   if (!location.hash) location.hash = '#/dashboard';
   route();
+  registerServiceWorker();
+}
 
-  if ('serviceWorker' in navigator) {
-    // Auto-update: when a new service worker takes control, reload once so the
-    // user always gets the latest version instead of a stale cached one.
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
-      refreshing = true;
-      location.reload();
-    });
-    navigator.serviceWorker.register('./sw.js').then((reg) => {
-      reg.update();
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        if (!nw) return;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage?.('skipWaiting');
-        });
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator) || registerServiceWorker._done) return;
+  registerServiceWorker._done = true;
+  // Auto-update: when a new service worker takes control, reload once so the
+  // user always gets the latest version instead of a stale cached one.
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('./sw.js').then((reg) => {
+    reg.update();
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage?.('skipWaiting');
       });
-    }).catch(() => {});
-  }
+    });
+  }).catch(() => {});
 }
 
 boot();

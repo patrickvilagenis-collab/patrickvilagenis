@@ -446,3 +446,24 @@ code { background: #eef1f7; padding: 1px 6px; border-radius: 6px; }
 .energy-chip { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: .82rem; font-weight: 600; cursor: pointer; color: var(--ink); }
 .energy-chip:hover { border-color: var(--brand); }
 .energy-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* ===== Login gate + account ===== */
+.login-screen { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(160deg, #f5f5f7, #ececed); padding: 20px; }
+.login-card { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--brand); border-radius: 14px; box-shadow: var(--shadow); padding: 28px 26px; width: 360px; max-width: 92vw; display: flex; flex-direction: column; gap: 10px; }
+.login-logo { height: 30px; width: auto; align-self: flex-start; }
+.login-card h1 { font-size: 1.1rem; margin: 6px 0 0; }
+.login-sub { color: var(--muted); font-size: .86rem; margin: 0 0 8px; }
+.login-card .fld { gap: 5px; }
+.login-card input { padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: .95rem; }
+.login-card input:focus { outline: 2px solid #f3b3bb; border-color: var(--brand); }
+.login-btn { justify-content: center; padding: 11px; margin-top: 4px; }
+.login-msg { font-size: .82rem; color: var(--muted); min-height: 18px; margin: 4px 0 0; }
+.login-msg.err { color: var(--bad); font-weight: 600; }
+
+/* account in sidebar */
+.user-box { margin-bottom: 8px; }
+.user-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.user-name { font-size: .78rem; font-weight: 600; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-role { background: var(--bad-bg); color: var(--brand); font-size: .62rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; text-transform: uppercase; }
+.signout { background: none; border: 1px solid var(--line); border-radius: 7px; font-size: .72rem; font-weight: 600; color: var(--muted); padding: 4px 8px; cursor: pointer; }
+.signout:hover { color: var(--brand); border-color: var(--brand); }

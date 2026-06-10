@@ -1,40 +1,64 @@
-// views/settings.js — data management & platform info.
+// views/settings.js — account & access, data management, platform info.
 
 import { store, seedDemoData } from '../store.js';
 import { db } from '../db.js';
 import * as sync from '../sync.js';
 import { download, toast, confirmDialog, esc } from '../utils.js';
 
-const escAttr = esc;
-
 export async function renderSettings(root) {
   const [visits, actions, photos] = await Promise.all([store.visits(), store.actions(), db.all('photos')]);
+  const me = sync.currentUser();
+  const admin = sync.isAdmin();
+  const onServer = sync.enabled();
 
   root.innerHTML = `
-    <header class="view-head"><div><h1>Settings & data</h1><p class="muted">By default data lives in this browser and works fully offline. Connect a backend below to save on a server and share across users.</p></div></header>
+    <header class="view-head"><div><h1>Settings & data</h1><p class="muted">Account, access control and data management.</p></div></header>
 
     <section class="kpi-grid four">
       <div class="kpi"><div class="kpi-val">${visits.length}</div><div class="kpi-lbl">Visits</div></div>
       <div class="kpi"><div class="kpi-val">${actions.length}</div><div class="kpi-lbl">Actions</div></div>
       <div class="kpi"><div class="kpi-val">${photos.length}</div><div class="kpi-lbl">Photos</div></div>
-      <div class="kpi"><div class="kpi-val">${onlineLabel()}</div><div class="kpi-lbl">Connectivity</div></div>
+      <div class="kpi"><div class="kpi-val">${navigator.onLine ? 'Online' : 'Offline'}</div><div class="kpi-lbl">Connectivity</div></div>
     </section>
 
     <div class="card">
-      <h3>🔌 Backend sync <span id="syncBadge"></span></h3>
-      <p class="hint">Connect a backend so data is saved on a server and shared across users and devices. This setting is per browser — configure it on each device. Leave the URL empty to stay fully local.</p>
+      <h3>👤 Account</h3>
+      ${me
+        ? `<p class="hint">Signed in as <b>${esc(me.username)}</b> · role <b>${esc(me.role)}</b>.</p>
+           <button class="btn" id="signOut2">Sign out</button>`
+        : `<p class="hint">Not signed in. Data is local-only in this browser.</p>`}
+    </div>
+
+    ${admin ? `
+    <div class="card">
+      <div class="card-head"><h3>🔐 Users — who can access</h3></div>
+      <p class="hint">Create accounts for the people allowed into the platform. Only admins see this panel.</p>
+      <div class="grid4" style="align-items:end">
+        <label class="fld"><span>Username</span><input id="nuUser" placeholder="e.g. j.doe"></label>
+        <label class="fld"><span>Password</span><input id="nuPass" type="text" placeholder="temporary password"></label>
+        <label class="fld"><span>Role</span><select id="nuRole"><option value="user">user</option><option value="admin">admin</option></select></label>
+        <button class="btn primary" id="nuAdd">Add user</button>
+      </div>
+      <p class="hint" id="usersMsg"></p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table"><thead><tr><th>Username</th><th>Role</th><th class="num">Actions</th></tr></thead>
+        <tbody id="usersRows"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody></table>
+      </div>
+      <p class="hint">Tip: on the free hosting tier, users added here reset if the server restarts. For permanent users, set the <code>USERS</code> env var in Render (a JSON list) — that survives restarts.</p>
+    </div>` : ''}
+
+    ${admin ? `
+    <div class="card">
+      <h3>🌐 Server (advanced)</h3>
       <div class="grid2">
-        <label class="fld"><span>API base URL</span><input id="apiUrl" type="url" placeholder="https://your-backend.onrender.com" value="${escAttr((sync.getConfig().url) || '')}"></label>
-        <label class="fld"><span>API key</span><input id="apiKey" type="text" placeholder="from Render → Environment → API_KEY" value="${escAttr((sync.getConfig().key) || '')}"></label>
+        <label class="fld"><span>API base URL</span><input id="apiUrl" type="url" value="${esc(sync.getConfig().url || '')}"></label>
       </div>
       <div class="row-gap" style="margin-top:10px">
-        <button class="btn" id="syncTest">Test connection</button>
-        <button class="btn primary" id="syncConnect">Connect &amp; load shared data</button>
+        <button class="btn" id="saveUrl">Save URL</button>
         <button class="btn" id="syncUpload">Upload this device's data → server</button>
-        <button class="btn ghost" id="syncDisable">Disconnect</button>
       </div>
-      <p class="hint" id="syncStatus"></p>
-    </div>
+      <p class="hint" id="opStatus"></p>
+    </div>` : ''}
 
     <div class="card">
       <h3>Backup & restore</h3>
@@ -45,178 +69,124 @@ export async function renderSettings(root) {
       </div>
     </div>
 
+    ${admin ? `
     <div class="card">
       <h3>Demo data</h3>
-      <p class="hint">Load a set of sample visits and accidents so dashboards aren't empty. When a backend is connected, this also uploads the samples to the server so every device sees them.</p>
+      <p class="hint">Load a set of sample visits and accidents. ${onServer ? 'This also uploads them to the server so every user sees them.' : ''}</p>
       <div class="row-gap">
-        <button class="btn primary" id="loadSample">Load sample data${sync.enabled() ? ' → server' : ''}</button>
-        <button class="btn ghost danger" id="wipe">Wipe all data</button>
+        <button class="btn primary" id="loadSample">Load sample data${onServer ? ' → server' : ''}</button>
+        <button class="btn ghost danger" id="wipe">Wipe local cache</button>
       </div>
-    </div>
+    </div>` : ''}
 
     <div class="card about">
       <h3>About this platform</h3>
-      <p>A mobile-first, offline-capable safety reporting platform inspired by Enablon — built to address the SRS pain points: no mobile access, no offline/auto-save, weak reporting, raw Excel exports, photos missing from reports and no closed-loop action management.</p>
       <ul class="feature-list">
         <li><b>Dashboards</b> — live KPIs, trends, control coverage.</li>
-        <li><b>Field visit checklists</b> — SAFE, Safety Inspection, Mini OLE, JHA.</li>
-        <li><b>Energy-Based Safety (EBS)</b> — energy wheel, direct controls, hierarchy of controls.</li>
-        <li><b>Photos</b> — attach evidence to any checkpoint, kept with the report.</li>
-        <li><b>Data analysis</b> — filter, breakdowns, CSV/JSON export.</li>
-        <li><b>Closed-loop actions</b> — owner, due date, escalation, mass-close.</li>
-        <li><b>Offline-first</b> — auto-save drafts, pause & resume, installable PWA.</li>
+        <li><b>Field visit checklists</b> — SAFE, Safety Inspection, Mini OLE, JHA + Hazard Wheel & Humble Inquiry.</li>
+        <li><b>Accident reporting</b> — SIF classification, RCA (5 Whys, Fishbone, Tripod, TapRooT).</li>
+        <li><b>Closed-loop actions</b> — owner, due date, escalation.</li>
+        <li><b>Access control</b> — login-gated, admin-managed users.</li>
       </ul>
     </div>
   `;
 
-  // --- Backend sync ---
-  const statusEl = root.querySelector('#syncStatus');
-  const badgeEl = root.querySelector('#syncBadge');
-  const refreshSyncStatus = () => {
-    const on = sync.enabled();
-    badgeEl.innerHTML = on ? '<span class="pill good">connected</span>' : '<span class="pill muted">local only</span>';
-    const ob = sync.outboxCount();
-    statusEl.textContent = on
-      ? `Syncing with the configured backend.${ob ? ` ${ob} change(s) queued (offline).` : ''}`
-      : 'Not connected — data stays in this browser only.';
-  };
-  refreshSyncStatus();
+  const so = root.querySelector('#signOut2');
+  if (so) so.addEventListener('click', async () => { await sync.logout(); location.reload(); });
 
-  // Wake a sleeping free-tier server and confirm it is reachable + the key works.
-  async function reachAndAuth(url, key) {
-    sync.setConfig({ url, key });
-    let lastErr = null;
-    for (let i = 0; i < 6; i++) {            // free instances can take ~50s to wake
-      try { await sync.test(); lastErr = null; break; }
-      catch (e) { lastErr = e; statusEl.textContent = 'Waking the server… (free plan can take up to a minute)'; await new Promise((r) => setTimeout(r, 4000)); }
-    }
-    if (lastErr) throw new Error('unreachable');
-    return sync.verify(); // 'ok' | 'unauthorized'
-  }
+  if (admin) bindUsers(root);
 
-  root.querySelector('#syncTest').addEventListener('click', async () => {
-    const url = root.querySelector('#apiUrl').value.trim();
-    const key = root.querySelector('#apiKey').value.trim();
-    if (!url) { toast('Enter the API URL first', 'bad'); return; }
-    try {
-      const auth = await reachAndAuth(url, key);
-      if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'Server reached, but the API key is invalid. Copy it from Render → your service → Environment → API_KEY.'; return; }
-      toast('Connected ✓', 'good'); statusEl.textContent = 'Connection OK and API key accepted. Use “Connect & load shared data”.';
-    } catch { toast('Could not reach the server', 'bad'); statusEl.textContent = 'Could not reach ' + url + '. Check the URL is exact, the server is deployed, and try again (it may be waking up).'; }
-  });
-
-  // Join the shared backend — never destroys local data when the server is empty.
-  root.querySelector('#syncConnect').addEventListener('click', async () => {
-    const url = root.querySelector('#apiUrl').value.trim();
-    const key = root.querySelector('#apiKey').value.trim();
-    if (!url) { toast('Enter the API URL first', 'bad'); return; }
-    let auth;
-    try { auth = await reachAndAuth(url, key); }
-    catch { toast('Server did not respond', 'bad'); statusEl.textContent = 'The server did not respond — check the URL and try again.'; return; }
-    if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'The API key is invalid. Copy it from Render → Environment → API_KEY.'; return; }
-
-    const serverCount = await sync.serverCount();
-    const localCount = (await store.visits()).length + (await store.accidents()).length;
-
-    if (serverCount > 0) {
-      // Server already has the shared data → mirror it locally.
-      toast('Loading shared data…', 'good');
-      await sync.clearLocal(db);
-      setTimeout(() => location.reload(), 700);
-    } else if (localCount > 0) {
-      // Server empty: NEVER wipe local. Offer to upload this device's data.
-      if (await confirmDialog('The server is empty. Upload THIS device\'s data so it becomes the shared data? (Choose Cancel to just connect and keep your data.)')) {
-        statusEl.textContent = 'Uploading your data to the server…';
-        const res = await sync.pushBulk(db);
-        if (res.unauthorized) { toast('API key invalid', 'bad'); return; }
-        toast(`Uploaded ${res.pushed} record(s)`, 'good');
-      } else {
-        toast('Connected — your local data was kept', 'good');
-      }
-      setTimeout(() => location.reload(), 800);
-    } else {
-      // Both empty — just connect.
-      toast('Connected', 'good');
-      setTimeout(() => location.reload(), 600);
-    }
-  });
-
-  // Seed the server from this device's data (use once, from the device that holds the real records).
-  root.querySelector('#syncUpload').addEventListener('click', async () => {
-    const url = root.querySelector('#apiUrl').value.trim();
-    const key = root.querySelector('#apiKey').value.trim();
-    if (!url) { toast('Enter the API URL first', 'bad'); return; }
-    if (!(await confirmDialog("Upload this device's current records to the server? Existing server records with the same id are overwritten."))) return;
-    let auth;
-    try { auth = await reachAndAuth(url, key); }
-    catch { toast('Server did not respond', 'bad'); return; }
-    if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'The API key is invalid.'; return; }
-    statusEl.textContent = 'Uploading…';
+  const opStatus = root.querySelector('#opStatus');
+  const saveUrl = root.querySelector('#saveUrl');
+  if (saveUrl) saveUrl.addEventListener('click', () => { sync.setConfig({ url: root.querySelector('#apiUrl').value.trim(), key: sync.getConfig().key }); toast('Saved'); });
+  const upload = root.querySelector('#syncUpload');
+  if (upload) upload.addEventListener('click', async () => {
+    if (!(await confirmDialog("Upload this device's records to the server? Records with the same id are overwritten."))) return;
+    if (opStatus) opStatus.textContent = 'Uploading…';
     const res = await sync.pushBulk(db);
-    if (res.unauthorized) { toast('API key invalid', 'bad'); return; }
+    if (res.unauthorized) { toast('Not authorized', 'bad'); return; }
     toast(`Uploaded ${res.pushed} record(s)`, 'good');
-    statusEl.textContent = `Uploaded ${res.pushed} record(s) to the server${res.failed ? `, ${res.failed} failed` : ''}.`;
-  });
-
-  root.querySelector('#syncDisable').addEventListener('click', () => {
-    sync.setConfig({ url: '', key: '' });
-    root.querySelector('#apiUrl').value = '';
-    root.querySelector('#apiKey').value = '';
-    toast('Disconnected — local only');
-    refreshSyncStatus();
+    if (opStatus) opStatus.textContent = `Uploaded ${res.pushed} record(s).`;
   });
 
   root.querySelector('#backup').addEventListener('click', async () => {
-    const payload = { version: 1, exportedAt: new Date().toISOString(), visits, actions, photos };
-    download(`safety-platform-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(payload));
+    download(`safety-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), visits, actions, photos }));
     toast('Backup exported', 'good');
   });
-
   root.querySelector('#restore').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files[0]; if (!file) return;
     try {
       const data = JSON.parse(await file.text());
       if (!data.visits) throw new Error('bad file');
       for (const v of data.visits) await store.saveVisit(v);
       for (const a of (data.actions || [])) await store.saveAction(a);
       for (const p of (data.photos || [])) await db.put('photos', p);
-      toast('Backup imported', 'good');
-      renderSettings(root);
+      toast('Backup imported', 'good'); renderSettings(root);
     } catch { toast('Invalid backup file', 'bad'); }
   });
 
-  root.querySelector('#loadSample').addEventListener('click', async () => {
-    const onServer = sync.enabled();
-    if (!(await confirmDialog(onServer ? 'Load sample data and upload it to the server?' : 'Load sample data into this browser?'))) return;
+  const loadSample = root.querySelector('#loadSample');
+  if (loadSample) loadSample.addEventListener('click', async () => {
+    if (!(await confirmDialog(onServer ? 'Load sample data and upload it to the server?' : 'Load sample data?'))) return;
     toast('Generating sample data…');
     await seedDemoData();
-    if (onServer) {
-      statusEl.textContent = 'Uploading sample data to the server…';
-      const res = await sync.pushBulk(db);
-      if (res.unauthorized) { toast('API key invalid — could not upload', 'bad'); return; }
-      toast(`Sample data uploaded (${res.pushed} records)`, 'good');
-    } else {
-      toast('Sample data loaded', 'good');
-    }
+    if (onServer) { const res = await sync.pushBulk(db); if (res.unauthorized) { toast('Not authorized', 'bad'); return; } toast(`Sample data uploaded (${res.pushed})`, 'good'); }
+    else toast('Sample data loaded', 'good');
     setTimeout(() => location.reload(), 800);
   });
-
-  root.querySelector('#wipe').addEventListener('click', async () => {
-    if (!(await confirmDialog('Permanently delete ALL data? This cannot be undone.'))) return;
-    await wipe();
-    await store.setMeta('seeded', true);
-    toast('All data wiped');
-    renderSettings(root);
+  const wipeBtn = root.querySelector('#wipe');
+  if (wipeBtn) wipeBtn.addEventListener('click', async () => {
+    if (!(await confirmDialog('Clear the local cache in this browser? (The server keeps its data.)'))) return;
+    await db.clear('visits'); await db.clear('actions'); await db.clear('photos'); await db.clear('accidents');
+    toast('Local cache cleared'); location.reload();
   });
 }
 
-function onlineLabel() {
-  return navigator.onLine ? 'Online' : 'Offline';
-}
+async function bindUsers(root) {
+  const rows = root.querySelector('#usersRows');
+  const msg = root.querySelector('#usersMsg');
+  const me = sync.currentUser();
+  const refresh = async () => {
+    try {
+      const list = await sync.users.list();
+      rows.innerHTML = list.map((u) => `
+        <tr>
+          <td><b>${esc(u.username)}</b></td>
+          <td>${esc(u.role)}</td>
+          <td class="num">
+            <button class="btn small" data-pw="${esc(u.username)}">Reset password</button>
+            ${u.username === (me && me.username) ? '' : `<button class="btn small ghost danger" data-del="${esc(u.username)}">Delete</button>`}
+          </td>
+        </tr>`).join('') || '<tr><td colspan="3" class="empty">No users.</td></tr>';
+    } catch (e) { rows.innerHTML = `<tr><td colspan="3" class="empty">Could not load users (${esc(e.message)})</td></tr>`; }
+  };
 
-async function wipe() {
-  await db.clear('visits');
-  await db.clear('actions');
-  await db.clear('photos');
+  root.querySelector('#nuAdd').addEventListener('click', async () => {
+    const username = root.querySelector('#nuUser').value.trim();
+    const password = root.querySelector('#nuPass').value;
+    const role = root.querySelector('#nuRole').value;
+    if (!username || !password) { toast('Username and password required', 'bad'); return; }
+    try {
+      await sync.users.create(username, password, role);
+      root.querySelector('#nuUser').value = ''; root.querySelector('#nuPass').value = '';
+      msg.textContent = `User “${username}” created.`; toast('User created', 'good'); refresh();
+    } catch (e) { toast(e.message === 'HTTP 409' ? 'User already exists' : 'Could not create user', 'bad'); }
+  });
+
+  rows.addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-del]');
+    const pw = e.target.closest('[data-pw]');
+    if (del) {
+      if (!(await confirmDialog(`Delete user “${del.dataset.del}”?`))) return;
+      try { await sync.users.remove(del.dataset.del); toast('User deleted'); refresh(); }
+      catch { toast('Could not delete', 'bad'); }
+    } else if (pw) {
+      const np = prompt(`New password for “${pw.dataset.pw}”:`);
+      if (!np) return;
+      try { await sync.users.setPassword(pw.dataset.pw, np); toast('Password updated', 'good'); }
+      catch { toast('Could not update password', 'bad'); }
+    }
+  });
+
+  refresh();
 }
