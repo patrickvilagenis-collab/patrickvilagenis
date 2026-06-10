@@ -2,7 +2,7 @@
 
 import { store, buildKpis, visitsByMonth, visitsByFamily, actionsByStatus,
   energyDistribution, controlHierarchyDistribution, topVariabilitySections } from '../store.js';
-import { barChart, lineChart, donutChart, legend, gauge, PALETTE } from '../charts.js';
+import { barChart, lineChart, donutChart, legend, gauge, sparkline, PALETTE } from '../charts.js';
 import { monthLabel } from '../utils.js';
 import { ENERGY_TYPES, CONTROL_HIERARCHY } from '../checklists.js';
 import { filterButton, filterVisits, filterActions, activeFilterChips } from '../filters.js';
@@ -26,8 +26,15 @@ export async function renderDashboard(root) {
   const ctrlEntries = CONTROL_HIERARCHY.map((c) => [c.label, ctrl[c.id] || 0]);
   const topVar = topVariabilitySections(submitted);
 
-  const kpi = (label, value, sub, tone = '') =>
-    `<div class="kpi ${tone}"><div class="kpi-val">${value}</div><div class="kpi-lbl">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div>`;
+  const kpi = (label, value, sub, tone = '', extra = '') =>
+    `<div class="kpi ${tone}"><div class="kpi-val">${value}</div><div class="kpi-lbl">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}${extra}</div>`;
+
+  // month-over-month delta for visit activity
+  const mvals = months.map((m) => m[1]);
+  const lastM = mvals.length ? mvals[mvals.length - 1] : 0;
+  const prevM = mvals.length > 1 ? mvals[mvals.length - 2] : null;
+  const delta = prevM ? Math.round(((lastM - prevM) / prevM) * 100) : null;
+  const deltaChip = delta == null ? '' : `<span class="delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}%</span>`;
 
   root.innerHTML = `
     <header class="view-head">
@@ -40,7 +47,7 @@ export async function renderDashboard(root) {
     <div id="chipMount"></div>
 
     <section class="kpi-grid">
-      ${kpi('Visits (total)', k.totalVisits, `${k.visitsThisMonth} this month`)}
+      ${kpi('Visits (total)', k.totalVisits, `${k.visitsThisMonth} this month ${deltaChip}`, '', mvals.length > 1 ? `<div class="kpi-spark">${sparkline(mvals)}</div>` : '')}
       ${kpi('Avg. compliance', k.avgScore != null ? k.avgScore + '%' : '—', `${k.totalVariabilities} variabilities`, k.avgScore != null && k.avgScore < 80 ? 'warn' : 'good')}
       ${kpi('Open actions', k.openActions, `${k.overdueActions} overdue`, k.overdueActions ? 'bad' : '')}
       ${kpi('EBS control coverage', k.controlCoverage != null ? k.controlCoverage + '%' : '—', `${k.energyPresent} energies assessed`, k.controlCoverage != null && k.controlCoverage < 80 ? 'warn' : 'good')}

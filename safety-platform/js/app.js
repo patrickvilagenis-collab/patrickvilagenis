@@ -16,16 +16,25 @@ import { renderOles } from './views/oles.js';
 import { renderOleForm } from './views/oleForm.js';
 import { renderIntelligence } from './views/intelligence.js';
 
-const NAV = [
-  ['#/dashboard', '📊', 'Dashboard'],
-  ['#/visits', '📋', 'Field visits'],
-  ['#/accidents', '🚨', 'Accidents'],
-  ['#/oles', '🎓', 'OLE'],
-  ['#/intel', '🧠', 'Intelligence'],
-  ['#/analysis', '📈', 'Analysis'],
-  ['#/actions', '✅', 'Actions'],
-  ['#/settings', '⚙️', 'Settings'],
+const NAV_GROUPS = [
+  ['Overview', [
+    ['#/dashboard', '📊', 'Dashboard'],
+    ['#/intel', '🧠', 'Intelligence'],
+  ]],
+  ['Field operations', [
+    ['#/visits', '📋', 'Field visits'],
+    ['#/accidents', '🚨', 'Accidents'],
+    ['#/oles', '🎓', 'OLE'],
+  ]],
+  ['Insights', [
+    ['#/analysis', '📈', 'Analysis'],
+    ['#/actions', '✅', 'Actions'],
+  ]],
+  ['System', [
+    ['#/settings', '⚙️', 'Settings'],
+  ]],
 ];
+const NAV = NAV_GROUPS.flatMap(([, items]) => items);
 
 function shell() {
   document.getElementById('app').innerHTML = `
@@ -34,7 +43,10 @@ function shell() {
         <img class="brand-logo" src="./assets/schindler.svg" alt="Schindler" />
         <div class="brand-txt"><b>Safety &amp; Health</b><small>Information Tool</small></div>
       </div>
-      <nav class="nav">${NAV.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span>${l}</a>`).join('')}</nav>
+      <nav class="nav">${NAV_GROUPS.map(([label, items]) =>
+        `${label ? `<div class="nav-label">${label}</div>` : ''}` +
+        items.map(([h, i, l]) => `<a href="${h}" data-nav="${h}"><span>${i}</span>${l}</a>`).join('')
+      ).join('')}</nav>
       <div class="sidebar-foot">
         <div id="userBox" class="user-box"></div>
         <span id="netState" class="net"></span>
@@ -76,7 +88,11 @@ async function route() {
   window.scrollTo(0, 0);
   const parts = hash.slice(2).split('/'); // drop "#/"
   const [section, a, b] = parts;
-  view.innerHTML = '<div class="empty">Loading…</div>';
+  view.innerHTML = `<div class="skel">
+    <div class="skel-line w30"></div><div class="skel-line w55 thin"></div>
+    <div class="skel-cards">${'<div class="skel-card"></div>'.repeat(4)}</div>
+    <div class="skel-block"></div>
+  </div>`;
   try {
     switch (section) {
       case '': case 'dashboard': await renderDashboard(view); break;

@@ -7,46 +7,83 @@ function svg(w, h, inner) {
   return `<svg viewBox="0 0 ${w} ${h}" class="chart" preserveAspectRatio="xMidYMid meet" role="img">${inner}</svg>`;
 }
 
+let GID = 0; // unique gradient ids per render
+
 export function barChart(data, { w = 520, h = 220, color = '#E2001A', valueFmt = (v) => v } = {}) {
   if (!data.length) return emptyChart(w, h);
-  const pad = { l: 36, r: 12, t: 12, b: 28 };
+  const pad = { l: 36, r: 12, t: 14, b: 28 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
   const max = Math.max(...data.map((d) => d[1]), 1);
   const bw = cw / data.length;
-  let bars = '';
+  const gid = `bg${GID++}`;
+  let bars = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}"/><stop offset="1" stop-color="${color}" stop-opacity="0.55"/></linearGradient></defs>`;
   data.forEach((d, i) => {
-    const bh = (d[1] / max) * ch;
-    const x = pad.l + i * bw + bw * 0.15;
+    const bh = Math.max(0, (d[1] / max) * ch);
+    const x = pad.l + i * bw + bw * 0.16;
     const y = pad.t + ch - bh;
-    const ww = bw * 0.7;
-    bars += `<rect x="${x}" y="${y}" width="${ww}" height="${bh}" rx="3" fill="${color}"><title>${d[0]}: ${d[1]}</title></rect>`;
+    const ww = bw * 0.68;
+    bars += `<rect class="bar" x="${x}" y="${y}" width="${ww}" height="${bh}" rx="5" fill="url(#${gid})"><title>${d[0]}: ${d[1]}</title></rect>`;
     bars += `<text x="${x + ww / 2}" y="${pad.t + ch + 18}" text-anchor="middle" class="ax">${shorten(d[0])}</text>`;
-    if (d[1] > 0) bars += `<text x="${x + ww / 2}" y="${y - 4}" text-anchor="middle" class="val">${valueFmt(d[1])}</text>`;
+    if (d[1] > 0) bars += `<text x="${x + ww / 2}" y="${y - 5}" text-anchor="middle" class="val">${valueFmt(d[1])}</text>`;
   });
   const grid = gridLines(pad, cw, ch, max);
   return svg(w, h, grid + bars);
 }
 
+// Smooth (bezier) path through points.
+function smoothPath(pts) {
+  if (pts.length < 3) return pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[i - 1], p1 = pts[i];
+    const mx = ((p0[0] + p1[0]) / 2).toFixed(1);
+    d += ` C${mx},${p0[1].toFixed(1)} ${mx},${p1[1].toFixed(1)} ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`;
+  }
+  return d;
+}
+
 export function lineChart(data, { w = 520, h = 220, color = '#E2001A' } = {}) {
   if (data.length < 1) return emptyChart(w, h);
-  const pad = { l: 36, r: 12, t: 12, b: 28 };
+  const pad = { l: 36, r: 14, t: 14, b: 28 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
   const max = Math.max(...data.map((d) => d[1]), 1);
   const step = data.length > 1 ? cw / (data.length - 1) : 0;
   const pts = data.map((d, i) => [pad.l + i * step, pad.t + ch - (d[1] / max) * ch]);
-  const path = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  const area = `${path} L${pts[pts.length - 1][0]},${pad.t + ch} L${pts[0][0]},${pad.t + ch} Z`;
+  const path = smoothPath(pts);
+  const gid = `lg${GID++}`;
+  const area = `${path} L${pts[pts.length - 1][0].toFixed(1)},${pad.t + ch} L${pts[0][0].toFixed(1)},${pad.t + ch} Z`;
   let dots = '';
   pts.forEach((p, i) => {
-    dots += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${color}"><title>${data[i][0]}: ${data[i][1]}</title></circle>`;
-    dots += `<text x="${p[0]}" y="${pad.t + ch + 18}" text-anchor="middle" class="ax">${shorten(data[i][0])}</text>`;
+    const last = i === pts.length - 1;
+    dots += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last ? 4.5 : 3}" fill="${last ? color : '#fff'}" stroke="${color}" stroke-width="2"><title>${data[i][0]}: ${data[i][1]}</title></circle>`;
+    dots += `<text x="${p[0].toFixed(1)}" y="${pad.t + ch + 18}" text-anchor="middle" class="ax">${shorten(data[i][0])}</text>`;
   });
   const grid = gridLines(pad, cw, ch, max);
   return svg(w, h,
+    `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="0.22"/><stop offset="1" stop-color="${color}" stop-opacity="0.01"/></linearGradient></defs>` +
     grid +
-    `<path d="${area}" fill="${color}" opacity="0.12"/>` +
-    `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>` +
+    `<path d="${area}" fill="url(#${gid})"/>` +
+    `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` +
     dots);
+}
+
+// Tiny inline trend for KPI cards.
+export function sparkline(values, { w = 120, h = 34, color = '#E2001A' } = {}) {
+  if (!values || values.length < 2) return '';
+  const max = Math.max(...values, 1), min = Math.min(...values, 0);
+  const span = (max - min) || 1;
+  const step = (w - 8) / (values.length - 1);
+  const pts = values.map((v, i) => [4 + i * step, 4 + (h - 8) * (1 - (v - min) / span)]);
+  const path = smoothPath(pts);
+  const gid = `sp${GID++}`;
+  const area = `${path} L${pts[pts.length - 1][0].toFixed(1)},${h - 2} L${pts[0][0].toFixed(1)},${h - 2} Z`;
+  const last = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${w} ${h}" class="spark" preserveAspectRatio="none">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity="0.25"/><stop offset="1" stop-color="${color}" stop-opacity="0.02"/></linearGradient></defs>
+    <path d="${area}" fill="url(#${gid})"/>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3" fill="${color}"/>
+  </svg>`;
 }
 
 export function donutChart(entries, { w = 220, h = 220, thickness = 34, colors = PALETTE } = {}) {
