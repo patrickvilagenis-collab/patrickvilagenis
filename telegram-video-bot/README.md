@@ -80,7 +80,18 @@ En Railway/Fly define las variables `TELEGRAM_BOT_TOKEN` (o
 `Telegram_bot_token`) y opcionalmente `ALLOWED_USER_IDS` (o
 `telegram_user_id`) en el panel de la plataforma.
 
-### Servicio systemd (para VPS / Raspberry Pi)
+### Instalación automática en una VM (Oracle Free, VPS, Raspberry Pi)
+
+Copia esta carpeta a la máquina y ejecuta el script incluido; instala
+ffmpeg, las dependencias y deja el bot corriendo como servicio:
+
+```bash
+scp -r telegram-video-bot ubuntu@IP_DE_TU_VM:
+ssh ubuntu@IP_DE_TU_VM
+cd telegram-video-bot && bash setup-vm.sh   # te pedirá el token y tu user id
+```
+
+### Servicio systemd (manual, si prefieres no usar el script)
 
 ```ini
 # /etc/systemd/system/ytbot.service
