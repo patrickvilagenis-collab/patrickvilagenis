@@ -148,32 +148,40 @@ export function stackedBar(parts, { w = 520, h = 22, colors = PALETTE } = {}) {
 }
 
 // Heatmap: rows × cols grid coloured by value (0..max). cells[r][c] = {v, label}.
-export function heatmap(rowLabels, colLabels, cells, { max = 0, cell = 40, pad = 92, topPad = 64 } = {}) {
+export function heatmap(rowLabels, colLabels, cells, { max = 0, colW = 96, rowH = 52, padL = 116, padT = 54 } = {}) {
   const cols = colLabels.length, rows = rowLabels.length;
-  const w = pad + cols * cell + 8, h = topPad + rows * cell + 8;
+  const w = padL + cols * colW + 10, h = padT + rows * rowH + 12;
   let m = max;
   if (!m) cells.forEach((row) => row.forEach((c) => { if (c && c.v > m) m = c.v; }));
   m = m || 1;
   const color = (v) => {
-    if (!v) return '#f3f4f6';
-    const t = Math.min(1, v / m);
-    // light → Schindler red
+    if (!v) return '#f4f5f7';
+    const t = 0.12 + 0.88 * Math.min(1, v / m); // floor so low values are still visible
     const r = Math.round(252 + (226 - 252) * t), g = Math.round(232 + (0 - 232) * t), b = Math.round(232 + (26 - 232) * t);
     return `rgb(${r},${g},${b})`;
   };
+  // wrap a short column label onto up to two centred lines
+  const colHead = (label, cx) => {
+    const s = String(label);
+    if (s.length <= 9 || !s.includes(' ')) return `<tspan x="${cx}" dy="0">${esc2(s)}</tspan>`;
+    const words = s.split(' '), mid = Math.ceil(words.length / 2);
+    return `<tspan x="${cx}" dy="-5">${esc2(words.slice(0, mid).join(' '))}</tspan><tspan x="${cx}" dy="12">${esc2(words.slice(mid).join(' '))}</tspan>`;
+  };
   let out = '';
   colLabels.forEach((cl, c) => {
-    const x = pad + c * cell + cell / 2;
-    out += `<text x="${x}" y="${topPad - 8}" text-anchor="end" class="hm-col" transform="rotate(-40 ${x} ${topPad - 8})">${shorten(cl, 14)}</text>`;
+    const cx = padL + c * colW + colW / 2;
+    out += `<text x="${cx}" y="${padT - 22}" text-anchor="middle" class="hm-col">${colHead(cl, cx)}</text>`;
   });
   rowLabels.forEach((rl, r) => {
-    out += `<text x="${pad - 8}" y="${topPad + r * cell + cell / 2 + 4}" text-anchor="end" class="hm-row">${shorten(rl, 16)}</text>`;
+    const cy = padT + r * rowH + rowH / 2;
+    out += `<text x="${padL - 12}" y="${cy + 4}" text-anchor="end" class="hm-row">${esc2(rl)}</text>`;
     colLabels.forEach((cl, c) => {
       const cellData = (cells[r] && cells[r][c]) || { v: 0 };
-      const x = pad + c * cell, y = topPad + r * cell;
-      const dark = cellData.v / m > 0.55;
-      out += `<rect class="hm-cell" x="${x + 1}" y="${y + 1}" width="${cell - 2}" height="${cell - 2}" rx="4" fill="${color(cellData.v)}" data-tip="${esc2(rl)} · ${esc2(cl)}: ${cellData.label != null ? cellData.label : cellData.v}"/>`;
-      if (cellData.v) out += `<text x="${x + cell / 2}" y="${y + cell / 2 + 4}" text-anchor="middle" class="hm-val" fill="${dark ? '#fff' : '#475569'}">${cellData.label != null ? cellData.label : cellData.v}</text>`;
+      const x = padL + c * colW, y = padT + r * rowH;
+      const dark = cellData.v / m > 0.5;
+      out += `<rect class="hm-cell" x="${x + 4}" y="${y + 4}" width="${colW - 8}" height="${rowH - 8}" rx="8" fill="${color(cellData.v)}" data-tip="${esc2(rl)} · ${esc2(cl)}: ${cellData.label != null ? cellData.label : cellData.v}"/>`;
+      const val = cellData.label != null ? cellData.label : cellData.v;
+      out += `<text x="${x + colW / 2}" y="${y + rowH / 2 + 5}" text-anchor="middle" class="hm-val" fill="${cellData.v ? (dark ? '#fff' : '#7a3338') : '#c7cad0'}">${val}</text>`;
     });
   });
   return svg(w, h, out);
