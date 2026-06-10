@@ -29,6 +29,30 @@ async function api(path, opts = {}) {
 
 export function test() { return api('/api/health'); }
 
+// Returns 'ok' if the API key is accepted, 'unauthorized' on 401.
+// Throws on network/other errors.
+export async function verify() {
+  try { await api('/api/meta'); return 'ok'; }
+  catch (e) { if (String(e.message).includes('401')) return 'unauthorized'; throw e; }
+}
+
+// Push every local record up to the server (used when seeding the server from
+// a device that holds the real data). Awaits each write and reports the result.
+export async function pushBulk(db) {
+  let pushed = 0, failed = 0, unauthorized = false;
+  for (const c of COLLECTIONS) {
+    const items = await db.all(c);
+    for (const it of items) {
+      try { await api('/api/' + c + '/' + encodeURIComponent(it.id), { method: 'PUT', body: JSON.stringify(it) }); pushed++; }
+      catch (e) { failed++; if (String(e.message).includes('401')) unauthorized = true; }
+    }
+  }
+  return { pushed, failed, unauthorized };
+}
+
+// Clear the local cache so the next pull mirrors the server exactly.
+export async function clearLocal(db) { for (const c of COLLECTIONS) await db.clear(c); }
+
 // Pull every collection from the server into the local cache (db).
 export async function pullAll(db) {
   if (!enabled()) return { pulled: 0 };

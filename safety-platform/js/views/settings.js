@@ -22,14 +22,15 @@ export async function renderSettings(root) {
 
     <div class="card">
       <h3>🔌 Backend sync <span id="syncBadge"></span></h3>
-      <p class="hint">Connect a backend so data is saved on a server and shared across users and devices. Leave the URL empty to stay fully local. The app keeps working offline and syncs when reconnected.</p>
+      <p class="hint">Connect a backend so data is saved on a server and shared across users and devices. This setting is per browser — configure it on each device. Leave the URL empty to stay fully local.</p>
       <div class="grid2">
         <label class="fld"><span>API base URL</span><input id="apiUrl" type="url" placeholder="https://your-backend.onrender.com" value="${escAttr((sync.getConfig().url) || '')}"></label>
-        <label class="fld"><span>API key (optional)</span><input id="apiKey" type="text" placeholder="shared key" value="${escAttr((sync.getConfig().key) || '')}"></label>
+        <label class="fld"><span>API key</span><input id="apiKey" type="text" placeholder="from Render → Environment → API_KEY" value="${escAttr((sync.getConfig().key) || '')}"></label>
       </div>
       <div class="row-gap" style="margin-top:10px">
         <button class="btn" id="syncTest">Test connection</button>
-        <button class="btn primary" id="syncSave">Save & sync</button>
+        <button class="btn primary" id="syncConnect">Connect &amp; load shared data</button>
+        <button class="btn" id="syncUpload">Upload this device's data → server</button>
         <button class="btn ghost" id="syncDisable">Disconnect</button>
       </div>
       <p class="hint" id="syncStatus"></p>
@@ -81,32 +82,58 @@ export async function renderSettings(root) {
   };
   refreshSyncStatus();
 
+  // Wake a sleeping free-tier server and confirm it is reachable + the key works.
+  async function reachAndAuth(url, key) {
+    sync.setConfig({ url, key });
+    let lastErr = null;
+    for (let i = 0; i < 6; i++) {            // free instances can take ~50s to wake
+      try { await sync.test(); lastErr = null; break; }
+      catch (e) { lastErr = e; statusEl.textContent = 'Waking the server… (free plan can take up to a minute)'; await new Promise((r) => setTimeout(r, 4000)); }
+    }
+    if (lastErr) throw new Error('unreachable');
+    return sync.verify(); // 'ok' | 'unauthorized'
+  }
+
   root.querySelector('#syncTest').addEventListener('click', async () => {
     const url = root.querySelector('#apiUrl').value.trim();
     const key = root.querySelector('#apiKey').value.trim();
     if (!url) { toast('Enter the API URL first', 'bad'); return; }
-    sync.setConfig({ url, key });
-    try { const h = await sync.test(); toast('Connected ✓', 'good'); statusEl.textContent = 'Connection OK · server time ' + (h.time || ''); }
-    catch (e) { toast('Could not connect', 'bad'); statusEl.textContent = 'Connection failed: ' + e.message + '. Check the URL, the API key and CORS on the server.'; }
+    try {
+      const auth = await reachAndAuth(url, key);
+      if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'Server reached, but the API key is invalid. Copy it from Render → your service → Environment → API_KEY.'; return; }
+      toast('Connected ✓', 'good'); statusEl.textContent = 'Connection OK and API key accepted. Use “Connect & load shared data”.';
+    } catch { toast('Could not reach the server', 'bad'); statusEl.textContent = 'Could not reach ' + url + '. Check the URL is exact, the server is deployed, and try again (it may be waking up).'; }
   });
 
-  root.querySelector('#syncSave').addEventListener('click', async () => {
+  // Join the shared backend: clear stale local cache, then reload to pull server data.
+  root.querySelector('#syncConnect').addEventListener('click', async () => {
     const url = root.querySelector('#apiUrl').value.trim();
     const key = root.querySelector('#apiKey').value.trim();
-    sync.setConfig({ url, key });
-    if (url) {
-      try { await sync.test(); } catch { toast('Saved, but the server did not respond', 'bad'); return; }
-      // Push everything currently local up to the server, then reload to pull.
-      toast('Connected — syncing…', 'good');
-      for (const v of await store.visits()) sync.push('visits', v);
-      for (const a of await store.actions()) sync.push('actions', a);
-      for (const ac of await store.accidents()) sync.push('accidents', ac);
-      for (const p of await db.all('photos')) sync.push('photos', p);
-      setTimeout(() => location.reload(), 900);
-    } else {
-      toast('Backend disconnected — local only');
-      refreshSyncStatus();
-    }
+    if (!url) { toast('Enter the API URL first', 'bad'); return; }
+    let auth;
+    try { auth = await reachAndAuth(url, key); }
+    catch { toast('Server did not respond', 'bad'); statusEl.textContent = 'The server did not respond — check the URL and try again.'; return; }
+    if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'The API key is invalid. Copy it from Render → Environment → API_KEY.'; return; }
+    toast('Connecting — loading shared data…', 'good');
+    await sync.clearLocal(db);   // drop local demo/stale cache so the pull mirrors the server
+    setTimeout(() => location.reload(), 700);
+  });
+
+  // Seed the server from this device's data (use once, from the device that holds the real records).
+  root.querySelector('#syncUpload').addEventListener('click', async () => {
+    const url = root.querySelector('#apiUrl').value.trim();
+    const key = root.querySelector('#apiKey').value.trim();
+    if (!url) { toast('Enter the API URL first', 'bad'); return; }
+    if (!(await confirmDialog("Upload this device's current records to the server? Existing server records with the same id are overwritten."))) return;
+    let auth;
+    try { auth = await reachAndAuth(url, key); }
+    catch { toast('Server did not respond', 'bad'); return; }
+    if (auth === 'unauthorized') { toast('Wrong / missing API key', 'bad'); statusEl.textContent = 'The API key is invalid.'; return; }
+    statusEl.textContent = 'Uploading…';
+    const res = await sync.pushBulk(db);
+    if (res.unauthorized) { toast('API key invalid', 'bad'); return; }
+    toast(`Uploaded ${res.pushed} record(s)`, 'good');
+    statusEl.textContent = `Uploaded ${res.pushed} record(s) to the server${res.failed ? `, ${res.failed} failed` : ''}.`;
   });
 
   root.querySelector('#syncDisable').addEventListener('click', () => {
