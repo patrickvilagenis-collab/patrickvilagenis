@@ -1,11 +1,11 @@
 // views/dashboard.js — KPI cockpit and trend charts.
 
 import { store, buildKpis, visitsByMonth, visitsByFamily, actionsByStatus,
-  energyDistribution, controlHierarchyDistribution, topVariabilitySections } from '../store.js';
+  energyDistribution, controlHierarchyDistribution, topVariabilitySections, monthDeltas } from '../store.js';
 import { hbarChart, lineChart, donutChart, legend, gauge, sparkline, PALETTE } from '../charts.js';
 import { monthLabel } from '../utils.js';
 import { ENERGY_TYPES, CONTROL_HIERARCHY } from '../checklists.js';
-import { filterButton, filterVisits, filterActions, activeFilterChips } from '../filters.js';
+import { filterButton, filterVisits, filterActions, activeFilterChips, filters, setFilter } from '../filters.js';
 
 export async function renderDashboard(root) {
   const [allVisits, allActions] = await Promise.all([store.visits(), store.actions()]);
@@ -17,13 +17,24 @@ export async function renderDashboard(root) {
 
   const months = visitsByMonth(submitted).map(([m, n]) => [monthLabel(m), n]);
   const fam = visitsByFamily(submitted);
-  const actStatus = actionsByStatus(actions);
-  const energy = energyDistribution(submitted).map(([id, n]) => {
+  const famDrills = fam.map(([f]) => 'type:' + f);
+
+  // month-over-month deltas per category
+  const energyRows = submitted.flatMap((v) => (v.energy || []).filter((e) => e.present && e.energyId)
+    .map((e) => ({ date: v.general.date || v.createdAt, energyId: e.energyId, controlType: e.controlType })));
+  const energyDelta = monthDeltas(energyRows, (x) => x.date, (x) => x.energyId);
+  const ctrlDelta = monthDeltas(energyRows, (x) => x.date, (x) => x.controlType);
+  const statusDelta = monthDeltas(actions, (a) => a.createdAt, (a) => a.status);
+
+  const actStatus = actionsByStatus(actions).map(([s, n]) => [s, n, statusDelta[s] ?? null]);
+  const energyDist = energyDistribution(submitted);
+  const energy = energyDist.map(([id, n]) => {
     const e = ENERGY_TYPES.find((x) => x.id === id);
-    return [e ? `${e.icon} ${e.label}` : id, n];
+    return [e ? `${e.icon} ${e.label}` : id, n, energyDelta[id] ?? null];
   });
+  const energyDrills = energyDist.map(([id]) => 'hazard:' + id);
   const ctrl = controlHierarchyDistribution(submitted);
-  const ctrlEntries = CONTROL_HIERARCHY.map((c) => [c.label, ctrl[c.id] || 0]);
+  const ctrlEntries = CONTROL_HIERARCHY.map((c) => [c.label, ctrl[c.id] || 0, ctrlDelta[c.id] ?? null]);
   const topVar = topVariabilitySections(submitted);
 
   const kpi = (label, value, sub, tone = '', extra = '') =>
@@ -67,22 +78,24 @@ export async function renderDashboard(root) {
 
       <div class="card">
         <h3>Visits by type</h3>
-        <div class="center">${donutChart(fam)}</div>
+        <div class="center">${donutChart(fam, { drills: famDrills })}</div>
         ${legend(fam)}
       </div>
       <div class="card">
         <h3>Actions by status</h3>
         ${hbarChart(actStatus, { color: '#2b2f36' })}
+        <p class="hint">▲▼ vs last month (created).</p>
       </div>
       <div class="card">
         <h3>Hierarchy of controls used</h3>
-        ${hbarChart(ctrlEntries, { color: '#1b9e5a' })}
+        ${hbarChart(ctrlEntries, { color: '#1b9e5a', deltaGoodUp: true })}
         <p class="hint">Stronger controls (elimination / engineering) at the top.</p>
       </div>
 
       <div class="card span2">
         <h3>Hazardous energies present (EBS)</h3>
-        ${hbarChart(energy, { color: '#e08600' })}
+        ${hbarChart(energy, { color: '#e08600', drills: energyDrills })}
+        <p class="hint">▲▼ vs last month · click a row to filter the cockpit.</p>
       </div>
       <div class="card">
         <h3>Top areas with variabilities</h3>
@@ -97,4 +110,17 @@ export async function renderDashboard(root) {
   root.querySelector('#filterMount').append(filterButton(submittedAll, rerender));
   const chips = activeFilterChips(rerender);
   if (chips) root.querySelector('#chipMount').append(chips);
+  bindDrill(root, rerender);
+}
+
+// Click a chart bar/segment to toggle the matching filter.
+function bindDrill(root, rerender) {
+  root.addEventListener('click', (e) => {
+    const d = e.target.closest && e.target.closest('[data-drill]');
+    if (!d || !root.contains(d)) return;
+    const i = d.dataset.drill.indexOf(':');
+    const key = d.dataset.drill.slice(0, i), value = d.dataset.drill.slice(i + 1);
+    setFilter(key, filters[key] === value ? '' : value);
+    rerender();
+  });
 }

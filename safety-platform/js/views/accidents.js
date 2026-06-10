@@ -1,11 +1,11 @@
 // views/accidents.js — Accident Reporting overview: dashboard, filters, list.
 
-import { store, buildAccidentKpis, accidentsByType, accidentsByMonth, accidentsBy, accidentControlSplit } from '../store.js';
+import { store, buildAccidentKpis, accidentsByMonth, accidentsBy, accidentControlSplit, monthDeltas } from '../store.js';
 import { ACCIDENT_TYPES, getAccidentType, getMethodology, METHODOLOGIES, accidentEnergyIds } from '../accidents.js';
 import { ENERGY_TYPES } from '../checklists.js';
 import { hbarChart, lineChart, donutChart, legend, PALETTE } from '../charts.js';
 import { monthLabel, fmtDate, esc, toast, confirmDialog } from '../utils.js';
-import { accFilterButton, filterAccidents, accActiveChips } from '../accidentFilters.js';
+import { accFilterButton, filterAccidents, accActiveChips, accFilters, setAccFilter } from '../accidentFilters.js';
 
 export async function renderAccidents(root) {
   const [allAccidents, actions] = await Promise.all([store.accidents(), store.actions()]);
@@ -14,16 +14,31 @@ export async function renderAccidents(root) {
   const reported = list.filter((a) => a.status !== 'draft');
   const k = buildAccidentKpis(list, actions);
 
-  const byType = accidentsByType(reported);
   const months = accidentsByMonth(reported).map(([m, n]) => [monthLabel(m), n]);
+  const accDate = (a) => a.occurredAt || a.createdAt;
+  const typeDelta = monthDeltas(reported, accDate, (a) => a.type);
+  const energyDelta = monthDeltas(reported, accDate, (a) => accidentEnergyIds(a));
+  const zoneDelta = monthDeltas(reported, accDate, (a) => a.location.zone || '—');
+
+  const typeCounts = {};
+  for (const a of reported) typeCounts[a.type] = (typeCounts[a.type] || 0) + 1;
+  const typeList = ACCIDENT_TYPES.filter((t) => typeCounts[t.id]);
+  const byType = typeList.map((t) => [t.short, typeCounts[t.id], typeDelta[t.id] ?? null]);
+  const typeDrills = typeList.map((t) => 'type:' + t.id);
+
   const energyCounts = {};
   for (const a of reported) {
     for (const id of accidentEnergyIds(a)) energyCounts[id] = (energyCounts[id] || 0) + 1;
   }
-  const byEnergy = Object.entries(energyCounts).sort((x, y) => y[1] - x[1]).map(([id, n]) => {
-    const e = ENERGY_TYPES.find((x) => x.id === id); return [e ? `${e.icon} ${e.label}` : id, n];
+  const energySorted = Object.entries(energyCounts).sort((x, y) => y[1] - x[1]);
+  const byEnergy = energySorted.map(([id, n]) => {
+    const e = ENERGY_TYPES.find((x) => x.id === id);
+    return [e ? `${e.icon} ${e.label}` : id, n, energyDelta[id] ?? null];
   });
-  const byZone = accidentsBy(reported, (a) => a.location.zone || '—');
+  const energyDrills = energySorted.map(([id]) => 'energyType:' + id);
+
+  const byZone = accidentsBy(reported, (a) => a.location.zone || '—').map(([k, n]) => [k, n, zoneDelta[k] ?? null]);
+  const zoneDrills = byZone.map(([k]) => (k === '—' ? null : 'zone:' + k));
   const ctrl = accidentControlSplit(reported);
 
   const kpi = (label, value, sub, tone = '') =>
@@ -62,10 +77,10 @@ export async function renderAccidents(root) {
 
     <section class="card-grid">
       <div class="card span2"><h3>Incidents per month</h3>${lineChart(months, { color: '#E2001A' })}</div>
-      <div class="card"><h3>By classification (SIF)</h3>${hbarChart(byType, { color: '#E2001A' })}</div>
-      <div class="card"><h3>Direct control present?</h3><div class="center">${donutChart(ctrl, { colors: ['#1b9e5a', '#cc1122'] })}</div>${legend(ctrl, { colors: ['#1b9e5a', '#cc1122'] })}</div>
-      <div class="card"><h3>Energy involved</h3>${hbarChart(byEnergy, { color: '#e08600' })}</div>
-      <div class="card"><h3>By zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36' })}</div>
+      <div class="card"><h3>By classification (SIF)</h3>${hbarChart(byType, { color: '#E2001A', drills: typeDrills })}<p class="hint">▲▼ vs last month · click to filter.</p></div>
+      <div class="card"><h3>Direct control present?</h3><div class="center">${donutChart(ctrl, { colors: ['#1b9e5a', '#cc1122'], drills: ['control:with', 'control:without'] })}</div>${legend(ctrl, { colors: ['#1b9e5a', '#cc1122'] })}</div>
+      <div class="card"><h3>Energy involved</h3>${hbarChart(byEnergy, { color: '#e08600', drills: energyDrills })}</div>
+      <div class="card"><h3>By zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36', drills: zoneDrills })}</div>
     </section>
 
     <div class="table-wrap">
@@ -80,6 +95,15 @@ export async function renderAccidents(root) {
   root.querySelector('#filterMount').append(accFilterButton(reportedAll, rerender));
   const chips = accActiveChips(rerender);
   if (chips) root.querySelector('#chipMount').append(chips);
+
+  root.addEventListener('click', (e) => {
+    const d = e.target.closest && e.target.closest('[data-drill]');
+    if (!d || !root.contains(d)) return;
+    const i = d.dataset.drill.indexOf(':');
+    const key = d.dataset.drill.slice(0, i), value = d.dataset.drill.slice(i + 1);
+    setAccFilter(key, accFilters[key] === value ? '' : value);
+    rerender();
+  });
 
   root.querySelector('#rows').addEventListener('click', async (e) => {
     const del = e.target.closest('[data-del]');

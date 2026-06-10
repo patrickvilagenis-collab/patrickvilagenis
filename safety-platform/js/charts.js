@@ -69,15 +69,28 @@ export function lineChart(data, { w = 520, h = 220, color = '#E2001A' } = {}) {
 
 // Horizontal bars — full labels, animated, tooltip-enabled. Best for
 // categorical breakdowns where vertical bars would truncate names.
-export function hbarChart(data, { color = '#E2001A', valueFmt = (v) => v, max = null } = {}) {
+// Rows may be [label, value] or [label, value, delta] (delta vs last month).
+// `drills[i]` makes a row clickable ("key:value" consumed by the view).
+// `deltaGoodUp` flips delta colouring (e.g. rising compliance is good).
+export function hbarChart(data, { color = '#E2001A', valueFmt = (v) => v, max = null, drills = null, deltaGoodUp = false } = {}) {
   if (!data.length) return '<p class="hint">No data yet</p>';
   const m = max || Math.max(...data.map((d) => d[1]), 1);
-  return `<div class="hbar">${data.map(([label, v], i) => `
-    <div class="hbar-row" data-tip="${escTxt(label)}: ${valueFmt(v)}">
+  return `<div class="hbar">${data.map((d, i) => {
+    const [label, v] = d;
+    const delta = d.length > 2 ? d[2] : null;
+    const drill = drills && drills[i] ? drills[i] : null;
+    const dch = delta != null && delta !== 0
+      ? `<i class="hb-d ${(delta > 0) === deltaGoodUp ? 'pos' : 'neg'}">${delta > 0 ? '▲' : '▼'}${Math.abs(delta)}</i>` : '';
+    const tip = `${label}: ${valueFmt(v)}` +
+      (delta != null ? ` · Δ vs last month: ${delta > 0 ? '+' : ''}${delta}` : '') +
+      (drill ? ' · click to filter' : '');
+    return `
+    <div class="hbar-row${drill ? ' drillable' : ''}"${drill ? ` data-drill="${escTxt(drill)}"` : ''} data-tip="${escTxt(tip)}">
       <span class="hbar-label">${escTxt(label)}</span>
       <span class="hbar-track"><i style="width:${((v / m) * 100).toFixed(1)}%; background:linear-gradient(90deg, ${color}, ${color}cc); animation-delay:${i * 45}ms"></i></span>
-      <span class="hbar-val">${valueFmt(v)}</span>
-    </div>`).join('')}</div>`;
+      <span class="hbar-val">${valueFmt(v)}${dch}</span>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // Tiny inline trend for KPI cards.
@@ -99,7 +112,7 @@ export function sparkline(values, { w = 120, h = 34, color = '#E2001A' } = {}) {
   </svg>`;
 }
 
-export function donutChart(entries, { w = 220, h = 220, thickness = 34, colors = PALETTE } = {}) {
+export function donutChart(entries, { w = 220, h = 220, thickness = 34, colors = PALETTE, drills = null } = {}) {
   const total = entries.reduce((a, e) => a + e[1], 0);
   if (!total) return emptyChart(w, h);
   const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 8;
@@ -110,7 +123,8 @@ export function donutChart(entries, { w = 220, h = 220, thickness = 34, colors =
     const large = frac > 0.5 ? 1 : 0;
     const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
     const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-    arcs += `<path class="donut-seg" d="M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${colors[i % colors.length]}" stroke-width="${thickness}" data-tip="${escTxt(e[0])}: ${e[1]} (${Math.round(frac * 100)}%)"/>`;
+    const drill = drills && drills[i] ? ` data-drill="${escTxt(drills[i])}" class="donut-seg drillable"` : ' class="donut-seg"';
+    arcs += `<path${drill} d="M${x0.toFixed(1)},${y0.toFixed(1)} A${r},${r} 0 ${large} 1 ${x1.toFixed(1)},${y1.toFixed(1)}" fill="none" stroke="${colors[i % colors.length]}" stroke-width="${thickness}" data-tip="${escTxt(e[0])}: ${e[1]} (${Math.round(frac * 100)}%)${drills && drills[i] ? ' · click to filter' : ''}"/>`;
     a0 = a1;
   });
   const inner = `<text x="${cx}" y="${cy - 2}" text-anchor="middle" class="donut-num">${total}</text><text x="${cx}" y="${cy + 16}" text-anchor="middle" class="donut-lbl">total</text>`;
@@ -129,7 +143,7 @@ export function gauge(value, { w = 200, h = 130, label = '' } = {}) {
   const x = cx + r * Math.cos(a), y = cy - r * Math.sin(a);
   const col = value >= 90 ? '#10b981' : value >= 75 ? '#f59e0b' : '#ef4444';
   return svg(w, h,
-    `<path d="M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}" fill="none" stroke="#e5e7eb" stroke-width="14" stroke-linecap="round"/>` +
+    `<path d="M${cx - r},${cy} A${r},${r} 0 0 1 ${cx + r},${cy}" fill="none" stroke="var(--gauge-track, #e5e7eb)" stroke-width="14" stroke-linecap="round"/>` +
     `<path d="M${cx - r},${cy} A${r},${r} 0 0 1 ${x.toFixed(1)},${y.toFixed(1)}" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round"/>` +
     `<text x="${cx}" y="${cy - 6}" text-anchor="middle" class="gauge-num">${value}%</text>` +
     `<text x="${cx}" y="${cy + 12}" text-anchor="middle" class="gauge-lbl">${escTxt(label)}</text>`);
@@ -155,7 +169,7 @@ export function heatmap(rowLabels, colLabels, cells, { max = 0, colW = 96, rowH 
   if (!m) cells.forEach((row) => row.forEach((c) => { if (c && c.v > m) m = c.v; }));
   m = m || 1;
   const color = (v) => {
-    if (!v) return '#f4f5f7';
+    if (!v) return 'var(--hm-zero, #f4f5f7)';
     const t = 0.12 + 0.88 * Math.min(1, v / m); // floor so low values are still visible
     const r = Math.round(252 + (226 - 252) * t), g = Math.round(232 + (0 - 232) * t), b = Math.round(232 + (26 - 232) * t);
     return `rgb(${r},${g},${b})`;
@@ -181,7 +195,7 @@ export function heatmap(rowLabels, colLabels, cells, { max = 0, colW = 96, rowH 
       const dark = cellData.v / m > 0.5;
       out += `<rect class="hm-cell" x="${x + 4}" y="${y + 4}" width="${colW - 8}" height="${rowH - 8}" rx="8" fill="${color(cellData.v)}" data-tip="${esc2(rl)} · ${esc2(cl)}: ${cellData.label != null ? cellData.label : cellData.v}"/>`;
       const val = cellData.label != null ? cellData.label : cellData.v;
-      out += `<text x="${x + colW / 2}" y="${y + rowH / 2 + 5}" text-anchor="middle" class="hm-val" fill="${cellData.v ? (dark ? '#fff' : '#7a3338') : '#c7cad0'}">${val}</text>`;
+      out += `<text x="${x + colW / 2}" y="${y + rowH / 2 + 5}" text-anchor="middle" class="hm-val" fill="${cellData.v ? (dark ? '#fff' : '#7a3338') : 'var(--hm-zero-txt, #c7cad0)'}">${val}</text>`;
     });
   });
   return svg(w, h, out);

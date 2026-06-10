@@ -59,7 +59,7 @@ function shell() {
           <kbd class="tb-kbd">Ctrl K</kbd>
           <div class="tb-results" id="tbResults"></div>
         </div>
-        <div class="tb-right"><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
+        <div class="tb-right"><button class="theme-btn" id="themeBtn" title="Toggle dark mode">🌙</button><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
       </header>
       <div id="view"></div>
     </main>
@@ -68,6 +68,19 @@ function shell() {
   updateNet();
   initSearch();
   initTooltip();
+  initTheme();
+}
+
+function initTheme() {
+  const btn = document.getElementById('themeBtn');
+  if (!btn) return;
+  const apply = (t) => {
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem('shi_theme', t); } catch {}
+    btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  };
+  apply(document.documentElement.dataset.theme || 'light');
+  btn.addEventListener('click', () => apply(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
 }
 
 function setActive(hash) {

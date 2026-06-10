@@ -1,6 +1,6 @@
 // views/oles.js — Operational Learning Events: overview, dashboard, list.
 
-import { store, buildOleKpis, olesByStatus, olesByMonth } from '../store.js';
+import { store, buildOleKpis, olesByStatus, olesByMonth, monthDeltas } from '../store.js';
 import { OLE_STATUSES, getOleStatus, FOUR_D, oleFindings, oleVariabilityCount, oleOutsideFindings, oleFourDTotals } from '../ole.js';
 import { hbarChart, lineChart, donutChart, legend } from '../charts.js';
 import { monthLabel, fmtDate, esc, toast, confirmDialog } from '../utils.js';
@@ -9,8 +9,13 @@ export async function renderOles(root) {
   const [all, actions] = await Promise.all([store.oles(), store.actions()]);
   const k = buildOleKpis(all, actions);
   const months = olesByMonth(all).map(([m, n]) => [monthLabel(m), n]);
-  const byStatus = olesByStatus(all).map(([s, n]) => [getOleStatus(s).label, n]);
-  const fourD = oleFourDTotals(all);
+  const statusOrder = olesByStatus(all);
+  const byStatus = statusOrder.map(([s, n]) => [getOleStatus(s).label, n]);
+  const statusDrills = statusOrder.map(([s]) => 'olestatus:' + s);
+  const fdDelta = monthDeltas(
+    all.flatMap((o) => oleFindings(o).flatMap((f) => (f.fourD || []).map((dk) => ({ date: o.date || o.createdAt, dk })))),
+    (x) => x.date, (x) => x.dk);
+  const fourD = oleFourDTotals(all).map((e, i) => [e[0], e[1], fdDelta[FOUR_D[i].id] ?? null]);
 
   const kpi = (label, value, sub, tone = '') =>
     `<div class="kpi ${tone}"><div class="kpi-val">${value}</div><div class="kpi-lbl">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div>`;
@@ -54,8 +59,8 @@ export async function renderOles(root) {
 
     <section class="card-grid">
       <div class="card span2"><h3>OLEs per month</h3>${lineChart(months, { color: '#E2001A' })}</div>
-      <div class="card"><h3>By status</h3><div class="center">${donutChart(byStatus)}</div>${legend(byStatus)}</div>
-      <div class="card span3"><h3>Findings by 4D</h3>${hbarChart(fourD, { color: '#e08600' })}</div>
+      <div class="card"><h3>By status</h3><div class="center">${donutChart(byStatus, { drills: statusDrills })}</div>${legend(byStatus)}</div>
+      <div class="card span3"><h3>Findings by 4D</h3>${hbarChart(fourD, { color: '#e08600' })}<p class="hint">▲▼ vs last month.</p></div>
     </section>
 
     <div class="toolbar">
@@ -82,6 +87,16 @@ export async function renderOles(root) {
     });
   };
   q.addEventListener('input', apply); fStatus.addEventListener('change', apply);
+
+  // donut drill → toggle the local status filter
+  root.addEventListener('click', (e) => {
+    const d = e.target.closest && e.target.closest('[data-drill]');
+    if (!d || !root.contains(d)) return;
+    const value = d.dataset.drill.split(':')[1];
+    fStatus.value = fStatus.value === value ? '' : value;
+    apply();
+    fStatus.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 
   root.querySelector('#rows').addEventListener('click', async (e) => {
     const del = e.target.closest('[data-del]');

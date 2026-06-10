@@ -22,6 +22,7 @@ function save() { try { sessionStorage.setItem(KEY, JSON.stringify(filters)); } 
 
 export function activeCount() { return Object.values(filters).filter((v) => v).length; }
 export function resetFilters() { Object.assign(filters, DEFAULT); save(); }
+export function setFilter(key, value) { filters[key] = value; save(); }
 
 // Control coverage status for a whole visit (used by the "Controls" filter).
 export function visitControlStatus(v) {

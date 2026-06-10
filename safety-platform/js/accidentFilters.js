@@ -22,6 +22,7 @@ function load() {
 function save() { try { sessionStorage.setItem(KEY, JSON.stringify(accFilters)); } catch {} }
 export function accActiveCount() { return Object.values(accFilters).filter((v) => v).length; }
 export function resetAccFilters() { Object.assign(accFilters, DEFAULT); save(); }
+export function setAccFilter(key, value) { accFilters[key] = value; save(); }
 
 export function matchAccident(a) {
   const l = a.location || {};

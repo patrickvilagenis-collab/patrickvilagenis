@@ -3,8 +3,8 @@
 
 import { store, visitScore, visitVariabilities, countPhotos } from '../store.js';
 import { hbarChart, donutChart, legend } from '../charts.js';
-import { fmtDate, esc, download, toCSV, toast } from '../utils.js';
-import { filterButton, filterVisits, activeFilterChips } from '../filters.js';
+import { fmtDate, esc, download, toCSV, toast, monthKey } from '../utils.js';
+import { filterButton, filterVisits, activeFilterChips, filters, setFilter } from '../filters.js';
 
 export async function renderAnalysis(root) {
   const submittedAll = (await store.visits()).filter((v) => v.status === 'submitted');
@@ -16,10 +16,16 @@ export async function renderAnalysis(root) {
   const totalVar = list.reduce((a, v) => a + visitVariabilities(v).length, 0);
   const photos = list.reduce((a, v) => a + countPhotos(v), 0);
 
-  // breakdowns
-  const byFam = avgBy(list, (v) => v.family);
-  const byCity = avgBy(list, (v) => v.general.city || '—');
-  const byZone = avgBy(list, (v) => v.general.zone || '—');
+  // breakdowns (with compliance pp-change vs last month)
+  const famPP = ppDelta(list, (v) => v.family);
+  const cityPP = ppDelta(list, (v) => v.general.city || '—');
+  const zonePP = ppDelta(list, (v) => v.general.zone || '—');
+  const byFam = avgBy(list, (v) => v.family).map(([k, n]) => [k, n, famPP[k] ?? null]);
+  const byCity = avgBy(list, (v) => v.general.city || '—').map(([k, n]) => [k, n, cityPP[k] ?? null]);
+  const byZone = avgBy(list, (v) => v.general.zone || '—').map(([k, n]) => [k, n, zonePP[k] ?? null]);
+  const famDrills = byFam.map(([k]) => 'type:' + k);
+  const cityDrills = byCity.map(([k]) => (k === '—' ? null : 'city:' + k));
+  const zoneDrills = byZone.map(([k]) => (k === '—' ? null : 'zone:' + k));
   const empCount = {};
   list.forEach((v) => { const e = v.general.employeeType || '—'; empCount[e] = (empCount[e] || 0) + 1; });
   const empEntries = Object.entries(empCount);
@@ -63,10 +69,11 @@ export async function renderAnalysis(root) {
     </section>
 
     <section class="card-grid">
-      <div class="card"><h3>Compliance by type</h3>${hbarChart(byFam, { color: '#E2001A', valueFmt: (x) => x + '%' })}</div>
-      <div class="card"><h3>Compliance by zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36', valueFmt: (x) => x + '%' })}</div>
-      <div class="card"><h3>Compliance by city</h3>${hbarChart(byCity, { color: '#0073a8', valueFmt: (x) => x + '%' })}</div>
-      <div class="card"><h3>Schindler vs subcontractor</h3><div class="center">${donutChart(empEntries)}</div>${legend(empEntries)}</div>
+      <div class="card"><h3>Compliance by type</h3>${hbarChart(byFam, { color: '#E2001A', valueFmt: (x) => x + '%', drills: famDrills, deltaGoodUp: true })}</div>
+      <div class="card"><h3>Compliance by zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36', valueFmt: (x) => x + '%', drills: zoneDrills, deltaGoodUp: true })}</div>
+      <div class="card"><h3>Compliance by city</h3>${hbarChart(byCity, { color: '#0073a8', valueFmt: (x) => x + '%', drills: cityDrills, deltaGoodUp: true })}</div>
+      <div class="card"><h3>Schindler vs subcontractor</h3><div class="center">${donutChart(empEntries, { drills: empEntries.map(([k]) => 'employeeType:' + k) })}</div>${legend(empEntries)}
+        <p class="hint">▲▼ pp vs last month · click to filter.</p></div>
       <div class="card span2"><h3>Most frequent variabilities</h3>${top.length
         ? `<ul class="rank wide">${top.map(([txt, n], i) => `<li><span class="rank-n">${i + 1}</span><span class="rank-lbl">${esc(txt)}</span><b>${n}</b></li>`).join('')}</ul>`
         : '<p class="hint">No variabilities in the current selection.</p>'}</div>
@@ -85,12 +92,44 @@ export async function renderAnalysis(root) {
   const chips = activeFilterChips(rerender);
   if (chips) root.querySelector('#chipMount').append(chips);
 
+  root.addEventListener('click', (e) => {
+    const d = e.target.closest && e.target.closest('[data-drill]');
+    if (!d || !root.contains(d)) return;
+    const i = d.dataset.drill.indexOf(':');
+    const key = d.dataset.drill.slice(0, i), value = d.dataset.drill.slice(i + 1);
+    setFilter(key, filters[key] === value ? '' : value);
+    rerender();
+  });
+
   root.querySelector('#exportCsv').addEventListener('click', () => {
     download('safety_visits.csv', toCSV(flatten(list)), 'text/csv'); toast('Exported CSV', 'good');
   });
   root.querySelector('#exportJson').addEventListener('click', () => {
     download('safety_visits.json', JSON.stringify(list, null, 2)); toast('Exported JSON', 'good');
   });
+}
+
+// Compliance change (percentage points) per group: this month vs last month.
+function ppDelta(list, keyFn) {
+  const curM = monthKey(new Date().toISOString());
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  const prevM = monthKey(d.toISOString());
+  const acc = {};
+  for (const v of list) {
+    const mk = monthKey(v.general.date || v.createdAt);
+    if (mk !== curM && mk !== prevM) continue;
+    const s = visitScore(v); if (s.score == null) continue;
+    const k = keyFn(v) || '—';
+    const o = (acc[k] = acc[k] || { c: [], p: [] });
+    (mk === curM ? o.c : o.p).push(s.score);
+  }
+  const out = {};
+  for (const [k, o] of Object.entries(acc)) {
+    if (o.c.length && o.p.length) {
+      out[k] = Math.round(o.c.reduce((a, b) => a + b, 0) / o.c.length - o.p.reduce((a, b) => a + b, 0) / o.p.length);
+    }
+  }
+  return out;
 }
 
 function avgBy(list, keyFn) {

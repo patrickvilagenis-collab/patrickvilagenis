@@ -304,6 +304,29 @@ export function topVariabilitySections(visits, limit = 6) {
 }
 
 // ---------------------------------------------------------------------------
+// Period comparison: count per key this calendar month vs the previous one.
+// Returns { key: currentCount - previousCount }. keysFn may return one key or
+// an array of keys per item.
+// ---------------------------------------------------------------------------
+export function monthDeltas(items, dateFn, keysFn) {
+  const cur = monthKey(nowISO());
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  const prev = monthKey(d.toISOString());
+  const c = {}, p = {};
+  for (const it of items) {
+    const mk = monthKey(dateFn(it) || nowISO());
+    if (mk !== cur && mk !== prev) continue;
+    for (const k of [].concat(keysFn(it) || [])) {
+      if (!k) continue;
+      if (mk === cur) c[k] = (c[k] || 0) + 1; else p[k] = (p[k] || 0) + 1;
+    }
+  }
+  const out = {};
+  for (const k of new Set([...Object.keys(c), ...Object.keys(p)])) out[k] = (c[k] || 0) - (p[k] || 0);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Accident metrics
 // ---------------------------------------------------------------------------
 function groupCount(list, keyFn) {
