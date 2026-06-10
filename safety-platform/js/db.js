@@ -5,8 +5,8 @@
 // In-memory data is not persisted across reloads, but the UI never hangs blank.
 
 const DB_NAME = 'safety-platform';
-const DB_VERSION = 2;
-const STORES = ['visits', 'actions', 'photos', 'meta', 'accidents'];
+const DB_VERSION = 3;
+const STORES = ['visits', 'actions', 'photos', 'meta', 'accidents', 'oles'];
 const OPEN_TIMEOUT_MS = 3500;
 
 let _db = null;

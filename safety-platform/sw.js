@@ -2,7 +2,7 @@
 // Network-first means: when online, always fetch the latest from the network
 // (so users never get a stale build); when offline, fall back to the cache.
 
-const CACHE = 'sh-tool-v16';
+const CACHE = 'sh-tool-v17';
 const ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const ASSETS = [
   './js/charts.js',
   './js/checklists.js',
   './js/accidents.js',
+  './js/ole.js',
   './js/humbleInquiry.js',
   './js/hazardWheel.js',
   './js/filters.js',
@@ -32,6 +33,8 @@ const ASSETS = [
   './js/views/settings.js',
   './js/views/accidents.js',
   './js/views/accidentForm.js',
+  './js/views/oles.js',
+  './js/views/oleForm.js',
 ];
 
 self.addEventListener('install', (e) => {

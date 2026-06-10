@@ -12,11 +12,14 @@ import { renderActions } from './views/actions.js';
 import { renderSettings } from './views/settings.js';
 import { renderAccidents, renderNewAccident } from './views/accidents.js';
 import { renderAccidentForm } from './views/accidentForm.js';
+import { renderOles } from './views/oles.js';
+import { renderOleForm } from './views/oleForm.js';
 
 const NAV = [
   ['#/dashboard', '📊', 'Dashboard'],
   ['#/visits', '📋', 'Field visits'],
   ['#/accidents', '🚨', 'Accidents'],
+  ['#/oles', '🎓', 'OLE'],
   ['#/analysis', '📈', 'Analysis'],
   ['#/actions', '✅', 'Actions'],
   ['#/settings', '⚙️', 'Settings'],
@@ -84,6 +87,10 @@ async function route() {
         else await renderAccidents(view);
         break;
       case 'accident': await renderAccidentForm(view, { accidentId: a }); break;
+      case 'oles':
+        if (a === 'new') await renderOleForm(view, {}); else await renderOles(view);
+        break;
+      case 'ole': await renderOleForm(view, { oleId: a }); break;
       case 'analysis': await renderAnalysis(view); break;
       case 'actions': await renderActions(view); break;
       case 'settings': await renderSettings(view); break;

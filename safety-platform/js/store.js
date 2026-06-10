@@ -5,6 +5,7 @@ import { db } from './db.js';
 import { uid, nowISO, monthKey, daysBetween } from './utils.js';
 import { getTemplate, TEMPLATE_LIST, isControlEffective, DANGER_ZONES } from './checklists.js';
 import { ACCIDENT_TYPES, getAccidentType, emptyRca, accidentHighEnergy, accidentDirectControl } from './accidents.js';
+import { newStep, newFinding, oleFindings } from './ole.js';
 import * as sync from './sync.js';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,43 @@ export function newAccidentAction(accident, partial = {}) {
   };
 }
 
+export function newOLE() {
+  return {
+    id: uid('ole'),
+    refNo: 'OLE-' + Date.now().toString(36).slice(-5).toUpperCase(),
+    title: '',
+    task: '', process: '',
+    facilitator: '',
+    date: new Date().toISOString().slice(0, 10),
+    location: { site: '', city: '', zone: '', region: '', branch: '' },
+    status: 'new',
+    attendees: [],
+    prepNotes: '',
+    steps: [],
+    findings: [],     // each {stepId|null, description, fourD[], variability, variabilityDesc, location, severity, photos}
+    survey: { rating: '', learned: '', improve: '' },
+    createdAt: nowISO(), updatedAt: nowISO(),
+  };
+}
+
+export function newOleAction(ole, finding, partial = {}) {
+  return {
+    id: uid('act'),
+    visitId: null, accidentId: null,
+    oleId: ole ? ole.id : null,
+    findingId: finding ? finding.id : null,
+    title: partial.title || '',
+    description: partial.description || '',
+    type: partial.type || 'Learning',
+    priority: partial.priority || 'Medium',
+    status: partial.status || 'Open',
+    owner: partial.owner || '',
+    site: ole ? (ole.location.city || ole.location.site || '') : '',
+    dueDate: partial.dueDate || '',
+    createdAt: nowISO(), updatedAt: nowISO(),
+  };
+}
+
 export function newAction(visit, partial = {}) {
   return {
     id: uid('act'),
@@ -105,6 +143,11 @@ export const store = {
   accident: (id) => db.get('accidents', id),
   async saveAccident(a) { a.updatedAt = nowISO(); await db.put('accidents', a); sync.push('accidents', a); return a; },
   async delAccident(id) { await db.del('accidents', id); sync.remove('accidents', id); },
+
+  oles: () => db.all('oles'),
+  ole: (id) => db.get('oles', id),
+  async saveOle(o) { o.updatedAt = nowISO(); await db.put('oles', o); sync.push('oles', o); return o; },
+  async delOle(id) { await db.del('oles', id); sync.remove('oles', id); },
 
   async savePhoto(dataURL) {
     const id = uid('ph');
@@ -302,6 +345,44 @@ export function accidentControlSplit(list) {
 }
 
 // ---------------------------------------------------------------------------
+// OLE metrics
+// ---------------------------------------------------------------------------
+export function buildOleKpis(oles, actions) {
+  const thisMonth = monthKey(nowISO());
+  const month = oles.filter((o) => monthKey(o.date || o.createdAt) === thisMonth).length;
+  let findings = 0, variabilities = 0, outside = 0, fourD = 0;
+  for (const o of oles) {
+    const fs = oleFindings(o);
+    findings += fs.length;
+    for (const f of fs) {
+      if (f.variability) variabilities++;
+      if (!f.stepId) outside++;
+      if ((f.fourD || []).length) fourD++;
+    }
+  }
+  const oleActions = actions.filter((a) => a.oleId);
+  const open = oleActions.filter((a) => a.status !== 'Closed' && a.status !== 'Implemented');
+  const overdue = open.filter((a) => a.dueDate && daysBetween(a.dueDate) > 0);
+  return {
+    total: oles.length, month, findings, variabilities, outside, fourD,
+    actionsPending: oles.filter((o) => o.status === 'actions_pending').length,
+    openActions: open.length, overdueActions: overdue.length,
+    closed: oles.filter((o) => o.status === 'closed').length,
+  };
+}
+export function olesByStatus(list) {
+  const order = ['new', 'in_progress', 'completed', 'actions_pending', 'closed'];
+  const m = Object.fromEntries(order.map((s) => [s, 0]));
+  for (const o of list) m[o.status] = (m[o.status] || 0) + 1;
+  return order.map((s) => [s, m[s]]);
+}
+export function olesByMonth(list) {
+  const m = {};
+  for (const o of list) { const k = monthKey(o.date || o.createdAt); m[k] = (m[k] || 0) + 1; }
+  return Object.entries(m).sort((a, b) => a[0].localeCompare(b[0]));
+}
+
+// ---------------------------------------------------------------------------
 // Seed data (only on first run) so dashboards/analytics are not empty.
 // ---------------------------------------------------------------------------
 export async function ensureSeed() {
@@ -416,8 +497,88 @@ export async function seedDemoData() {
   }
 
   await seedAccidents(rand, observers, cities);
+  await seedOles(rand, observers, cities);
 
   await store.setMeta('seeded', true);
+}
+
+async function seedOles(rand, observers, cities) {
+  const tasks = [
+    'Hoistway access & STOP application', 'Counterweight screen installation', 'Door panel adjustment',
+    'LOTO before electrical work', 'Hoisting the car frame', 'Pit cleaning & inspection',
+  ];
+  const stepNames = {
+    'Hoistway access & STOP application': ['Prepare tools & PPE', 'Apply STOP / recall control', 'Attach fall protection', 'Access car roof', 'Perform task', 'Leave hoistway'],
+    default: ['Prepare', 'Set up controls', 'Execute task', 'Verify', 'Close out'],
+  };
+  const fourDIds = ['different', 'difficult', 'dumb', 'dangerous'];
+  const locs = ['Machine room', 'Car top', 'Shaft / Pit', 'Landing', 'Escalator'];
+  const statuses = ['new', 'in_progress', 'completed', 'actions_pending', 'closed'];
+
+  for (let i = 0; i < 10; i++) {
+    const o = newOLE();
+    const task = rand(tasks);
+    const [city, branch, addr, region] = rand(cities);
+    const [fac] = rand(observers);
+    const daysAgo = Math.floor(Math.random() * 140);
+    const when = new Date(Date.now() - daysAgo * 86400000);
+    o.refNo = 'OLE-' + (4200 + i);
+    o.title = task + ' — learning event';
+    o.task = task; o.process = 'Field operations';
+    o.facilitator = fac;
+    o.date = when.toISOString().slice(0, 10);
+    o.createdAt = when.toISOString(); o.updatedAt = o.createdAt;
+    o.location = { site: addr, city, zone: branch, region, branch };
+    o.status = rand(statuses);
+    o.attendees = [
+      { name: fac, role: 'Facilitator', company: 'Schindler' },
+      { name: rand(['A. Santos', 'P. Novak', 'R. Costa']), role: 'Technician', company: rand(['Schindler', 'Subcontractor']) },
+      { name: rand(['M. Yilmaz', 'K. Tanaka']), role: 'Participant', company: 'Schindler' },
+    ];
+    o.prepNotes = 'Review the standard procedure and recent events related to this task before the session.';
+
+    const names = stepNames[task] || stepNames.default;
+    o.steps = names.map((n, idx) => ({ id: newStep(idx).id, order: idx, name: n, description: '' }));
+
+    // findings on steps + outside the swimlane
+    const nFind = 2 + Math.floor(Math.random() * 4);
+    for (let k = 0; k < nFind; k++) {
+      const outside = Math.random() < 0.3;
+      const step = outside ? null : rand(o.steps);
+      const f = newFinding(outside ? null : step.id);
+      const isVar = Math.random() < 0.6;
+      f.description = outside
+        ? rand(['Tooling not standardized across crews', 'Procedure unclear for this site layout', 'Time pressure from scheduling'])
+        : rand(['Step done differently than the procedure', 'Workaround used to save time', 'Control hard to apply in this position', 'Extra effort needed due to access']);
+      f.fourD = [rand(fourDIds), ...(Math.random() < 0.3 ? [rand(fourDIds)] : [])].filter((v, idx, arr) => arr.indexOf(v) === idx);
+      f.variability = isVar;
+      f.variabilityDesc = isVar ? 'Observed deviation from the standard discussed with the crew.' : '';
+      f.location = rand(locs);
+      f.severity = rand(['Low', 'Medium', 'High']);
+      o.findings.push(f);
+    }
+
+    await store.saveOle(o);
+
+    // traceable actions from a subset of findings
+    for (const f of o.findings) {
+      if (Math.random() < 0.5) {
+        const st = o.status === 'closed' ? rand(['Implemented', 'Closed']) : rand(['Open', 'Open', 'In progress', 'Implemented']);
+        const due = new Date(when.getTime() + (15 + Math.floor(Math.random() * 45)) * 86400000).toISOString().slice(0, 10);
+        const a = newOleAction(o, f, {
+          title: rand(['Update the procedure', 'Standardize the tooling', 'Add a quick reference card', 'Retrain the crew', 'Improve access/setup']),
+          description: 'Action from OLE ' + o.refNo + ' (finding: ' + f.description.slice(0, 40) + '…)',
+          type: rand(['Learning', 'Risk elimination', 'Training']),
+          priority: f.severity === 'High' ? 'High' : rand(['High', 'Medium', 'Low']),
+          status: st,
+          owner: rand(['L. Romano', 'S. Becker', 'D. Alvarez', fac]),
+          dueDate: due,
+        });
+        a.createdAt = o.createdAt;
+        await store.saveAction(a);
+      }
+    }
+  }
 }
 
 async function seedAccidents(rand, observers, cities) {

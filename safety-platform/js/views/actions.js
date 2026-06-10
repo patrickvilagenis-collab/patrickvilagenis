@@ -33,7 +33,7 @@ export async function renderActions(root) {
           ${['Open', 'In progress', 'Implemented', 'Closed'].map((s) => `<option ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}
         </select>
       </td>
-      <td class="num">${a.accidentId ? `<a class="link" href="#/accident/${a.accidentId}">accident ↗</a>` : a.visitId ? `<a class="link" href="#/visit/${a.visitId}">visit ↗</a>` : '—'}</td>
+      <td class="num">${a.accidentId ? `<a class="link" href="#/accident/${a.accidentId}">accident ↗</a>` : a.oleId ? `<a class="link" href="#/ole/${a.oleId}">OLE ↗</a>` : a.visitId ? `<a class="link" href="#/visit/${a.visitId}">visit ↗</a>` : '—'}</td>
     </tr>`;
 
   root.innerHTML = `

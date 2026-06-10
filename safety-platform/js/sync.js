@@ -7,7 +7,7 @@
 const CFG = 'shi_sync_cfg';
 const OUTBOX = 'shi_sync_outbox';
 const AUTH = 'shi_auth';
-export const COLLECTIONS = ['visits', 'accidents', 'actions', 'photos', 'meta'];
+export const COLLECTIONS = ['visits', 'accidents', 'oles', 'actions', 'photos', 'meta'];
 
 // Default backend URL so end users only need their username + password.
 // Set to '' to make the app fully local (no login).

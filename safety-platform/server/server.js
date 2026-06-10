@@ -29,7 +29,7 @@ const API_KEY = process.env.API_KEY || '';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'safety.db');
 
-const COLLECTIONS = ['visits', 'accidents', 'actions', 'photos', 'meta'];
+const COLLECTIONS = ['visits', 'accidents', 'oles', 'actions', 'photos', 'meta'];
 
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 const db = new Database(DB_FILE);
