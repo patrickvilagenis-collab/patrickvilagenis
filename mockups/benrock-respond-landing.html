@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BenRock Respond – Jede Mieteranfrage in 60 Sekunden beantwortet | BenRock Capital × Apleona Schweiz</title>
+<meta name="description" content="BenRock Respond ist der KI-Agent für Mieterkommunikation: liest jede Nachricht, erkennt Fristen nach OR, schreibt den Antwortentwurf in Schweizer Hochdeutsch. Ihr Team gibt frei.">
+<style>
+  :root{
+    --ink:#111316;
+    --paper:#FFFFFF;
+    --grey:#5C6066;
+    --line:#E3E4E6;
+    --soft:#F4F4F5;
+    --red:#E2001A;
+    --red-dark:#B80015;
+    --green:#1E8A5B;
+    --amber:#B97700;
+    --mono:'SF Mono','IBM Plex Mono','Roboto Mono',Consolas,monospace;
+    --sans:'Helvetica Neue',Helvetica,Inter,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.55;font-size:16px}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .mono-label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:14px}
+  h2{font-size:clamp(22px,3.6vw,32px);letter-spacing:-.02em;font-weight:700;margin-bottom:10px}
+  .sub{color:var(--grey);font-size:16px;max-width:64ch;margin-bottom:28px}
+
+  /* ===== Top bar ===== */
+  .topbar{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);z-index:50}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px}
+  .brand{font-weight:700;letter-spacing:-.02em;font-size:15px;white-space:nowrap}
+  .brand .x{color:var(--grey);font-weight:400;margin:0 6px}
+  .brand .client{color:var(--red)}
+  .topnav{display:flex;gap:22px;align-items:center}
+  .topnav a{font-size:13px;color:var(--grey);text-decoration:none;font-weight:500}
+  .topnav a:hover{color:var(--ink)}
+  .topnav a.btn{background:var(--ink);color:#fff;padding:9px 16px;border-radius:4px;font-weight:600}
+  .topnav a.btn:hover{background:var(--red)}
+  @media(max-width:760px){.topnav a:not(.btn){display:none}}
+
+  /* ===== Hero ===== */
+  .hero{padding:76px 0 56px;border-bottom:1px solid var(--line)}
+  .hero h1{font-size:clamp(32px,5.6vw,54px);line-height:1.08;letter-spacing:-.028em;font-weight:700;max-width:20ch}
+  .hero h1 em{font-style:normal;color:var(--red)}
+  .hero p.lead{margin-top:22px;font-size:18px;color:var(--grey);max-width:60ch}
+  .hero-ctas{margin-top:30px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .cta{display:inline-block;background:var(--red);color:#fff;text-decoration:none;padding:14px 26px;font-size:15px;font-weight:600;border-radius:4px;transition:background .15s}
+  .cta:hover{background:var(--red-dark)}
+  .cta.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+  .cta.ghost:hover{background:var(--ink);color:#fff}
+  .hero-proof{margin-top:34px;display:flex;gap:10px;flex-wrap:wrap}
+  .pill{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:3px;padding:8px 12px;background:#fff}
+  .pill b{color:var(--red);font-size:14px}
+
+  /* ===== Problem ===== */
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section.soft{background:var(--soft)}
+  .case{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
+  .case-head{background:var(--soft);padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--grey);border-bottom:1px solid var(--line)}
+  .steps{list-style:none}
+  .steps li{display:flex;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;align-items:baseline}
+  .steps li:last-child{border-bottom:none}
+  .steps .d{font-family:var(--mono);font-size:12px;color:var(--grey);min-width:86px;flex-shrink:0}
+  .steps .warn{color:var(--red);font-weight:600}
+  .tally{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+
+  .pain3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:34px}
+  @media(max-width:820px){.pain3{grid-template-columns:1fr}}
+  .pain{border:1px solid var(--line);border-radius:6px;padding:20px;background:#fff}
+  .pain .big{font-family:var(--mono);font-size:30px;font-weight:600;color:var(--red);letter-spacing:-.02em;display:block;margin-bottom:8px}
+  .pain h3{font-size:15px;font-weight:700;margin-bottom:6px}
+  .pain p{font-size:14px;color:var(--grey)}
+
+  /* ===== Solution / steps ===== */
+  .how{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:step}
+  @media(max-width:820px){.how{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.how{grid-template-columns:1fr}}
+  .how .step{border:1px solid var(--line);border-radius:6px;padding:20px;position:relative;background:#fff}
+  .how .step::before{counter-increment:step;content:"0" counter(step);font-family:var(--mono);font-size:12px;color:var(--red);display:block;margin-bottom:12px;letter-spacing:.08em}
+  .how .step h3{font-size:15px;font-weight:700;margin-bottom:6px}
+  .how .step p{font-size:13.5px;color:var(--grey)}
+  .how-note{margin-top:18px;font-family:var(--mono);font-size:12px;color:var(--grey);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:4px;padding:10px 14px;background:var(--soft)}
+  .how-note b{color:var(--green)}
+
+  /* ===== Demo console (original) ===== */
+  .console{border:1px solid var(--ink);border-radius:8px;overflow:hidden;box-shadow:0 1px 0 var(--line)}
+  .console-bar{background:var(--ink);color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+  .console-bar .t{font-family:var(--mono);font-size:12px;letter-spacing:.04em}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:7px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .console-body{display:grid;grid-template-columns:330px 1fr;min-height:520px}
+  @media(max-width:820px){.console-body{grid-template-columns:1fr}}
+  .inbox{border-right:1px solid var(--line);background:var(--soft)}
+  @media(max-width:820px){.inbox{border-right:none;border-bottom:1px solid var(--line)}}
+  .inbox-h{padding:12px 16px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--grey);border-bottom:1px solid var(--line)}
+  .mail{padding:13px 16px;border-bottom:1px solid var(--line);cursor:pointer;background:transparent;transition:background .12s}
+  .mail:hover{background:#ECECEE}
+  .mail.active{background:#fff;border-left:3px solid var(--red);padding-left:13px}
+  .mail .from{font-size:13px;font-weight:600}
+  .mail .subj{font-size:13px;color:var(--ink);margin-top:2px}
+  .mail .meta{font-family:var(--mono);font-size:11px;color:var(--grey);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:2px;border:1px solid var(--line);background:#fff}
+  .badge.frist{border-color:var(--red);color:var(--red)}
+  .badge.done{border-color:var(--green);color:var(--green)}
+  .reader{padding:20px;background:#fff;display:flex;flex-direction:column;gap:16px}
+  .mailview{border:1px solid var(--line);border-radius:6px;padding:16px;font-size:14px}
+  .mailview .hdr{font-family:var(--mono);font-size:11px;color:var(--grey);margin-bottom:10px;line-height:1.7;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .mailview .body{white-space:pre-wrap;color:var(--ink)}
+  .runbtn{align-self:flex-start;background:var(--red);color:#fff;border:none;font-family:var(--sans);font-weight:600;font-size:14px;padding:12px 18px;border-radius:4px;cursor:pointer}
+  .runbtn:hover{background:var(--red-dark)}
+  .runbtn:disabled{background:var(--grey);cursor:wait}
+  .timer{font-family:var(--mono);font-size:12px;color:var(--grey);margin-left:12px}
+  .result{display:none;flex-direction:column;gap:14px}
+  .result.show{display:flex;animation:fadein .4s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .panel{border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .panel-h{background:var(--soft);padding:9px 14px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--grey);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .panel-b{padding:14px;font-size:14px}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;font-size:13px}
+  .kv .k{font-family:var(--mono);font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+  .kv .v b.hot{color:var(--red)}
+  .panel-b ul{padding-left:18px}
+  .panel-b li{margin-bottom:6px}
+  .draft{white-space:pre-wrap;font-size:14px;line-height:1.65}
+  .approve{display:flex;gap:10px;flex-wrap:wrap}
+  .approve button{font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 16px;border-radius:4px;cursor:pointer;border:1px solid var(--line);background:#fff}
+  .approve .ok{background:var(--green);border-color:var(--green);color:#fff}
+  .sentnote{font-family:var(--mono);font-size:12px;color:var(--green);display:none}
+  .errnote{font-family:var(--mono);font-size:12px;color:var(--amber);display:none;border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--soft)}
+
+  /* ===== Use cases ===== */
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:920px){.grid4{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.grid4{grid-template-columns:1fr}}
+  .uc{border:1px solid var(--line);border-radius:6px;padding:20px;background:#fff;display:flex;flex-direction:column}
+  .uc .tag-top{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:12px}
+  .uc h3{font-size:15px;font-weight:700;margin-bottom:8px}
+  .uc p{font-size:13.5px;color:var(--grey);flex:1}
+  .uc .foot{margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--red);border-top:1px solid var(--line);padding-top:10px}
+
+  /* ===== Benefits ===== */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:820px){.grid3{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:6px;padding:20px;background:#fff}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+  .card p{font-size:14px;color:var(--grey)}
+  .card .num{font-family:var(--mono);font-size:28px;font-weight:600;color:var(--red);display:block;margin-bottom:8px;letter-spacing:-.02em}
+  .grid4.metrics .card .num{font-size:26px}
+
+  /* ===== Pricing ===== */
+  .pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:stretch}
+  @media(max-width:880px){.pricing{grid-template-columns:1fr}}
+  .price{border:1px solid var(--line);border-radius:6px;padding:26px 22px;background:#fff;display:flex;flex-direction:column}
+  .price.featured{border:2px solid var(--ink);position:relative}
+  .price.featured .flag{position:absolute;top:-11px;left:20px;background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:2px}
+  .price .phase{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:10px}
+  .price .amount{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:2px}
+  .price .amount small{font-size:13px;font-weight:400;color:var(--grey)}
+  .price .dur{font-family:var(--mono);font-size:12px;color:var(--grey);margin-bottom:16px}
+  .price ul{list-style:none;flex:1}
+  .price li{font-size:13.5px;padding:7px 0 7px 22px;border-bottom:1px solid var(--soft);position:relative;color:var(--ink)}
+  .price li::before{content:"—";position:absolute;left:0;color:var(--red);font-weight:700}
+  .price .cta{margin-top:20px;text-align:center}
+  .guarantee{margin-top:22px;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:4px;padding:14px 16px;background:var(--soft);font-size:14px}
+  .guarantee b{color:var(--green)}
+  .guarantee .m{font-family:var(--mono);font-size:12px;color:var(--grey);display:block;margin-top:4px}
+
+  /* ===== Trust ===== */
+  .trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px}
+  @media(max-width:920px){.trust-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.trust-grid{grid-template-columns:1fr}}
+  .trust{border:1px solid var(--line);border-radius:6px;padding:18px;background:#fff}
+  .trust .t-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+  .trust h3{font-size:14px;font-weight:700;margin-bottom:4px}
+  .trust p{font-size:13px;color:var(--grey)}
+  .quote{border:1px solid var(--line);border-radius:6px;padding:26px;background:#fff;display:flex;flex-direction:column;gap:12px}
+  .quote blockquote{font-size:18px;line-height:1.5;letter-spacing:-.01em;font-weight:500;max-width:56ch}
+  .quote blockquote::before{content:"« "}
+  .quote blockquote::after{content:" »"}
+  .quote .who{font-family:var(--mono);font-size:12px;color:var(--grey)}
+
+  /* ===== Final CTA ===== */
+  .final{background:var(--ink);color:#fff;padding:72px 0}
+  .final .mono-label{color:var(--red)}
+  .final h2{color:#fff;font-size:clamp(26px,4.4vw,40px);max-width:24ch}
+  .final p{color:#A6A9AD;font-size:16px;max-width:58ch;margin-top:14px}
+  .final .hero-ctas{margin-top:28px}
+  .final .cta.ghost{color:#fff;border-color:#fff}
+  .final .cta.ghost:hover{background:#fff;color:var(--ink)}
+  .final .pill{background:transparent;border-color:#3A3D42;color:#A6A9AD}
+  .final .pill b{color:#fff}
+
+  footer{padding:30px 0 50px;color:var(--grey);font-size:12px;font-family:var(--mono);border-top:1px solid var(--line)}
+  footer .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<div class="topbar"><div class="wrap">
+  <div class="brand">BenRock Capital<span class="x">×</span><span class="client">Apleona Schweiz</span></div>
+  <nav class="topnav">
+    <a href="#problem">Problem</a>
+    <a href="#loesung">Lösung</a>
+    <a href="#demo">Live-Demo</a>
+    <a href="#preise">Modell</a>
+    <a class="btn" href="#kontakt">Demo vereinbaren</a>
+  </nav>
+</div></div>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero"><div class="wrap">
+  <div class="mono-label">BenRock Respond – KI-Agent für Mieterkommunikation</div>
+  <h1>Jede Mieteranfrage in <em>60 Sekunden</em> beantwortet. Nicht in sechs Tagen.</h1>
+  <p class="lead">Ihre Property Manager verlieren Stunden pro Tag mit repetitiver Korrespondenz: Kündigungen, Nachmieter, Übergabetermine, Mängelrügen, Formulare. BenRock Respond liest jede eingehende Nachricht, erkennt Fristen nach OR, erstellt den Antwortentwurf in Schweizer Hochdeutsch und übergibt zur Freigabe. Ihr Team entscheidet, die KI tippt.</p>
+  <div class="hero-ctas">
+    <a class="cta" href="#kontakt">Demo vereinbaren</a>
+    <a class="cta ghost" href="#demo">Live-Demo ansehen</a>
+  </div>
+  <div class="hero-proof">
+    <span class="pill">Entwurf in <b>&lt; 60 Sek.</b></span>
+    <span class="pill"><b>2–4 h</b> pro Tag und Mitarbeiter zurückgewonnen</span>
+    <span class="pill"><b>≈ 70%</b> der Korrespondenz automatisierbar</span>
+    <span class="pill"><b>0</b> verpasste Fristen</span>
+  </div>
+</div></section>
+
+<!-- ===================== PROBLEM ===================== -->
+<section class="section soft" id="problem"><div class="wrap">
+  <div class="mono-label">Das Problem</div>
+  <h2>Mieterkommunikation heute: fünf Kanäle, sechs Tage, null Übersicht</h2>
+  <p class="sub">Repetitive Korrespondenz frisst die Zeit, die in Wiedervermietung, Eigentümerbetreuung und Leerstandsabbau fliessen sollte. Und jeder Tag Verzögerung kostet – den Mieter, den Eigentümer und Ihre Geschäftsstelle.</p>
+
+  <div class="pain3">
+    <div class="pain"><span class="big">3–6 Tage</span><h3>typische Antwortzeit</h3><p>Erfassung manuell, Weiterleitung zwischen Geschäftsstellen, Rückfragen per Telefon. Der Mieter wartet, der Prozess steht.</p></div>
+    <div class="pain"><span class="big">5 Kanäle</span><h3>pro Fall</h3><p>Einschreiben, E-Mail, Telefon, Flatfox und Papierformulare in doppelter Ausführung – für einen einzigen Mieterwechsel.</p></div>
+    <div class="pain"><span class="big">Fristen</span><h3>mit realen Konsequenzen</h3><p>Art. 264 OR Nachmieter, 5-Tage-Mängelrügen beim Erstbezug, 14-Tage-Regel bei Übergaben. Wer zu spät reagiert, haftet oder verliert Mietzins.</p></div>
+  </div>
+
+  <h2 style="font-size:clamp(18px,2.8vw,24px)">Ein realer Fall aus Ihrem eigenen Posteingang</h2>
+  <p class="sub">Anonymisierter Ablauf einer vorzeitigen Kündigung mit Nachmietersuche, Stadt Luzern, Mai–Juni 2026. Der Mieter war kooperativ und schnell. Der Prozess war es nicht.</p>
+  <div class="case">
+    <div class="case-head">FALL 94120-XX · 3.5-ZI-WOHNUNG · VORZEITIGE KÜNDIGUNG PER 31.07.</div>
+    <ul class="steps">
+      <li><span class="d">Tag 0</span><span>Kündigung trifft per Einschreiben ein. Erfassung manuell, Weiterleitung zwischen Geschäftsstellen.</span></li>
+      <li><span class="d">Tag 1–6</span><span>Mieter wartet auf Bestätigung und auf die Bedingungen für die Nachmietersuche.</span></li>
+      <li><span class="d">Tag 7–20</span><span>Mieter organisiert selbst Besichtigungen (über 25 Interessenten am ersten Abend), schickt Updates und drei solvente Nachmieter-Kandidaten per E-Mail.</span></li>
+      <li><span class="d">Tag 7–20</span><span>Parallel laufen Papierformulare in doppelter Ausführung: Wiedervermietung, Zahlungsart, Namensschilder, Kaution.</span></li>
+      <li><span class="d">laufend</span><span class="warn">Jeder Tag Verzögerung bei der Nachmieterprüfung = Risiko eines Monats Doppelmiete für den Mieter und ein leeres Objekt für den Eigentümer.</span></li>
+    </ul>
+  </div>
+  <div class="tally">
+    <span class="pill">Kanäle im Fall: <b>5</b> (Einschreiben, E-Mail, Telefon, Flatfox, Papierformulare)</span>
+    <span class="pill">Typische Antwortzeit: <b>3–6 Tage</b></span>
+    <span class="pill">Mit BenRock Respond: <b>&lt; 60 Sek.</b> bis zum freigabefertigen Entwurf</span>
+  </div>
+</div></section>
+
+<!-- ===================== LÖSUNG ===================== -->
+<section class="section" id="loesung"><div class="wrap">
+  <div class="mono-label">Die Lösung</div>
+  <h2>Der Agent arbeitet. Ihr Team gibt frei.</h2>
+  <p class="sub">BenRock Respond hängt sich an Ihren bestehenden Posteingang und Ihre Kanäle (E-Mail, Leona-Mieterportal) und bereitet jede Nachricht bis zur versandfertigen Antwort vor – in vier Schritten.</p>
+  <div class="how">
+    <div class="step"><h3>Lesen &amp; klassifizieren</h3><p>Jede eingehende Nachricht wird gelesen und einem Falltyp zugeordnet: Kündigung, Nachmieter, Übergabe, Mängelrüge, Administration.</p></div>
+    <div class="step"><h3>Fristen erkennen</h3><p>Der Agent erkennt Fristen nach OR (Art. 264 Nachmieter, Mängelrügen, 14-Tage-Regel) samt Konsequenz und eskaliert automatisch, bevor etwas anbrennt.</p></div>
+    <div class="step"><h3>Entwurf schreiben</h3><p>Vollständiger Antwortentwurf in Schweizer Hochdeutsch, formelle Sie-Form, korrekte Absendersignatur Ihrer Geschäftsstelle – plus vorgeschlagene Massnahmen.</p></div>
+    <div class="step"><h3>Mensch gibt frei</h3><p>Freigeben und senden, bearbeiten oder an den Property Manager eskalieren. Nichts geht ohne menschliche Freigabe raus.</p></div>
+  </div>
+  <div class="how-note"><b>✓ Human-in-the-Loop:</b> Entwürfe werden ausschliesslich nach menschlicher Freigabe versendet. Integration über API in Ihre bestehende Umgebung (E-Mail, Leona-Mieterportal, ERP). Daten-Hosting in der Schweiz.</div>
+</div></section>
+
+<!-- ===================== LIVE-DEMO ===================== -->
+<section class="section soft" id="demo"><div class="wrap">
+  <div class="mono-label">Live-Demo</div>
+  <h2>Sehen Sie den Agenten an vier echten Fällen arbeiten</h2>
+  <p class="sub">Vier echte Nachrichtentypen aus dem Alltag Ihrer Geschäftsstellen. Wählen Sie eine Nachricht und klicken Sie auf «Mit KI verarbeiten». Der Agent klassifiziert, erkennt Fristen, schlägt Massnahmen vor und schreibt den Antwortentwurf. Nichts geht ohne menschliche Freigabe raus.</p>
+
+  <div class="console">
+    <div class="console-bar">
+      <span class="t"><span class="dot"></span>BENROCK RESPOND · GESCHÄFTSSTELLE LUZERN</span>
+      <span class="t" id="clock"></span>
+    </div>
+    <div class="console-body">
+      <div class="inbox">
+        <div class="inbox-h">Posteingang · 4 unbearbeitet</div>
+        <div id="maillist"></div>
+      </div>
+      <div class="reader">
+        <div class="mailview">
+          <div class="hdr" id="mv-hdr"></div>
+          <div class="body" id="mv-body"></div>
+        </div>
+        <div>
+          <button class="runbtn" id="run">Mit KI verarbeiten</button>
+          <span class="timer" id="timer"></span>
+        </div>
+        <div class="errnote" id="errnote">Live-Verbindung nicht verfügbar – es wird das vorberechnete Ergebnis derselben KI gezeigt.</div>
+
+        <div class="result" id="result">
+          <div class="panel">
+            <div class="panel-h"><span>Triage</span><span id="t-elapsed"></span></div>
+            <div class="panel-b"><div class="kv" id="kv"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><span>Vorgeschlagene Massnahmen</span></div>
+            <div class="panel-b"><ul id="actions"></ul></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><span>Antwortentwurf · Schweizer Hochdeutsch</span><span>zur Freigabe</span></div>
+            <div class="panel-b draft" id="draft"></div>
+          </div>
+          <div class="approve">
+            <button class="ok" id="approve">Freigeben und senden</button>
+            <button>Bearbeiten</button>
+            <button>An Property Manager eskalieren</button>
+            <span class="sentnote" id="sentnote">✓ Gesendet und im Dossier abgelegt</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===================== USE CASES ===================== -->
+<section class="section"><div class="wrap">
+  <div class="mono-label">Anwendungsfälle</div>
+  <h2>Vier Falltypen, die heute Ihre Postfächer füllen</h2>
+  <p class="sub">Genau die Nachrichtentypen aus der Live-Demo – die repetitiven Standardfälle, die ein Agent zuverlässig bis zur Freigabe vorbereitet.</p>
+  <div class="grid4">
+    <div class="uc">
+      <div class="tag-top">Art. 264 OR</div>
+      <h3>Nachmieter &amp; Wiedervermietung</h3>
+      <p>Mieterschaft schlägt zahlungsbereite Nachmieter vor. Der Agent bestätigt den Eingang, fordert Unterlagen via Flatfox an und priorisiert die Bonitätsprüfung – bevor Doppelmiete oder Leerstand entstehen.</p>
+      <div class="foot">FRIST ERKANNT · PRIORITÄT HOCH</div>
+    </div>
+    <div class="uc">
+      <div class="tag-top">14-Tage-Regel</div>
+      <h3>Wohnungsübergabe</h3>
+      <p>Terminvereinbarung, Übergabeprotokoll, Checkliste, Vollmachten, Fragen zur Endreinigung. Standardfall – vollständig automatisierbar bis zur Freigabe.</p>
+      <div class="foot">TERMINIERUNG · PRIORITÄT MITTEL</div>
+    </div>
+    <div class="uc">
+      <div class="tag-top">5-Tage-Frist Erstbezug</div>
+      <h3>Mängelrügen</h3>
+      <p>Fristgerechte Eingangsbestätigung am selben Tag, dringende Punkte (z.B. Wasseraustritt) sofort an den Sanitär-Service, Garantiefälle an den Totalunternehmer.</p>
+      <div class="foot">FRIST ERKANNT · PRIORITÄT HOCH</div>
+    </div>
+    <div class="uc">
+      <div class="tag-top">Wissensbasis</div>
+      <h3>Administration &amp; Einzug</h3>
+      <p>Kautionsnachweise, Zahlungsart, Namensschilder, Formularwesen. Beide Fragen aus der Wissensbasis beantwortbar – kein Bewirtschafter-Eingriff nötig.</p>
+      <div class="foot">STANDARD · PRIORITÄT TIEF</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===================== BENEFITS ===================== -->
+<section class="section soft"><div class="wrap">
+  <div class="mono-label">Was das für Apleona bedeutet</div>
+  <h2>Konservativ gerechnet, pro Geschäftsstelle</h2>
+  <p class="sub">Mit zwei Property Managern und einer Assistenz.</p>
+  <div class="grid4 metrics">
+    <div class="card"><span class="num">&lt; 60 Sek.</span><h3>bis zum freigabefertigen Entwurf</h3><p>Statt 3–6 Tagen Antwortzeit über fünf Kanäle. Messbar ab Woche eins.</p></div>
+    <div class="card"><span class="num">2–4 h</span><h3>pro Tag und Mitarbeiter zurückgewonnen</h3><p>Zeit, die in Wiedervermietung, Eigentümerbetreuung und Leerstandsabbau fliesst statt ins Tippen.</p></div>
+    <div class="card"><span class="num">≈ 70%</span><h3>der Korrespondenz ist repetitiv</h3><p>Terminanfragen, Formulare, Statusfragen, Standard-Mängel. Genau das, was ein Agent zuverlässig vorbereitet.</p></div>
+    <div class="card"><span class="num">0</span><h3>verpasste Fristen</h3><p>Der Agent erkennt Fristen (Art. 264 OR Nachmieter, Mängelrügen, Übergaben) und eskaliert automatisch, bevor etwas anbrennt.</p></div>
+  </div>
+</div></section>
+
+<!-- ===================== PRICING ===================== -->
+<section class="section" id="preise"><div class="wrap">
+  <div class="mono-label">Kommerzielles Modell</div>
+  <h2>Wir verkaufen kein Projekt, sondern ein Ergebnis</h2>
+  <p class="sub">Antwortzeit unter einem Arbeitstag, messbar ab Woche eins. Integration in Ihre bestehende Umgebung (E-Mail, Leona-Mieterportal, ERP) über API, Daten-Hosting in der Schweiz.</p>
+
+  <div class="pricing">
+    <div class="price featured">
+      <span class="flag">Start hier</span>
+      <div class="phase">Phase 1 · Pilot</div>
+      <div class="amount">CHF 25'000 <small>pauschal</small></div>
+      <div class="dur">90 Tage</div>
+      <ul>
+        <li>1 Geschäftsstelle (z.B. Luzern)</li>
+        <li>Posteingang-Triage + Antwortentwürfe</li>
+        <li>KPI-Baseline vorher/nachher</li>
+        <li>Erfolgskriterien vertraglich fixiert</li>
+      </ul>
+      <a class="cta" href="#kontakt">Pilot besprechen</a>
+    </div>
+    <div class="price">
+      <div class="phase">Phase 2 · Rollout</div>
+      <div class="amount">CHF 1.20–1.80 <small>pro verwaltete Einheit/Monat</small></div>
+      <div class="dur">6–9 Monate</div>
+      <ul>
+        <li>Alle Real-Estate-Geschäftsstellen</li>
+        <li>Anbindung Leona + ERP</li>
+        <li>Fristen-Engine</li>
+        <li>Eigentümer-Reporting</li>
+      </ul>
+      <a class="cta ghost" href="#kontakt">Rollout planen</a>
+    </div>
+    <div class="price">
+      <div class="phase">Phase 3 · Erweiterung</div>
+      <div class="amount">Modulare Add-ons</div>
+      <div class="dur">laufend</div>
+      <ul>
+        <li>Nachmieter-Workflow end-to-end</li>
+        <li>Übergabe-Terminierung</li>
+        <li>Mehrsprachig (DE/FR/IT/EN)</li>
+      </ul>
+      <a class="cta ghost" href="#kontakt">Module anfragen</a>
+    </div>
+  </div>
+
+  <div class="guarantee">
+    <b>Erfolgskriterium Pilot:</b> medianer Zeitbedarf bis zur versandfertigen Antwort unter 4 Stunden, Freigabequote der Entwürfe über 85%.
+    <span class="m">Wird das Ziel verfehlt, entfällt die zweite Pilotrate.</span>
+  </div>
+</div></section>
+
+<!-- ===================== TRUST ===================== -->
+<section class="section soft"><div class="wrap">
+  <div class="mono-label">Vertrauen &amp; Sicherheit</div>
+  <h2>Gebaut für Schweizer Immobilienverwaltung</h2>
+  <p class="sub">Kein Tech-Spielzeug, sondern ein Werkzeug, das vor Schweizer Immobilienprofis bestehen muss.</p>
+  <div class="trust-grid">
+    <div class="trust"><div class="t-label">Kontrolle</div><h3>Human-in-the-Loop</h3><p>Entwürfe werden ausschliesslich nach menschlicher Freigabe versendet. Ihr Team behält jede Entscheidung.</p></div>
+    <div class="trust"><div class="t-label">Recht</div><h3>OR-Fristen-Engine</h3><p>Art. 264 OR Nachmieter, Mängelrügen beim Erstbezug, 14-Tage-Regel bei Übergaben – erkannt, dokumentiert, eskaliert.</p></div>
+    <div class="trust"><div class="t-label">Daten</div><h3>Hosting in der Schweiz</h3><p>Daten-Hosting in der Schweiz, Anbindung über API an Ihre bestehende Umgebung statt Datenmigration.</p></div>
+    <div class="trust"><div class="t-label">Sprache</div><h3>Schweizer Hochdeutsch</h3><p>Formelle Sie-Form, «ss» statt «ß», Signatur Ihrer Geschäftsstelle. Entwürfe, die klingen wie Ihr Team.</p></div>
+  </div>
+  <div class="quote">
+    <blockquote>Der Mieter war kooperativ und schnell. Der Prozess war es nicht. Genau diese Lücke schliesst BenRock Respond: vom Einschreiben bis zum freigabefertigen Entwurf in unter einer Minute.</blockquote>
+    <div class="who">FALL 94120-XX · STADT LUZERN · MAI–JUNI 2026 · ALLE FALLDATEN ANONYMISIERT</div>
+  </div>
+</div></section>
+
+<!-- ===================== FINAL CTA ===================== -->
+<section class="final" id="kontakt"><div class="wrap">
+  <div class="mono-label">Nächster Schritt</div>
+  <h2>Starten Sie den 90-Tage-Pilot in einer Geschäftsstelle</h2>
+  <p>30 Minuten, Ihre echten Falltypen, Ihre Zahlen. Wir zeigen den Agenten live an Ihrem Posteingang und definieren gemeinsam die KPI-Baseline. Wird das Erfolgskriterium verfehlt, entfällt die zweite Pilotrate.</p>
+  <div class="hero-ctas">
+    <a class="cta" href="mailto:kontakt@benrockcapital.com?subject=BenRock%20Respond%20%E2%80%93%20Demo%20vereinbaren">Demo vereinbaren</a>
+    <a class="cta ghost" href="#demo">Nochmals zur Live-Demo</a>
+  </div>
+  <div class="hero-proof">
+    <span class="pill">Pilot: <b>90 Tage</b> · CHF 25'000 pauschal</span>
+    <span class="pill">Ziel: Antwort <b>&lt; 4 h</b> · Freigabequote <b>&gt; 85%</b></span>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <span>BenRock Capital × Apleona Schweiz · Alle Falldaten anonymisiert</span>
+  <span>Entwürfe werden ausschliesslich nach menschlicher Freigabe versendet</span>
+</div></footer>
+
+<script>
+const MAILS=[
+ {
+  id:"m1",
+  from:"P. V. und A. E. (Mieter)",
+  subj:"Wiedervermietung Seefeldstr.: 3 Nachmieter-Kandidaten",
+  meta:"E-Mail · heute 08:42",
+  frist:true,
+  hdr:"Von: Mieterschaft Seefeldstrasse 16, Luzern\nAn: Geschäftsstelle Luzern\nBetreff: Wiedervermietung – mögliche Nachmieter und Rückmeldung zum zweiten Besichtigungstag",
+  body:`Sehr geehrte Damen und Herren
+
+Auch am zweiten Besichtigungstag war das Interesse gross: über 15 Personen, mehrere mit starkem Interesse.
+
+Gemäss den Bedingungen für eine vorzeitige Vertragsauflösung schlagen wir folgende ernsthafte Interessenten als Nachmieter vor, alle bereit zur Übernahme per 1. August:
+
+- H. K., 079 xxx xx 11
+- A. N., 079 xxx xx 59
+- S. J., 078 xxx xx 60
+
+Wir bitten Sie, die Bonitätsprüfung vorzunehmen. Für uns ist wichtig, eine Doppelbelastung im August zu vermeiden.
+
+Freundliche Grüsse`,
+  fallback:{
+   kategorie:"Wiedervermietung / Nachmieter (Art. 264 OR)",
+   prioritaet:"Hoch",
+   frist:"Bonitätsprüfung innert 5 Arbeitstagen, sonst Risiko Mieterhaftung August und Leerstand ab 01.08.",
+   zusammenfassung:"Mieterschaft schlägt drei zahlungsbereite Nachmieter per 01.08. vor und dokumentiert damit die Erfüllung ihrer Pflicht zur Nachmieterstellung. Schnelle Prüfung liegt im Interesse von Eigentümer und Verwaltung.",
+   massnahmen:["Eingang innert 24 h bestätigen und Prüfprozess transparent machen","Bewerbungsunterlagen der drei Kandidaten via Flatfox anfordern","Bonitäts- und Referenzprüfung priorisieren (Ziel: Entscheid bis Freitag)","Übergabetermin provisorisch reservieren, sobald ein Kandidat bestätigt ist"],
+   antwort:`Sehr geehrte Frau X, sehr geehrter Herr Y
+
+Besten Dank für Ihre Nachricht und Ihr grosses Engagement bei den Besichtigungen.
+
+Wir bestätigen den Erhalt der drei vorgeschlagenen Nachmieter-Kandidaten. Wir haben alle drei Personen heute kontaktiert und gebeten, die Bewerbung über Flatfox einzureichen. Die Bonitätsprüfung führen wir prioritär durch; mit einem Entscheid dürfen Sie bis Ende dieser Woche rechnen.
+
+Sobald ein Kandidat feststeht, kommen wir umgehend mit einem Vorschlag für den Übergabetermin auf Sie zu.
+
+Freundliche Grüsse
+Apleona Schweiz AG, Geschäftsstelle Luzern`
+  }
+ },
+ {
+  id:"m2",
+  from:"Mieterschaft 3.5-Zi (Auszug 31.07.)",
+  subj:"Terminvereinbarung Wohnungsübergabe",
+  meta:"E-Mail · heute 09:15",
+  frist:true,
+  hdr:"Von: Mieterschaft Seefeldstrasse 16, Luzern\nAn: Geschäftsstelle Luzern\nBetreff: Übergabetermin Ende Juli",
+  body:`Guten Tag
+
+Unser Mietverhältnis endet am 31. Juli. Wir möchten den Übergabetermin frühzeitig fixieren, da wir beide berufstätig sind und gemäss Merkblatt der Termin mindestens 14 Tage im Voraus vereinbart werden soll.
+
+Möglich wären für uns: 30.07. ab 16 Uhr oder 31.07. ganztags.
+
+Bitte teilen Sie uns ausserdem mit, ob die Reinigung mit Abnahmegarantie zwingend mit Rechnung zu belegen ist.
+
+Freundliche Grüsse`,
+  fallback:{
+   kategorie:"Wohnungsübergabe / Terminierung",
+   prioritaet:"Mittel",
+   frist:"Terminbestätigung bis spätestens 16.07. (14-Tage-Regel gemäss Merkblatt).",
+   zusammenfassung:"Mieterschaft bittet um verbindlichen Übergabetermin und stellt eine Detailfrage zur Endreinigung. Standardfall, vollständig automatisierbar bis zur Freigabe.",
+   massnahmen:["Kalender des zuständigen Bewirtschafters prüfen und 31.07., 09.00 Uhr vorschlagen","Übergabeprotokoll-Vorlage und Merkblatt-Checkliste der Bestätigung beilegen","Hinweis auf Anwesenheit beider Mietparteien oder schriftliche Vollmacht","Frage zur Reinigungsrechnung gemäss Merkblatt beantworten"],
+   antwort:`Guten Tag
+
+Gerne bestätigen wir Ihnen die Wohnungsübergabe wie folgt:
+
+Datum: Freitag, 31. Juli, 09.00 Uhr, vor Ort in der Wohnung.
+
+Bitte beachten Sie, dass beide Mietparteien anwesend sein müssen oder eine schriftliche Vollmacht vorliegt. Im Anhang finden Sie die Checkliste gemäss Merkblatt.
+
+Zur Reinigung: Eine Reinigung mit Abnahmegarantie ist nicht zwingend, hat sich aber bewährt. Falls Sie selbst reinigen, gelten die Punkte der Checkliste (inkl. Teppiche mit Belegnachweis, Entkalkung, Dampfabzug).
+
+Freundliche Grüsse
+Apleona Schweiz AG, Geschäftsstelle Luzern`
+  }
+ },
+ {
+  id:"m3",
+  from:"Neumieter Maisonette (Erstbezug)",
+  subj:"Mängelrüge nach Einzug – Frist Neubau",
+  meta:"Leona-Portal · heute 10:03",
+  frist:true,
+  hdr:"Von: Neumieterschaft, 4.5-Zi-Maisonette (Erstbezug)\nKanal: Mieterportal Leona\nBetreff: Mängel nach Übergabe",
+  body:`Guten Tag
+
+Wir sind vor vier Tagen eingezogen. Gemäss Vertrag müssen Mängel beim Erstbezug innert 5 Tagen gemeldet werden, deshalb vorsorglich diese Liste:
+
+1. Silikonfuge Dusche OG undicht (Wasseraustritt auf Parkett)
+2. Fenster Schlafzimmer schliesst nicht bündig
+3. Kratzer auf Kochfeld, vermutlich vom Bau
+
+Fotos sind im Portal hochgeladen. Bitte bestätigen Sie den fristgerechten Eingang.
+
+Freundliche Grüsse`,
+  fallback:{
+   kategorie:"Mängelrüge Erstbezug / 2-Jahres-Garantie",
+   prioritaet:"Hoch",
+   frist:"Eingangsbestätigung heute (5-Tage-Frist läuft morgen ab). Wasseraustritt = Folgeschaden-Risiko.",
+   zusammenfassung:"Fristgerechte Mängelrüge beim Erstbezug mit einem dringlichen Punkt (undichte Fuge mit Wasseraustritt auf Parkett). Garantiefall gegenüber Totalunternehmer, sofortige Triage nötig.",
+   massnahmen:["Fristgerechten Eingang heute schriftlich bestätigen (rechtssichere Dokumentation)","Punkt 1 als dringend markieren: Sanitär-Service innert 48 h aufbieten","Punkte 1–3 als Garantiefälle an den Totalunternehmer weiterleiten","Mieterschaft Zwischenstand-Termin in 7 Tagen zusichern"],
+   antwort:`Guten Tag
+
+Besten Dank für Ihre Meldung. Wir bestätigen den fristgerechten Eingang Ihrer Mängelrüge vom heutigen Datum inklusive Fotodokumentation.
+
+Zur undichten Silikonfuge in der Dusche haben wir bereits den Sanitär-Service aufgeboten; er wird sich innert 48 Stunden für einen Termin bei Ihnen melden. Bitte benutzen Sie die Dusche bis dahin nach Möglichkeit nicht, um Folgeschäden am Parkett zu vermeiden.
+
+Die Punkte 2 und 3 leiten wir als Garantiefälle an den Totalunternehmer weiter und informieren Sie innert sieben Tagen über das weitere Vorgehen.
+
+Freundliche Grüsse
+Apleona Schweiz AG, Geschäftsstelle Luzern`
+  }
+ },
+ {
+  id:"m4",
+  from:"Mieterschaft (Einzug 01.08.)",
+  subj:"Frage zu Formularen: Zahlungsart und Namensschilder",
+  meta:"E-Mail · heute 11:27",
+  frist:false,
+  hdr:"Von: Neumieterschaft Schlösslihalde\nAn: Geschäftsstelle Luzern\nBetreff: Formulare aus dem Begrüssungsschreiben",
+  body:`Guten Tag
+
+Im Begrüssungsschreiben waren fünf Formulare. Den Mietvertrag und das Anfangsmietzinsformular haben wir bereits digital über Flatfox signiert.
+
+Zwei Fragen:
+1. Das Kautionsformular der ZKB benötigen wir nicht, da wir das Mietkautionskonto direkt bei der UBS eröffnet haben. Genügt die UBS-Bestätigung als Nachweis?
+2. Beim Formular Zahlungsart: reicht ein Dauerauftrag oder verlangen Sie LSV?
+
+Die Namensschilder-Bestellung senden wir diese Woche zurück.
+
+Freundliche Grüsse`,
+  fallback:{
+   kategorie:"Administration / Formularwesen Einzug",
+   prioritaet:"Tief",
+   frist:"Keine. Antwort innert 24 h hält den Einzugsprozess sauber.",
+   zusammenfassung:"Reine Standardanfrage zu Einzugsformularen. Beide Fragen sind mit Wissensbasis-Inhalten beantwortbar, kein Bewirtschafter-Eingriff nötig.",
+   massnahmen:["UBS-Kautionsbestätigung als gültigen Nachweis bestätigen und Ablage im Dossier","Zahlungsart klären: Dauerauftrag genügt, LSV optional","Eingang Namensschilder-Formular terminieren (Wiedervorlage in 7 Tagen)"],
+   antwort:`Guten Tag
+
+Besten Dank für Ihre Nachricht. Gerne beantworten wir Ihre Fragen:
+
+1. Ja, die Bestätigung der UBS über das eröffnete Mietkautionskonto genügt vollständig als Nachweis. Das ZKB-Formular können Sie entsorgen. Bitte senden Sie uns die UBS-Bestätigung per E-Mail oder über das Mieterportal Leona.
+
+2. Ein Dauerauftrag genügt. Ein LSV ist möglich, aber nicht erforderlich.
+
+Wir freuen uns auf den Eingang des Namensschilder-Formulars und wünschen Ihnen einen guten Start in der neuen Wohnung.
+
+Freundliche Grüsse
+Apleona Schweiz AG, Geschäftsstelle Luzern`
+  }
+ }
+];
+
+let current=MAILS[0];
+const $=id=>document.getElementById(id);
+
+function renderList(){
+  $("maillist").innerHTML=MAILS.map(m=>`
+   <div class="mail ${m.id===current.id?'active':''}" data-id="${m.id}">
+     <div class="from">${m.from}</div>
+     <div class="subj">${m.subj}</div>
+     <div class="meta"><span>${m.meta}</span>${m.frist?'<span class="badge frist">FRIST ERKANNT</span>':''}${m.done?'<span class="badge done">ERLEDIGT</span>':''}</div>
+   </div>`).join('');
+  document.querySelectorAll('.mail').forEach(el=>el.onclick=()=>{select(el.dataset.id)});
+}
+function select(id){
+  current=MAILS.find(m=>m.id===id);
+  $("mv-hdr").textContent=current.hdr;
+  $("mv-body").textContent=current.body;
+  $("result").classList.remove("show");
+  $("sentnote").style.display="none";
+  $("errnote").style.display="none";
+  $("timer").textContent="";
+  $("run").disabled=false;
+  renderList();
+}
+
+function renderResult(r,elapsed,live){
+  $("t-elapsed").textContent=elapsed+" s · "+(live?"LIVE (Claude API)":"vorberechnet");
+  $("kv").innerHTML=`
+    <div class="k">Kategorie</div><div class="v">${r.kategorie}</div>
+    <div class="k">Priorität</div><div class="v"><b class="${r.prioritaet==='Hoch'?'hot':''}">${r.prioritaet}</b></div>
+    <div class="k">Frist</div><div class="v">${r.frist}</div>
+    <div class="k">Zusammenfassung</div><div class="v">${r.zusammenfassung}</div>`;
+  $("actions").innerHTML=r.massnahmen.map(a=>`<li>${a}</li>`).join('');
+  $("draft").textContent=r.antwort;
+  $("result").classList.add("show");
+}
+
+async function run(){
+  const btn=$("run");btn.disabled=true;
+  const t0=performance.now();
+  $("timer").textContent="Agent liest die Nachricht …";
+  const tick=setInterval(()=>{$("timer").textContent="Agent arbeitet … "+((performance.now()-t0)/1000).toFixed(1)+" s"},120);
+
+  const sys=`Du bist BenRock Respond, ein KI-Agent für die Mieterkommunikation einer Schweizer Immobilienverwaltung (Apleona Schweiz AG, Geschäftsstelle Luzern). Analysiere die eingehende Mieternachricht. Antworte AUSSCHLIESSLICH mit einem JSON-Objekt, ohne Markdown, ohne Erklärung, mit exakt diesen Schlüsseln: kategorie (string), prioritaet ("Hoch"|"Mittel"|"Tief"), frist (string: erkannte Frist und Konsequenz, oder "Keine"), zusammenfassung (string, max 2 Sätze), massnahmen (Array mit 3-4 kurzen Strings), antwort (vollständiger Antwortentwurf in Schweizer Hochdeutsch, "ss" statt "ß", formelle Sie-Form, Absender "Apleona Schweiz AG, Geschäftsstelle Luzern", keine Em-Dashes).`;
+
+  try{
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+        system:sys,
+        messages:[{role:"user",content:"Eingehende Nachricht:\n\n"+current.hdr+"\n\n"+current.body}]})
+    });
+    const data=await resp.json();
+    const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+    const clean=text.replace(/```json|```/g,"").trim();
+    const r=JSON.parse(clean);
+    clearInterval(tick);
+    const el=((performance.now()-t0)/1000).toFixed(1);
+    $("timer").textContent="Fertig in "+el+" s";
+    renderResult(r,el,true);
+  }catch(e){
+    clearInterval(tick);
+    const el=((performance.now()-t0)/1000).toFixed(1);
+    $("timer").textContent="Fertig in "+el+" s";
+    $("errnote").style.display="block";
+    renderResult(current.fallback,el,false);
+  }
+  btn.disabled=false;
+}
+
+$("run").onclick=run;
+$("approve").onclick=()=>{
+  $("sentnote").style.display="inline";
+  current.done=true;current.frist=false;renderList();
+};
+
+function clock(){
+  const d=new Date();
+  $("clock").textContent=d.toLocaleDateString("de-CH")+" · "+d.toLocaleTimeString("de-CH",{hour:"2-digit",minute:"2-digit"});
+}
+clock();setInterval(clock,30000);
+select("m1");
+</script>
+</body>
+</html>
