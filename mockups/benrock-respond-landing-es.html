@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BenRock Respond – Cada consulta de inquilino respondida en 60 segundos | BenRock Capital × Apleona Schweiz</title>
+<meta name="description" content="BenRock Respond es el agente de IA para la comunicación con inquilinos: lee cada mensaje, detecta plazos legales según el OR suizo, redacta el borrador de respuesta. Su equipo aprueba.">
+<style>
+  :root{
+    --ink:#111316;
+    --paper:#FFFFFF;
+    --grey:#5C6066;
+    --line:#E3E4E6;
+    --soft:#F4F4F5;
+    --red:#E2001A;
+    --red-dark:#B80015;
+    --green:#1E8A5B;
+    --amber:#B97700;
+    --mono:'SF Mono','IBM Plex Mono','Roboto Mono',Consolas,monospace;
+    --sans:'Helvetica Neue',Helvetica,Inter,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--ink);background:var(--paper);line-height:1.55;font-size:16px}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .mono-label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:14px}
+  h2{font-size:clamp(22px,3.6vw,32px);letter-spacing:-.02em;font-weight:700;margin-bottom:10px}
+  .sub{color:var(--grey);font-size:16px;max-width:64ch;margin-bottom:28px}
+
+  /* ===== Top bar ===== */
+  .topbar{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);z-index:50}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px}
+  .brand{font-weight:700;letter-spacing:-.02em;font-size:15px;white-space:nowrap}
+  .brand .x{color:var(--grey);font-weight:400;margin:0 6px}
+  .brand .client{color:var(--red)}
+  .topnav{display:flex;gap:22px;align-items:center}
+  .topnav a{font-size:13px;color:var(--grey);text-decoration:none;font-weight:500}
+  .topnav a:hover{color:var(--ink)}
+  .topnav a.btn{background:var(--ink);color:#fff;padding:9px 16px;border-radius:4px;font-weight:600}
+  .topnav a.btn:hover{background:var(--red)}
+  @media(max-width:760px){.topnav a:not(.btn){display:none}}
+
+  /* ===== Hero ===== */
+  .hero{padding:76px 0 56px;border-bottom:1px solid var(--line)}
+  .hero h1{font-size:clamp(32px,5.6vw,54px);line-height:1.08;letter-spacing:-.028em;font-weight:700;max-width:20ch}
+  .hero h1 em{font-style:normal;color:var(--red)}
+  .hero p.lead{margin-top:22px;font-size:18px;color:var(--grey);max-width:60ch}
+  .hero-ctas{margin-top:30px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .cta{display:inline-block;background:var(--red);color:#fff;text-decoration:none;padding:14px 26px;font-size:15px;font-weight:600;border-radius:4px;transition:background .15s}
+  .cta:hover{background:var(--red-dark)}
+  .cta.ghost{background:transparent;color:var(--ink);border:1px solid var(--ink)}
+  .cta.ghost:hover{background:var(--ink);color:#fff}
+  .hero-proof{margin-top:34px;display:flex;gap:10px;flex-wrap:wrap}
+  .pill{font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:3px;padding:8px 12px;background:#fff}
+  .pill b{color:var(--red);font-size:14px}
+
+  /* ===== Problem ===== */
+  .section{padding:64px 0;border-bottom:1px solid var(--line)}
+  .section.soft{background:var(--soft)}
+  .case{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
+  .case-head{background:var(--soft);padding:12px 16px;font-family:var(--mono);font-size:12px;color:var(--grey);border-bottom:1px solid var(--line)}
+  .steps{list-style:none}
+  .steps li{display:flex;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;align-items:baseline}
+  .steps li:last-child{border-bottom:none}
+  .steps .d{font-family:var(--mono);font-size:12px;color:var(--grey);min-width:86px;flex-shrink:0}
+  .steps .warn{color:var(--red);font-weight:600}
+  .tally{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+
+  .pain3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:34px}
+  @media(max-width:820px){.pain3{grid-template-columns:1fr}}
+  .pain{border:1px solid var(--line);border-radius:6px;padding:20px;background:#fff}
+  .pain .big{font-family:var(--mono);font-size:30px;font-weight:600;color:var(--red);letter-spacing:-.02em;display:block;margin-bottom:8px}
+  .pain h3{font-size:15px;font-weight:700;margin-bottom:6px}
+  .pain p{font-size:14px;color:var(--grey)}
+
+  /* ===== Solution / steps ===== */
+  .how{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:step}
+  @media(max-width:820px){.how{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.how{grid-template-columns:1fr}}
+  .how .step{border:1px solid var(--line);border-radius:6px;padding:20px;position:relative;background:#fff}
+  .how .step::before{counter-increment:step;content:"0" counter(step);font-family:var(--mono);font-size:12px;color:var(--red);display:block;margin-bottom:12px;letter-spacing:.08em}
+  .how .step h3{font-size:15px;font-weight:700;margin-bottom:6px}
+  .how .step p{font-size:13.5px;color:var(--grey)}
+  .how-note{margin-top:18px;font-family:var(--mono);font-size:12px;color:var(--grey);border:1px solid var(--line);border-left:3px solid var(--green);border-radius:4px;padding:10px 14px;background:var(--soft)}
+  .how-note b{color:var(--green)}
+
+  /* ===== Demo console (original) ===== */
+  .console{border:1px solid var(--ink);border-radius:8px;overflow:hidden;box-shadow:0 1px 0 var(--line)}
+  .console-bar{background:var(--ink);color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+  .console-bar .t{font-family:var(--mono);font-size:12px;letter-spacing:.04em}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:7px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .console-body{display:grid;grid-template-columns:330px 1fr;min-height:520px}
+  @media(max-width:820px){.console-body{grid-template-columns:1fr}}
+  .inbox{border-right:1px solid var(--line);background:var(--soft)}
+  @media(max-width:820px){.inbox{border-right:none;border-bottom:1px solid var(--line)}}
+  .inbox-h{padding:12px 16px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--grey);border-bottom:1px solid var(--line)}
+  .mail{padding:13px 16px;border-bottom:1px solid var(--line);cursor:pointer;background:transparent;transition:background .12s}
+  .mail:hover{background:#ECECEE}
+  .mail.active{background:#fff;border-left:3px solid var(--red);padding-left:13px}
+  .mail .from{font-size:13px;font-weight:600}
+  .mail .subj{font-size:13px;color:var(--ink);margin-top:2px}
+  .mail .meta{font-family:var(--mono);font-size:11px;color:var(--grey);margin-top:5px;display:flex;gap:8px;flex-wrap:wrap}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:2px;border:1px solid var(--line);background:#fff}
+  .badge.frist{border-color:var(--red);color:var(--red)}
+  .badge.done{border-color:var(--green);color:var(--green)}
+  .reader{padding:20px;background:#fff;display:flex;flex-direction:column;gap:16px}
+  .mailview{border:1px solid var(--line);border-radius:6px;padding:16px;font-size:14px}
+  .mailview .hdr{font-family:var(--mono);font-size:11px;color:var(--grey);margin-bottom:10px;line-height:1.7;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .mailview .body{white-space:pre-wrap;color:var(--ink)}
+  .runbtn{align-self:flex-start;background:var(--red);color:#fff;border:none;font-family:var(--sans);font-weight:600;font-size:14px;padding:12px 18px;border-radius:4px;cursor:pointer}
+  .runbtn:hover{background:var(--red-dark)}
+  .runbtn:disabled{background:var(--grey);cursor:wait}
+  .timer{font-family:var(--mono);font-size:12px;color:var(--grey);margin-left:12px}
+  .result{display:none;flex-direction:column;gap:14px}
+  .result.show{display:flex;animation:fadein .4s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .panel{border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .panel-h{background:var(--soft);padding:9px 14px;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--grey);border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .panel-b{padding:14px;font-size:14px}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;font-size:13px}
+  .kv .k{font-family:var(--mono);font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+  .kv .v b.hot{color:var(--red)}
+  .panel-b ul{padding-left:18px}
+  .panel-b li{margin-bottom:6px}
+  .draft{white-space:pre-wrap;font-size:14px;line-height:1.65}
+  .approve{display:flex;gap:10px;flex-wrap:wrap}
+  .approve button{font-family:var(--sans);font-size:13px;font-weight:600;padding:10px 16px;border-radius:4px;cursor:pointer;border:1px solid var(--line);background:#fff}
+  .approve .ok{background:var(--green);border-color:var(--green);color:#fff}
+  .sentnote{font-family:var(--mono);font-size:12px;color:var(--green);display:none}
+  .errnote{font-family:var(--mono);font-size:12px;color:var(--amber);display:none;border:1px solid var(--line);border-radius:4px;padding:8px 10px;background:var(--soft)}
+
+  /* ===== Use cases ===== */
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:920px){.grid4{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.grid4{grid-template-columns:1fr}}
+  .uc{border:1px solid var(--line);border-radius:6px;padding:20px;background:#fff;display:flex;flex-direction:column}
+  .uc .tag-top{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:12px}
+  .uc h3{font-size:15px;font-weight:700;margin-bottom:8px}
+  .uc p{font-size:13.5px;color:var(--grey);flex:1}
+  .uc .foot{margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--red);border-top:1px solid var(--line);padding-top:10px}
+
+  /* ===== Benefits ===== */
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:820px){.grid3{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:6px;padding:20px;background:#fff}
+  .card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+  .card p{font-size:14px;color:var(--grey)}
+  .card .num{font-family:var(--mono);font-size:28px;font-weight:600;color:var(--red);display:block;margin-bottom:8px;letter-spacing:-.02em}
+  .grid4.metrics .card .num{font-size:26px}
+
+  /* ===== Pricing ===== */
+  .pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:stretch}
+  @media(max-width:880px){.pricing{grid-template-columns:1fr}}
+  .price{border:1px solid var(--line);border-radius:6px;padding:26px 22px;background:#fff;display:flex;flex-direction:column}
+  .price.featured{border:2px solid var(--ink);position:relative}
+  .price.featured .flag{position:absolute;top:-11px;left:20px;background:var(--red);color:#fff;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:2px}
+  .price .phase{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey);margin-bottom:10px}
+  .price .amount{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:2px}
+  .price .amount small{font-size:13px;font-weight:400;color:var(--grey)}
+  .price .dur{font-family:var(--mono);font-size:12px;color:var(--grey);margin-bottom:16px}
+  .price ul{list-style:none;flex:1}
+  .price li{font-size:13.5px;padding:7px 0 7px 22px;border-bottom:1px solid var(--soft);position:relative;color:var(--ink)}
+  .price li::before{content:"—";position:absolute;left:0;color:var(--red);font-weight:700}
+  .price .cta{margin-top:20px;text-align:center}
+  .guarantee{margin-top:22px;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:4px;padding:14px 16px;background:var(--soft);font-size:14px}
+  .guarantee b{color:var(--green)}
+  .guarantee .m{font-family:var(--mono);font-size:12px;color:var(--grey);display:block;margin-top:4px}
+
+  /* ===== Trust ===== */
+  .trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:30px}
+  @media(max-width:920px){.trust-grid{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.trust-grid{grid-template-columns:1fr}}
+  .trust{border:1px solid var(--line);border-radius:6px;padding:18px;background:#fff}
+  .trust .t-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px}
+  .trust h3{font-size:14px;font-weight:700;margin-bottom:4px}
+  .trust p{font-size:13px;color:var(--grey)}
+  .quote{border:1px solid var(--line);border-radius:6px;padding:26px;background:#fff;display:flex;flex-direction:column;gap:12px}
+  .quote blockquote{font-size:18px;line-height:1.5;letter-spacing:-.01em;font-weight:500;max-width:56ch}
+  .quote blockquote::before{content:"« "}
+  .quote blockquote::after{content:" »"}
+  .quote .who{font-family:var(--mono);font-size:12px;color:var(--grey)}
+
+  /* ===== Final CTA ===== */
+  .final{background:var(--ink);color:#fff;padding:72px 0}
+  .final .mono-label{color:var(--red)}
+  .final h2{color:#fff;font-size:clamp(26px,4.4vw,40px);max-width:24ch}
+  .final p{color:#A6A9AD;font-size:16px;max-width:58ch;margin-top:14px}
+  .final .hero-ctas{margin-top:28px}
+  .final .cta.ghost{color:#fff;border-color:#fff}
+  .final .cta.ghost:hover{background:#fff;color:var(--ink)}
+  .final .pill{background:transparent;border-color:#3A3D42;color:#A6A9AD}
+  .final .pill b{color:#fff}
+
+  footer{padding:30px 0 50px;color:var(--grey);font-size:12px;font-family:var(--mono);border-top:1px solid var(--line)}
+  footer .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<div class="topbar"><div class="wrap">
+  <div class="brand">BenRock Capital<span class="x">×</span><span class="client">Apleona Schweiz</span></div>
+  <nav class="topnav">
+    <a href="#problema">Problema</a>
+    <a href="#solucion">Solución</a>
+    <a href="#demo">Demo en vivo</a>
+    <a href="#precios">Modelo</a>
+    <a class="btn" href="#contacto">Agendar demo</a>
+  </nav>
+</div></div>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero"><div class="wrap">
+  <div class="mono-label">BenRock Respond – Agente de IA para la comunicación con inquilinos</div>
+  <h1>Cada consulta de inquilino respondida en <em>60 segundos</em>. No en seis días.</h1>
+  <p class="lead">Sus property managers pierden horas cada día con correspondencia repetitiva: rescisiones, inquilinos de reemplazo, citas de entrega, avisos de defectos, formularios. BenRock Respond lee cada mensaje entrante, detecta plazos legales según el OR (Código de Obligaciones suizo), redacta el borrador de respuesta en alto alemán suizo y lo entrega para aprobación. Su equipo decide, la IA teclea.</p>
+  <div class="hero-ctas">
+    <a class="cta" href="#contacto">Agendar demo</a>
+    <a class="cta ghost" href="#demo">Ver demo en vivo</a>
+  </div>
+  <div class="hero-proof">
+    <span class="pill">Borrador en <b>&lt; 60 seg.</b></span>
+    <span class="pill"><b>2–4 h</b> recuperadas por día y empleado</span>
+    <span class="pill"><b>≈ 70%</b> de la correspondencia automatizable</span>
+    <span class="pill"><b>0</b> plazos perdidos</span>
+  </div>
+</div></section>
+
+<!-- ===================== PROBLEMA ===================== -->
+<section class="section soft" id="problema"><div class="wrap">
+  <div class="mono-label">El problema</div>
+  <h2>Comunicación con inquilinos hoy: cinco canales, seis días, cero visibilidad</h2>
+  <p class="sub">La correspondencia repetitiva devora el tiempo que debería dedicarse al realquiler, la atención a propietarios y la reducción de vacantes. Y cada día de retraso cuesta: al inquilino, al propietario y a su oficina.</p>
+
+  <div class="pain3">
+    <div class="pain"><span class="big">3–6 días</span><h3>tiempo de respuesta típico</h3><p>Registro manual, reenvío entre oficinas, consultas por teléfono. El inquilino espera, el proceso se detiene.</p></div>
+    <div class="pain"><span class="big">5 canales</span><h3>por caso</h3><p>Carta certificada, e-mail, teléfono, Flatfox y formularios en papel por duplicado: para un solo cambio de inquilino.</p></div>
+    <div class="pain"><span class="big">Plazos</span><h3>con consecuencias reales</h3><p>Art. 264 OR (inquilino de reemplazo), avisos de defectos a 5 días en primera ocupación, regla de 14 días en entregas. Quien reacciona tarde, responde legalmente o pierde renta.</p></div>
+  </div>
+
+  <h2 style="font-size:clamp(18px,2.8vw,24px)">Un caso real de su propia bandeja de entrada</h2>
+  <p class="sub">Cronología anonimizada de una rescisión anticipada con búsqueda de inquilino de reemplazo, ciudad de Lucerna, mayo–junio 2026. El inquilino fue cooperativo y rápido. El proceso no lo fue.</p>
+  <div class="case">
+    <div class="case-head">CASO 94120-XX · PISO DE 3.5 HABITACIONES · RESCISIÓN ANTICIPADA AL 31.07.</div>
+    <ul class="steps">
+      <li><span class="d">Día 0</span><span>La rescisión llega por carta certificada. Registro manual, reenvío entre oficinas.</span></li>
+      <li><span class="d">Día 1–6</span><span>El inquilino espera la confirmación y las condiciones para la búsqueda de inquilino de reemplazo.</span></li>
+      <li><span class="d">Día 7–20</span><span>El inquilino organiza por su cuenta las visitas (más de 25 interesados la primera tarde), envía actualizaciones y tres candidatos solventes por e-mail.</span></li>
+      <li><span class="d">Día 7–20</span><span>En paralelo circulan formularios en papel por duplicado: realquiler, forma de pago, rótulos de nombre, fianza.</span></li>
+      <li><span class="d">continuo</span><span class="warn">Cada día de retraso en la verificación del inquilino de reemplazo = riesgo de un mes de doble alquiler para el inquilino y un inmueble vacío para el propietario.</span></li>
+    </ul>
+  </div>
+  <div class="tally">
+    <span class="pill">Canales en el caso: <b>5</b> (carta certificada, e-mail, teléfono, Flatfox, formularios en papel)</span>
+    <span class="pill">Tiempo de respuesta típico: <b>3–6 días</b></span>
+    <span class="pill">Con BenRock Respond: <b>&lt; 60 seg.</b> hasta el borrador listo para aprobar</span>
+  </div>
+</div></section>
+
+<!-- ===================== SOLUCIÓN ===================== -->
+<section class="section" id="solucion"><div class="wrap">
+  <div class="mono-label">La solución</div>
+  <h2>El agente trabaja. Su equipo aprueba.</h2>
+  <p class="sub">BenRock Respond se conecta a su bandeja de entrada y canales existentes (e-mail, portal de inquilinos Leona) y prepara cada mensaje hasta la respuesta lista para enviar, en cuatro pasos.</p>
+  <div class="how">
+    <div class="step"><h3>Leer y clasificar</h3><p>Cada mensaje entrante se lee y se asigna a un tipo de caso: rescisión, inquilino de reemplazo, entrega, aviso de defectos, administración.</p></div>
+    <div class="step"><h3>Detectar plazos</h3><p>El agente detecta plazos según el OR (Art. 264 inquilino de reemplazo, avisos de defectos, regla de 14 días) con su consecuencia, y escala automáticamente antes de que algo se queme.</p></div>
+    <div class="step"><h3>Redactar borrador</h3><p>Borrador de respuesta completo en alto alemán suizo, tratamiento formal de usted, firma correcta de su oficina, más medidas propuestas.</p></div>
+    <div class="step"><h3>El humano aprueba</h3><p>Aprobar y enviar, editar o escalar al property manager. Nada sale sin aprobación humana.</p></div>
+  </div>
+  <div class="how-note"><b>✓ Human-in-the-Loop:</b> los borradores se envían exclusivamente tras aprobación humana. Integración vía API en su entorno existente (e-mail, portal Leona, ERP). Alojamiento de datos en Suiza.</div>
+</div></section>
+
+<!-- ===================== DEMO EN VIVO ===================== -->
+<section class="section soft" id="demo"><div class="wrap">
+  <div class="mono-label">Demo en vivo</div>
+  <h2>Vea al agente trabajar con cuatro casos reales</h2>
+  <p class="sub">Cuatro tipos de mensaje reales del día a día de sus oficinas. Seleccione un mensaje y haga clic en «Procesar con IA». El agente clasifica, detecta plazos, propone medidas y redacta el borrador de respuesta. Nada sale sin aprobación humana.</p>
+
+  <div class="console">
+    <div class="console-bar">
+      <span class="t"><span class="dot"></span>BENROCK RESPOND · OFICINA DE LUCERNA</span>
+      <span class="t" id="clock"></span>
+    </div>
+    <div class="console-body">
+      <div class="inbox">
+        <div class="inbox-h">Bandeja de entrada · 4 sin procesar</div>
+        <div id="maillist"></div>
+      </div>
+      <div class="reader">
+        <div class="mailview">
+          <div class="hdr" id="mv-hdr"></div>
+          <div class="body" id="mv-body"></div>
+        </div>
+        <div>
+          <button class="runbtn" id="run">Procesar con IA</button>
+          <span class="timer" id="timer"></span>
+        </div>
+        <div class="errnote" id="errnote">Conexión en vivo no disponible: se muestra el resultado precalculado de la misma IA.</div>
+
+        <div class="result" id="result">
+          <div class="panel">
+            <div class="panel-h"><span>Triaje</span><span id="t-elapsed"></span></div>
+            <div class="panel-b"><div class="kv" id="kv"></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><span>Medidas propuestas</span></div>
+            <div class="panel-b"><ul id="actions"></ul></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><span>Borrador de respuesta</span><span>para aprobación</span></div>
+            <div class="panel-b draft" id="draft"></div>
+          </div>
+          <div class="approve">
+            <button class="ok" id="approve">Aprobar y enviar</button>
+            <button>Editar</button>
+            <button>Escalar al property manager</button>
+            <span class="sentnote" id="sentnote">✓ Enviado y archivado en el expediente</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===================== CASOS DE USO ===================== -->
+<section class="section"><div class="wrap">
+  <div class="mono-label">Casos de uso</div>
+  <h2>Cuatro tipos de caso que hoy llenan sus bandejas de entrada</h2>
+  <p class="sub">Exactamente los tipos de mensaje de la demo en vivo: los casos estándar repetitivos que un agente prepara de forma fiable hasta la aprobación.</p>
+  <div class="grid4">
+    <div class="uc">
+      <div class="tag-top">Art. 264 OR</div>
+      <h3>Inquilino de reemplazo y realquiler</h3>
+      <p>El inquilino propone candidatos solventes. El agente confirma la recepción, solicita la documentación vía Flatfox y prioriza la verificación de solvencia, antes de que surjan doble alquiler o vacante.</p>
+      <div class="foot">PLAZO DETECTADO · PRIORIDAD ALTA</div>
+    </div>
+    <div class="uc">
+      <div class="tag-top">Regla de 14 días</div>
+      <h3>Entrega del apartamento</h3>
+      <p>Acuerdo de cita, protocolo de entrega, lista de verificación, poderes, preguntas sobre la limpieza final. Caso estándar, totalmente automatizable hasta la aprobación.</p>
+      <div class="foot">AGENDAMIENTO · PRIORIDAD MEDIA</div>
+    </div>
+    <div class="uc">
+      <div class="tag-top">Plazo de 5 días primera ocupación</div>
+      <h3>Avisos de defectos</h3>
+      <p>Confirmación de recepción dentro de plazo el mismo día, puntos urgentes (p. ej. fuga de agua) directo al servicio sanitario, casos de garantía al contratista general.</p>
+      <div class="foot">PLAZO DETECTADO · PRIORIDAD ALTA</div>
+    </div>
+    <div class="uc">
+      <div class="tag-top">Base de conocimiento</div>
+      <h3>Administración e ingreso</h3>
+      <p>Justificantes de fianza, forma de pago, rótulos de nombre, formularios. Preguntas respondibles desde la base de conocimiento, sin intervención del gestor.</p>
+      <div class="foot">ESTÁNDAR · PRIORIDAD BAJA</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ===================== BENEFICIOS ===================== -->
+<section class="section soft"><div class="wrap">
+  <div class="mono-label">Lo que esto significa para Apleona</div>
+  <h2>Cálculo conservador, por oficina</h2>
+  <p class="sub">Con dos property managers y una asistente.</p>
+  <div class="grid4 metrics">
+    <div class="card"><span class="num">&lt; 60 seg.</span><h3>hasta el borrador listo para aprobar</h3><p>En lugar de 3–6 días de respuesta a través de cinco canales. Medible desde la semana uno.</p></div>
+    <div class="card"><span class="num">2–4 h</span><h3>recuperadas por día y empleado</h3><p>Tiempo que fluye hacia el realquiler, la atención a propietarios y la reducción de vacantes, en lugar de teclear.</p></div>
+    <div class="card"><span class="num">≈ 70%</span><h3>de la correspondencia es repetitiva</h3><p>Solicitudes de cita, formularios, consultas de estado, defectos estándar. Exactamente lo que un agente prepara de forma fiable.</p></div>
+    <div class="card"><span class="num">0</span><h3>plazos perdidos</h3><p>El agente detecta plazos (Art. 264 OR, avisos de defectos, entregas) y escala automáticamente antes de que algo se queme.</p></div>
+  </div>
+</div></section>
+
+<!-- ===================== PRECIOS ===================== -->
+<section class="section" id="precios"><div class="wrap">
+  <div class="mono-label">Modelo comercial</div>
+  <h2>No vendemos un proyecto, sino un resultado</h2>
+  <p class="sub">Tiempo de respuesta inferior a un día laboral, medible desde la semana uno. Integración en su entorno existente (e-mail, portal Leona, ERP) vía API, alojamiento de datos en Suiza.</p>
+
+  <div class="pricing">
+    <div class="price featured">
+      <span class="flag">Empiece aquí</span>
+      <div class="phase">Fase 1 · Piloto</div>
+      <div class="amount">CHF 25'000 <small>tarifa fija</small></div>
+      <div class="dur">90 días</div>
+      <ul>
+        <li>1 oficina (p. ej. Lucerna)</li>
+        <li>Triaje de bandeja de entrada + borradores de respuesta</li>
+        <li>Línea base de KPI antes/después</li>
+        <li>Criterios de éxito fijados por contrato</li>
+      </ul>
+      <a class="cta" href="#contacto">Hablar del piloto</a>
+    </div>
+    <div class="price">
+      <div class="phase">Fase 2 · Despliegue</div>
+      <div class="amount">CHF 1.20–1.80 <small>por unidad gestionada/mes</small></div>
+      <div class="dur">6–9 meses</div>
+      <ul>
+        <li>Todas las oficinas de Real Estate</li>
+        <li>Conexión Leona + ERP</li>
+        <li>Motor de plazos legales</li>
+        <li>Reporting para propietarios</li>
+      </ul>
+      <a class="cta ghost" href="#contacto">Planificar despliegue</a>
+    </div>
+    <div class="price">
+      <div class="phase">Fase 3 · Expansión</div>
+      <div class="amount">Add-ons modulares</div>
+      <div class="dur">continuo</div>
+      <ul>
+        <li>Flujo de inquilino de reemplazo end-to-end</li>
+        <li>Agendamiento de entregas</li>
+        <li>Multilingüe (DE/FR/IT/EN)</li>
+      </ul>
+      <a class="cta ghost" href="#contacto">Consultar módulos</a>
+    </div>
+  </div>
+
+  <div class="guarantee">
+    <b>Criterio de éxito del piloto:</b> tiempo mediano hasta la respuesta lista para enviar inferior a 4 horas, tasa de aprobación de los borradores superior al 85%.
+    <span class="m">Si no se alcanza el objetivo, no se cobra la segunda cuota del piloto.</span>
+  </div>
+</div></section>
+
+<!-- ===================== CONFIANZA ===================== -->
+<section class="section soft"><div class="wrap">
+  <div class="mono-label">Confianza y seguridad</div>
+  <h2>Construido para la gestión inmobiliaria suiza</h2>
+  <p class="sub">No es un juguete tecnológico, sino una herramienta que debe convencer a profesionales inmobiliarios suizos.</p>
+  <div class="trust-grid">
+    <div class="trust"><div class="t-label">Control</div><h3>Human-in-the-Loop</h3><p>Los borradores se envían exclusivamente tras aprobación humana. Su equipo conserva cada decisión.</p></div>
+    <div class="trust"><div class="t-label">Legal</div><h3>Motor de plazos OR</h3><p>Art. 264 OR (inquilino de reemplazo), avisos de defectos en primera ocupación, regla de 14 días en entregas: detectados, documentados, escalados.</p></div>
+    <div class="trust"><div class="t-label">Datos</div><h3>Alojamiento en Suiza</h3><p>Alojamiento de datos en Suiza, conexión vía API a su entorno existente en lugar de migración de datos.</p></div>
+    <div class="trust"><div class="t-label">Idioma</div><h3>Alto alemán suizo</h3><p>Tratamiento formal de usted, «ss» en lugar de «ß», firma de su oficina. Borradores que suenan como su equipo.</p></div>
+  </div>
+  <div class="quote">
+    <blockquote>El inquilino fue cooperativo y rápido. El proceso no lo fue. Exactamente esa brecha es la que cierra BenRock Respond: de la carta certificada al borrador listo para aprobar en menos de un minuto.</blockquote>
+    <div class="who">CASO 94120-XX · CIUDAD DE LUCERNA · MAYO–JUNIO 2026 · TODOS LOS DATOS DEL CASO ANONIMIZADOS</div>
+  </div>
+</div></section>
+
+<!-- ===================== CTA FINAL ===================== -->
+<section class="final" id="contacto"><div class="wrap">
+  <div class="mono-label">Siguiente paso</div>
+  <h2>Inicie el piloto de 90 días en una oficina</h2>
+  <p>30 minutos, sus tipos de caso reales, sus cifras. Le mostramos el agente en vivo con su bandeja de entrada y definimos juntos la línea base de KPI. Si no se alcanza el criterio de éxito, no se cobra la segunda cuota del piloto.</p>
+  <div class="hero-ctas">
+    <a class="cta" href="mailto:kontakt@benrockcapital.com?subject=BenRock%20Respond%20%E2%80%93%20Agendar%20demo">Agendar demo</a>
+    <a class="cta ghost" href="#demo">Volver a la demo en vivo</a>
+  </div>
+  <div class="hero-proof">
+    <span class="pill">Piloto: <b>90 días</b> · CHF 25'000 tarifa fija</span>
+    <span class="pill">Objetivo: respuesta <b>&lt; 4 h</b> · tasa de aprobación <b>&gt; 85%</b></span>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <span>BenRock Capital × Apleona Schweiz · Todos los datos de los casos anonimizados</span>
+  <span>Los borradores se envían exclusivamente tras aprobación humana</span>
+</div></footer>
+
+<script>
+const MAILS=[
+ {
+  id:"m1",
+  from:"P. V. y A. E. (inquilinos)",
+  subj:"Realquiler Seefeldstr.: 3 candidatos de reemplazo",
+  meta:"E-mail · hoy 08:42",
+  frist:true,
+  hdr:"De: Inquilinos Seefeldstrasse 16, Lucerna\nPara: Oficina de Lucerna\nAsunto: Realquiler – posibles inquilinos de reemplazo y novedades de la segunda jornada de visitas",
+  body:`Estimados señores:
+
+También en la segunda jornada de visitas el interés fue grande: más de 15 personas, varias con fuerte interés.
+
+Según las condiciones para una rescisión anticipada del contrato, proponemos los siguientes interesados serios como inquilinos de reemplazo, todos dispuestos a asumir el contrato a partir del 1 de agosto:
+
+- H. K., 079 xxx xx 11
+- A. N., 079 xxx xx 59
+- S. J., 078 xxx xx 60
+
+Les rogamos realicen la verificación de solvencia. Para nosotros es importante evitar una doble carga en agosto.
+
+Atentamente`,
+  fallback:{
+   kategorie:"Realquiler / Inquilino de reemplazo (Art. 264 OR)",
+   prioritaet:"Alta",
+   frist:"Verificación de solvencia en 5 días laborables; de lo contrario, riesgo de responsabilidad del inquilino en agosto y vacante desde el 01.08.",
+   zusammenfassung:"Los inquilinos proponen tres candidatos de reemplazo solventes para el 01.08 y documentan así el cumplimiento de su obligación de presentar inquilino de reemplazo. Una verificación rápida beneficia a propietario y administración.",
+   massnahmen:["Confirmar la recepción en 24 h y transparentar el proceso de verificación","Solicitar la documentación de los tres candidatos vía Flatfox","Priorizar la verificación de solvencia y referencias (objetivo: decisión antes del viernes)","Reservar provisionalmente la cita de entrega en cuanto se confirme un candidato"],
+   antwort:`Estimada señora X, estimado señor Y:
+
+Muchas gracias por su mensaje y por su gran compromiso con las visitas.
+
+Confirmamos la recepción de los tres candidatos de reemplazo propuestos. Hemos contactado hoy a las tres personas y les hemos pedido presentar su candidatura a través de Flatfox. Realizaremos la verificación de solvencia con prioridad; puede contar con una decisión antes del final de esta semana.
+
+En cuanto se confirme un candidato, nos pondremos en contacto con ustedes de inmediato con una propuesta de fecha para la entrega.
+
+Atentamente
+Apleona Schweiz AG, Oficina de Lucerna`
+  }
+ },
+ {
+  id:"m2",
+  from:"Inquilinos 3.5 hab. (salida 31.07.)",
+  subj:"Acuerdo de cita para la entrega del apartamento",
+  meta:"E-mail · hoy 09:15",
+  frist:true,
+  hdr:"De: Inquilinos Seefeldstrasse 16, Lucerna\nPara: Oficina de Lucerna\nAsunto: Cita de entrega a finales de julio",
+  body:`Buenos días:
+
+Nuestro contrato de alquiler termina el 31 de julio. Queremos fijar la cita de entrega con antelación, ya que ambos trabajamos y, según la hoja informativa, la cita debe acordarse con al menos 14 días de antelación.
+
+Para nosotros serían posibles: 30.07 a partir de las 16 h o 31.07 todo el día.
+
+Por favor, indíquennos además si la limpieza con garantía de aceptación debe justificarse obligatoriamente con factura.
+
+Atentamente`,
+  fallback:{
+   kategorie:"Entrega del apartamento / Agendamiento",
+   prioritaet:"Media",
+   frist:"Confirmación de la cita a más tardar el 16.07 (regla de 14 días según la hoja informativa).",
+   zusammenfassung:"Los inquilinos solicitan una cita de entrega vinculante y plantean una pregunta de detalle sobre la limpieza final. Caso estándar, totalmente automatizable hasta la aprobación.",
+   massnahmen:["Revisar el calendario del gestor responsable y proponer el 31.07 a las 09.00 h","Adjuntar a la confirmación la plantilla del protocolo de entrega y la lista de verificación","Indicar la necesidad de presencia de ambas partes o poder por escrito","Responder la pregunta sobre la factura de limpieza según la hoja informativa"],
+   antwort:`Buenos días:
+
+Con gusto les confirmamos la entrega del apartamento de la siguiente manera:
+
+Fecha: viernes 31 de julio, 09.00 h, en el propio apartamento.
+
+Tengan en cuenta que ambas partes del contrato deben estar presentes o debe existir un poder por escrito. Adjunto encontrarán la lista de verificación según la hoja informativa.
+
+Sobre la limpieza: una limpieza con garantía de aceptación no es obligatoria, pero ha dado buenos resultados. Si limpian ustedes mismos, aplican los puntos de la lista de verificación (incl. alfombras con justificante, descalcificación, campana extractora).
+
+Atentamente
+Apleona Schweiz AG, Oficina de Lucerna`
+  }
+ },
+ {
+  id:"m3",
+  from:"Nuevos inquilinos dúplex (primera ocupación)",
+  subj:"Aviso de defectos tras la mudanza – plazo obra nueva",
+  meta:"Portal Leona · hoy 10:03",
+  frist:true,
+  hdr:"De: Nuevos inquilinos, dúplex de 4.5 hab. (primera ocupación)\nCanal: Portal de inquilinos Leona\nAsunto: Defectos tras la entrega",
+  body:`Buenos días:
+
+Nos mudamos hace cuatro días. Según el contrato, los defectos en primera ocupación deben comunicarse en un plazo de 5 días, por lo que enviamos preventivamente esta lista:
+
+1. Junta de silicona de la ducha del piso superior con fuga (salida de agua sobre el parqué)
+2. La ventana del dormitorio no cierra a ras
+3. Rayas en la placa de cocina, presumiblemente de la obra
+
+Las fotos están subidas al portal. Por favor, confirmen la recepción dentro del plazo.
+
+Atentamente`,
+  fallback:{
+   kategorie:"Aviso de defectos primera ocupación / Garantía de 2 años",
+   prioritaet:"Alta",
+   frist:"Confirmación de recepción hoy (el plazo de 5 días vence mañana). Salida de agua = riesgo de daños consecuentes.",
+   zusammenfassung:"Aviso de defectos dentro de plazo en primera ocupación con un punto urgente (junta con fuga y salida de agua sobre el parqué). Caso de garantía frente al contratista general, triaje inmediato necesario.",
+   massnahmen:["Confirmar hoy por escrito la recepción dentro de plazo (documentación con validez legal)","Marcar el punto 1 como urgente: convocar al servicio sanitario en 48 h","Remitir los puntos 1–3 como casos de garantía al contratista general","Asegurar a los inquilinos una cita de seguimiento en 7 días"],
+   antwort:`Buenos días:
+
+Muchas gracias por su comunicación. Confirmamos la recepción dentro de plazo de su aviso de defectos con fecha de hoy, incluida la documentación fotográfica.
+
+Respecto a la junta de silicona con fuga en la ducha, ya hemos convocado al servicio sanitario; se pondrá en contacto con ustedes en un plazo de 48 horas para concertar una cita. Hasta entonces, les rogamos que en lo posible no utilicen la ducha para evitar daños consecuentes en el parqué.
+
+Los puntos 2 y 3 los remitimos como casos de garantía al contratista general y les informaremos en un plazo de siete días sobre los siguientes pasos.
+
+Atentamente
+Apleona Schweiz AG, Oficina de Lucerna`
+  }
+ },
+ {
+  id:"m4",
+  from:"Inquilinos (ingreso 01.08.)",
+  subj:"Pregunta sobre formularios: forma de pago y rótulos",
+  meta:"E-mail · hoy 11:27",
+  frist:false,
+  hdr:"De: Nuevos inquilinos Schlösslihalde\nPara: Oficina de Lucerna\nAsunto: Formularios de la carta de bienvenida",
+  body:`Buenos días:
+
+En la carta de bienvenida había cinco formularios. El contrato de alquiler y el formulario de renta inicial ya los hemos firmado digitalmente a través de Flatfox.
+
+Dos preguntas:
+1. El formulario de fianza del ZKB no lo necesitamos, ya que hemos abierto la cuenta de fianza directamente en UBS. ¿Basta la confirmación de UBS como justificante?
+2. Sobre el formulario de forma de pago: ¿es suficiente una orden permanente o exigen débito directo (LSV)?
+
+El pedido de rótulos de nombre lo enviaremos esta semana.
+
+Atentamente`,
+  fallback:{
+   kategorie:"Administración / Formularios de ingreso",
+   prioritaet:"Baja",
+   frist:"Ninguno. Responder en 24 h mantiene limpio el proceso de ingreso.",
+   zusammenfassung:"Consulta estándar sobre formularios de ingreso. Ambas preguntas son respondibles con contenidos de la base de conocimiento, sin intervención del gestor.",
+   massnahmen:["Confirmar la validez del justificante de fianza de UBS y archivarlo en el expediente","Aclarar la forma de pago: la orden permanente es suficiente, el LSV es opcional","Programar el seguimiento del formulario de rótulos (recordatorio en 7 días)"],
+   antwort:`Buenos días:
+
+Muchas gracias por su mensaje. Con gusto respondemos a sus preguntas:
+
+1. Sí, la confirmación de UBS sobre la cuenta de fianza abierta es plenamente suficiente como justificante. Pueden desechar el formulario del ZKB. Por favor, envíennos la confirmación de UBS por e-mail o a través del portal de inquilinos Leona.
+
+2. Una orden permanente es suficiente. El LSV es posible, pero no obligatorio.
+
+Quedamos a la espera del formulario de rótulos de nombre y les deseamos un buen comienzo en su nueva vivienda.
+
+Atentamente
+Apleona Schweiz AG, Oficina de Lucerna`
+  }
+ }
+];
+
+let current=MAILS[0];
+const $=id=>document.getElementById(id);
+
+function renderList(){
+  $("maillist").innerHTML=MAILS.map(m=>`
+   <div class="mail ${m.id===current.id?'active':''}" data-id="${m.id}">
+     <div class="from">${m.from}</div>
+     <div class="subj">${m.subj}</div>
+     <div class="meta"><span>${m.meta}</span>${m.frist?'<span class="badge frist">PLAZO DETECTADO</span>':''}${m.done?'<span class="badge done">RESUELTO</span>':''}</div>
+   </div>`).join('');
+  document.querySelectorAll('.mail').forEach(el=>el.onclick=()=>{select(el.dataset.id)});
+}
+function select(id){
+  current=MAILS.find(m=>m.id===id);
+  $("mv-hdr").textContent=current.hdr;
+  $("mv-body").textContent=current.body;
+  $("result").classList.remove("show");
+  $("sentnote").style.display="none";
+  $("errnote").style.display="none";
+  $("timer").textContent="";
+  $("run").disabled=false;
+  renderList();
+}
+
+function renderResult(r,elapsed,live){
+  $("t-elapsed").textContent=elapsed+" s · "+(live?"EN VIVO (Claude API)":"precalculado");
+  $("kv").innerHTML=`
+    <div class="k">Categoría</div><div class="v">${r.kategorie}</div>
+    <div class="k">Prioridad</div><div class="v"><b class="${r.prioritaet==='Alta'?'hot':''}">${r.prioritaet}</b></div>
+    <div class="k">Plazo</div><div class="v">${r.frist}</div>
+    <div class="k">Resumen</div><div class="v">${r.zusammenfassung}</div>`;
+  $("actions").innerHTML=r.massnahmen.map(a=>`<li>${a}</li>`).join('');
+  $("draft").textContent=r.antwort;
+  $("result").classList.add("show");
+}
+
+async function run(){
+  const btn=$("run");btn.disabled=true;
+  const t0=performance.now();
+  $("timer").textContent="El agente está leyendo el mensaje …";
+  const tick=setInterval(()=>{$("timer").textContent="El agente está trabajando … "+((performance.now()-t0)/1000).toFixed(1)+" s"},120);
+
+  const sys=`Eres BenRock Respond, un agente de IA para la comunicación con inquilinos de una administración inmobiliaria suiza (Apleona Schweiz AG, Oficina de Lucerna). Analiza el mensaje entrante del inquilino. Responde EXCLUSIVAMENTE con un objeto JSON, sin Markdown, sin explicación, con exactamente estas claves: kategorie (string), prioritaet ("Alta"|"Media"|"Baja"), frist (string: plazo detectado y consecuencia, o "Ninguno"), zusammenfassung (string, máx. 2 frases), massnahmen (array de 3-4 strings cortos), antwort (borrador de respuesta completo en español, tratamiento formal de usted, remitente "Apleona Schweiz AG, Oficina de Lucerna", sin rayas largas).`;
+
+  try{
+    const resp=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+        system:sys,
+        messages:[{role:"user",content:"Mensaje entrante:\n\n"+current.hdr+"\n\n"+current.body}]})
+    });
+    const data=await resp.json();
+    const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+    const clean=text.replace(/```json|```/g,"").trim();
+    const r=JSON.parse(clean);
+    clearInterval(tick);
+    const el=((performance.now()-t0)/1000).toFixed(1);
+    $("timer").textContent="Listo en "+el+" s";
+    renderResult(r,el,true);
+  }catch(e){
+    clearInterval(tick);
+    const el=((performance.now()-t0)/1000).toFixed(1);
+    $("timer").textContent="Listo en "+el+" s";
+    $("errnote").style.display="block";
+    renderResult(current.fallback,el,false);
+  }
+  btn.disabled=false;
+}
+
+$("run").onclick=run;
+$("approve").onclick=()=>{
+  $("sentnote").style.display="inline";
+  current.done=true;current.frist=false;renderList();
+};
+
+function clock(){
+  const d=new Date();
+  $("clock").textContent=d.toLocaleDateString("es-ES")+" · "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+}
+clock();setInterval(clock,30000);
+select("m1");
+</script>
+</body>
+</html>
