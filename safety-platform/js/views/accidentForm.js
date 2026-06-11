@@ -126,9 +126,9 @@ function paint() {
     </section>
 
     <section class="card" id="sec-photos">
-      <h3>📷 Evidence</h3>
+      <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Evidence</h3>
       <div class="photos" id="accPhotos"></div>
-      <label class="photo-add">📷 Add photo<input type="file" accept="image/*" capture="environment" hidden id="accPhotoInput"></label>
+      <label class="photo-add"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add photo<input type="file" accept="image/*" capture="environment" hidden id="accPhotoInput"></label>
     </section>
 
     <section class="card" id="sec-rca">
@@ -357,7 +357,7 @@ function accEnergyRow(row, idx, rerender) {
     ${e ? `<p class="hint">${e.icon} ${esc(e.hint)}</p>` : ''}
     <textarea class="remark" data-k="notes" placeholder="Notes on the control…">${esc(row.notes || '')}</textarea>
     <div class="photos" data-photos></div>
-    <div class="energy-row-foot"><label class="photo-add">📷 Add photo<input type="file" accept="image/*" capture="environment" hidden></label><button class="icon-btn del" data-del>🗑 Remove</button></div>`;
+    <div class="energy-row-foot"><label class="photo-add"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add photo<input type="file" accept="image/*" capture="environment" hidden></label><button class="icon-btn del" data-del><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Remove</button></div>`;
 
   node.querySelectorAll('[data-k]').forEach((inp) => {
     inp.addEventListener(inp.type === 'checkbox' ? 'change' : 'input', () => {
@@ -461,11 +461,11 @@ function rcaFiveWhys(host) {
     d.branches.forEach((br, bi) => {
       const card = el('div', { class: 'why-branch' });
       const chainHtml = br.whys.map((w, i) =>
-        `<div class="why-row"><span class="why-n">Why ${i + 1}?</span><textarea data-i="${i}" placeholder="Because…">${esc(w)}</textarea>${br.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${i}" aria-label="Remove this why" title="Remove">🗑</button>` : ''}</div>`).join('');
+        `<div class="why-row"><span class="why-n">Why ${i + 1}?</span><textarea data-i="${i}" placeholder="Because…">${esc(w)}</textarea>${br.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${i}" aria-label="Remove this why" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : ''}</div>`).join('');
       card.innerHTML = `
         <div class="why-branch-head">
           <b>Causal factor ${bi + 1}</b>
-          ${d.branches.length > 1 ? '<button class="icon-btn" data-delbranch>🗑 Remove</button>' : ''}
+          ${d.branches.length > 1 ? '<button class="icon-btn" data-delbranch><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Remove</button>' : ''}
         </div>
         <label class="fld"><span>Causal factor (immediate cause)</span><input data-k="factor" value="${esc(br.factor || '')}" placeholder="What contributed to the problem"/></label>
         <div class="why-chain">${chainHtml}</div>
@@ -542,7 +542,7 @@ function rcaTripod(host) {
     d.barriers.forEach((bar, i) => {
       const card = el('div', { class: 'barrier-card' });
       card.innerHTML = `
-        <div class="barrier-head"><b>Barrier ${i + 1}</b><button class="icon-btn" data-del aria-label="Remove barrier" title="Remove">🗑</button></div>
+        <div class="barrier-head"><b>Barrier ${i + 1}</b><button class="icon-btn" data-del aria-label="Remove barrier" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div>
         <label class="fld"><span>Barrier (control that failed/was missing)</span><input data-k="desc" value="${esc(bar.desc)}"/></label>
         <div class="tripod-causes">
           <label class="fld"><span>Active failure (immediate act/condition)</span><textarea data-k="active">${esc(bar.active)}</textarea></label>
@@ -600,9 +600,9 @@ function rcaTapRoot(host) {
       if (!Array.isArray(f.whys)) f.whys = [''];
       const card = el('div', { class: 'factor-card' });
       const chainHtml = f.whys.map((w, wi) =>
-        `<div class="why-row"><span class="why-n">Why ${wi + 1}?</span><textarea data-why="${wi}" placeholder="Because…">${esc(w)}</textarea>${f.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${wi}" aria-label="Remove this why" title="Remove">🗑</button>` : ''}</div>`).join('');
+        `<div class="why-row"><span class="why-n">Why ${wi + 1}?</span><textarea data-why="${wi}" placeholder="Because…">${esc(w)}</textarea>${f.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${wi}" aria-label="Remove this why" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : ''}</div>`).join('');
       card.innerHTML = `
-        <div class="barrier-head"><b>Causal factor ${i + 1}</b><button class="icon-btn" data-del aria-label="Remove causal factor" title="Remove">🗑</button></div>
+        <div class="barrier-head"><b>Causal factor ${i + 1}</b><button class="icon-btn" data-del aria-label="Remove causal factor" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></div>
         <label class="fld"><span>Causal factor</span><input data-k="desc" value="${esc(f.desc)}"/></label>
         <div class="why-chain">${chainHtml}</div>
         <button class="btn small" data-addwhy>+ Add why</button>
@@ -655,7 +655,7 @@ function actionRow(a) {
       <label class="fld"><span>Status</span><select data-k="status">${['Open', 'In progress', 'Implemented', 'Closed'].map((x) => `<option ${a.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
       <label class="fld"><span>Deadline</span><input type="date" data-k="dueDate" value="${esc(a.dueDate)}"/></label>
     </div>
-    <div class="action-foot"><button class="icon-btn del" data-del>🗑 Remove</button></div>`;
+    <div class="action-foot"><button class="icon-btn del" data-del><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Remove</button></div>`;
   node.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', async () => { a[inp.dataset.k] = inp.value; await store.saveAction(a); }));
   node.querySelector('[data-del]').addEventListener('click', async () => { await store.delAction(a.id); buildActions(); });
   return node;
@@ -666,7 +666,7 @@ function buildNav() {
   const nav = _root.querySelector('#secNav');
   const links = [['🚦 Classification', 'sec-class'], ['📝 What happened', 'sec-what'], ['🗂️ Categorisation', 'sec-cat'],
     ['🏷️ AIP', 'sec-aip'], ['🚨 Bodies & media', 'sec-notify'],
-    ['⚡ Energy', 'sec-energy'], ['📷 Evidence', 'sec-photos'], ['🔎 RCA', 'sec-rca'], ['✅ Actions', 'sec-actions']];
+    ['⚡ Energy', 'sec-energy'], ['<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Evidence', 'sec-photos'], ['🔎 RCA', 'sec-rca'], ['✅ Actions', 'sec-actions']];
   nav.innerHTML = links.map(([l, id]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join('');
   nav.addEventListener('click', (e) => {
     const a = e.target.closest('[data-to]'); if (!a) return; e.preventDefault();

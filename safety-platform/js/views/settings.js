@@ -22,7 +22,7 @@ export async function renderSettings(root) {
     </section>
 
     <div class="card">
-      <h3>👤 Account</h3>
+      <h3>Account</h3>
       ${me
         ? `<p class="hint">Signed in as <b>${esc(me.username)}</b> · role <b>${esc(me.role)}</b>.</p>
            <button class="btn" id="signOut2">Sign out</button>`
@@ -64,8 +64,8 @@ export async function renderSettings(root) {
       <h3>Backup & restore</h3>
       <p class="hint">Export a full backup (visits, actions and photos) to a JSON file, or import one on another device.</p>
       <div class="row-gap">
-        <button class="btn primary" id="backup">⬇ Export full backup</button>
-        <label class="btn">⬆ Import backup<input type="file" id="restore" accept="application/json" hidden></label>
+        <button class="btn primary" id="backup">Export full backup</button>
+        <label class="btn">Import backup<input type="file" id="restore" accept="application/json" hidden></label>
       </div>
     </div>
 

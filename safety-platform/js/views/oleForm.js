@@ -151,7 +151,7 @@ function buildAttendees() {
         <input data-k="name" value="${esc(at.name)}" placeholder="Name"/>
         <select data-k="role">${ATTENDEE_ROLES.map((x) => `<option ${at.role === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
         <select data-k="company">${['Schindler', 'Subcontractor', 'Third party'].map((x) => `<option ${at.company === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-        <button class="icon-btn" data-del aria-label="Remove" title="Remove">🗑</button>`;
+        <button class="icon-btn" data-del aria-label="Remove" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
       r.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', () => { at[inp.dataset.k] = inp.value; scheduleSave(); }));
       r.querySelector('[data-del]').addEventListener('click', () => { _o.attendees.splice(i, 1); scheduleSave(); render(); });
       host.append(r);
@@ -181,7 +181,7 @@ function stepCard(st, idx, rerenderSteps) {
       <span class="step-n">${idx + 1}</span>
       <input class="step-name" data-k="name" value="${esc(st.name)}" placeholder="Step name"/>
       <button class="btn small" data-addfind>+ Finding</button>
-      <button class="icon-btn" data-delstep aria-label="Remove step" title="Remove step">🗑</button>
+      <button class="icon-btn" data-delstep aria-label="Remove step" title="Remove step"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
     </div>
     <div class="step-findings"></div>`;
   card.querySelector('[data-k="name"]').addEventListener('input', (e) => { st.name = e.target.value; scheduleSave(); });
@@ -220,7 +220,7 @@ function findingCard(f, rerender) {
   card.innerHTML = `
     <div class="finding-top">
       <textarea class="finding-desc" data-k="description" placeholder="What did the team find?">${esc(f.description)}</textarea>
-      <button class="icon-btn" data-delfind aria-label="Remove finding" title="Remove finding">🗑</button>
+      <button class="icon-btn" data-delfind aria-label="Remove finding" title="Remove finding"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
     </div>
     <div class="finding-meta">
       <div class="fourd-chips">${FOUR_D.map((d) => `<button type="button" class="fourd-chip ${(f.fourD || []).includes(d.id) ? 'on ' + d.id : ''}" data-4d="${d.id}" title="${esc(d.desc)}">${d.icon} ${d.label}</button>`).join('')}</div>
@@ -279,7 +279,7 @@ function actionRow(a, rerender) {
     <select data-k="priority">${['High', 'Medium', 'Low'].map((x) => `<option ${a.priority === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
     <select data-k="status">${['Open', 'In progress', 'Implemented', 'Closed'].map((x) => `<option ${a.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
     <input type="date" data-k="dueDate" value="${esc(a.dueDate)}"/>
-    <button class="icon-btn" data-del aria-label="Remove" title="Remove">🗑</button>`;
+    <button class="icon-btn" data-del aria-label="Remove" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>`;
   node.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', async () => { a[inp.dataset.k] = inp.value; await store.saveAction(a); }));
   node.querySelector('[data-del]').addEventListener('click', async () => { await store.delAction(a.id); _actions = _actions.filter((x) => x.id !== a.id); rerender(); buildTrace(); });
   return node;

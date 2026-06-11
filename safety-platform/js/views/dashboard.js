@@ -7,6 +7,7 @@ import { hbarChart, donutChart, legend, sparkline } from '../charts.js';
 import { monthKey, fmtDate, esc } from '../utils.js';
 import { extractExposures, sifPrecursors, barrierHealth } from '../intel.js';
 import { getAccidentType } from '../accidents.js';
+import { icons } from '../icons.js';
 
 function lastMonths(n) {
   const out = []; const d = new Date(); d.setDate(1);
@@ -41,9 +42,9 @@ export async function renderDashboard(root) {
   const actStatus = actionsByStatus(actions);
 
   const feed = [
-    ...submitted.map((v) => ({ icon: '📋', t: v.templateName, sub: `${v.general.observer || ''}${v.general.city ? ' · ' + v.general.city : ''}`, date: v.general.date || v.createdAt, href: `#/visit/${v.id}` })),
-    ...reported.map((a) => ({ icon: '🚨', t: `${a.refNo} · ${(getAccidentType(a.type) || {}).short || ''}`, sub: (a.location || {}).city || '', date: a.occurredAt || a.createdAt, href: `#/accident/${a.id}` })),
-    ...oles.map((o) => ({ icon: '🎓', t: `${o.refNo} · ${o.title || o.task || 'OLE'}`, sub: o.facilitator || '', date: o.date || o.createdAt, href: `#/ole/${o.id}` })),
+    ...submitted.map((v) => ({ icon: 'visits', t: v.templateName, sub: `${v.general.observer || ''}${v.general.city ? ' · ' + v.general.city : ''}`, date: v.general.date || v.createdAt, href: `#/visit/${v.id}` })),
+    ...reported.map((a) => ({ icon: 'accidents', t: `${a.refNo} · ${(getAccidentType(a.type) || {}).short || ''}`, sub: (a.location || {}).city || '', date: a.occurredAt || a.createdAt, href: `#/accident/${a.id}` })),
+    ...oles.map((o) => ({ icon: 'ole', t: `${o.refNo} · ${o.title || o.task || 'OLE'}`, sub: o.facilitator || '', date: o.date || o.createdAt, href: `#/ole/${o.id}` })),
   ].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 7);
 
   const deltaChip = (d) => d ? `<span class="delta ${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d)}</span>` : '';
@@ -55,7 +56,7 @@ export async function renderDashboard(root) {
   root.innerHTML = `
     <header class="view-head">
       <div><h1>Overview</h1><p class="muted">Organisation-wide snapshot across field visits, accidents and learning events.</p></div>
-      <div class="row-gap"><a class="btn" href="#/intel">🧠 Intelligence</a><a class="btn primary" href="#/new">+ New field visit</a></div>
+      <div class="row-gap"><a class="btn" href="#/intel">${icons.intel} Intelligence</a><a class="btn primary" href="#/new">+ New field visit</a></div>
     </header>
 
     <section class="kpi-grid">
@@ -73,16 +74,16 @@ export async function renderDashboard(root) {
         <div><h2>Your next SIF is likely already in your system</h2>
           <p>${pre.total} high-energy ${pre.total === 1 ? 'exposure' : 'exposures'} without an effective direct control · barrier coverage ${barrier.coverage != null ? barrier.coverage + '%' : '—'}. Open Intelligence for the heatmap, patterns and predictive model →</p></div>
       </div>
-      <div class="it-chips">${pre.groups.slice(0, 4).map((g) => `<span class="it-chip">${g.energyIcon} ${esc(g.energyLabel)} · ${esc(g.zoneLabel)} <b>${g.count}</b></span>`).join('') || '<span class="it-chip good">No uncontrolled high-energy exposures 👍</span>'}</div>
+      <div class="it-chips">${pre.groups.slice(0, 4).map((g) => `<span class="it-chip">${g.energyIcon} ${esc(g.energyLabel)} · ${esc(g.zoneLabel)} <b>${g.count}</b></span>`).join('') || '<span class="it-chip good">No uncontrolled high-energy exposures</span>'}</div>
     </a>
 
     <section class="card-grid">
       <div class="card span2">
         <h3>Activity (last 6 months)</h3>
         <div class="act-rows">
-          ${[['📋 Field visits', vMon, '#/visits', '#E2001A'], ['🚨 Accidents', aMon, '#/accidents', '#cc1122'], ['🎓 Learning events', oMon, '#/oles', '#0073a8']].map(([lbl, s, href, col]) => `
+          ${[['Field visits', vMon, '#/visits', '#E2001A'], ['Accidents', aMon, '#/accidents', '#cc1122'], ['Learning events', oMon, '#/oles', '#0073a8']].map(([lbl, s, href, col]) => `
             <a class="act-row" href="${href}">
-              <span class="act-lbl">${lbl}</span>
+              <span class="act-lbl"><i class="dot" style="background:${col}"></i>${lbl}</span>
               <span class="act-spark">${sparkline(s.vals, { color: col, w: 200 })}</span>
               <span class="act-num">${s.month} ${deltaChip(s.delta)}</span>
             </a>`).join('')}
@@ -101,7 +102,7 @@ export async function renderDashboard(root) {
       </div>
       <div class="card span2">
         <h3>Recent activity</h3>
-        ${feed.length ? `<div class="feed">${feed.map((f) => `<a class="feed-row" href="${f.href}"><span class="feed-ic">${f.icon}</span><span class="feed-tx"><b>${esc(f.t)}</b><small>${esc(f.sub)}</small></span><span class="feed-date">${fmtDate(f.date)}</span></a>`).join('')}</div>` : '<p class="hint">Nothing recorded yet — new visits, accident reports and OLEs appear here.</p>'}
+        ${feed.length ? `<div class="feed">${feed.map((f) => `<a class="feed-row" href="${f.href}"><span class="feed-ic">${icons[f.icon] || ''}</span><span class="feed-tx"><b>${esc(f.t)}</b><small>${esc(f.sub)}</small></span><span class="feed-date">${fmtDate(f.date)}</span></a>`).join('')}</div>` : '<p class="hint">Nothing recorded yet — new visits, accident reports and OLEs appear here.</p>'}
       </div>
     </section>
   `;

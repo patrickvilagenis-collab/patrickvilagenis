@@ -58,7 +58,7 @@ const FIELD_DEFS = [
 export function accFilterButton(accidents, onChange) {
   const n = accActiveCount();
   const btn = el('button', { class: `btn filter-btn ${n ? 'on' : ''}`, onClick: () => openDrawer(accidents, onChange) });
-  btn.innerHTML = `<span class="fi">⚲</span> Filters${n ? ` <span class="fbadge">${n}</span>` : ''}`;
+  btn.innerHTML = `<span class="fi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></span> Filters${n ? ` <span class="fbadge">${n}</span>` : ''}`;
   return btn;
 }
 

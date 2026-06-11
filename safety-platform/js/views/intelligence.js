@@ -39,7 +39,7 @@ export async function renderIntelligence(root) {
 
   root.innerHTML = `
     <header class="view-head">
-      <div><h1>🧠 Predictive Safety Intelligence</h1>
+      <div><h1>Predictive Safety Intelligence</h1>
         <p class="muted">Leading-indicator analytics on your data — Energy-Based Safety, SIF precursors, barriers and an explainable model.</p></div>
     </header>
 
@@ -128,7 +128,7 @@ export async function renderIntelligence(root) {
         <tbody>${ranked.map((x) => `<tr>
           <td>${esc(energyLabel(x.energy))}</td><td>${esc(zoneLabel(x.zone))}</td><td>${esc(x.zoneName || x.city || '—')}</td><td>${esc(x.employeeType || '—')}</td>
           <td class="num"><span class="pill ${x.p > 0.6 ? 'bad' : x.p > 0.35 ? 'warn' : 'good'}">${Math.round(x.p * 100)}%</span></td>
-          <td class="num"><a class="link" href="#/visit/${x.id}">open ↗</a></td></tr>`).join('') || '<tr><td colspan="6" class="empty">No open precursors. 👍</td></tr>'}</tbody></table></div>
+          <td class="num"><a class="link" href="#/visit/${x.id}">open ↗</a></td></tr>`).join('') || '<tr><td colspan="6" class="empty">No open precursors.</td></tr>'}</tbody></table></div>
     </section>
 
     <p class="intel-note">ℹ️ Grounded in Energy-Based Safety and SIF-precursor methodology used across aerospace, oil & gas and process industries. Everything is computed in your browser and fully explainable. On sample data results are illustrative; the model sharpens as real reports accumulate.</p>

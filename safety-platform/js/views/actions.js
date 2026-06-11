@@ -39,7 +39,7 @@ export async function renderActions(root) {
   root.innerHTML = `
     <header class="view-head">
       <div><h1>Action tracker</h1><p class="muted">Closed-loop follow-up of corrective & preventive actions (CAPA).</p></div>
-      <div class="row-gap"><span id="filterMount"></span><button class="btn" id="exportActions">⬇ Export CSV</button></div>
+      <div class="row-gap"><span id="filterMount"></span><button class="btn" id="exportActions">Export CSV</button></div>
     </header>
     <div id="chipMount"></div>
 

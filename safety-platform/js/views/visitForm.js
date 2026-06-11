@@ -245,7 +245,7 @@ function checkItem(sec, it, dis) {
     <div class="item-detail ${r.answer === 'variability' ? '' : 'hidden'}" data-detail>
       <textarea class="remark" placeholder="${esc(REMARK_PLACEHOLDER)}" ${dis ? 'disabled' : ''}>${esc(r.remark || '')}</textarea>
       <div class="photos" data-photos></div>
-      ${dis ? '' : `<label class="photo-add">📷 Add photo<input type="file" accept="image/*" capture="environment" hidden></label>`}
+      ${dis ? '' : `<label class="photo-add"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add photo<input type="file" accept="image/*" capture="environment" hidden></label>`}
     </div>`;
 
   node.querySelectorAll('.ans').forEach((btn) => btn.addEventListener('click', () => {
@@ -269,7 +269,7 @@ function openItem(sec, it, dis) {
   node.innerHTML = `<p class="item-txt">${esc(it.text)}</p>
     <textarea class="remark" placeholder="Write your answer…" ${dis ? 'disabled' : ''}>${esc(r.remark || '')}</textarea>
     <div class="photos" data-photos></div>
-    ${dis ? '' : `<label class="photo-add">📷 Add photo<input type="file" accept="image/*" capture="environment" hidden></label>`}`;
+    ${dis ? '' : `<label class="photo-add"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add photo<input type="file" accept="image/*" capture="environment" hidden></label>`}`;
   if (!r.answer) r.answer = 'na'; // open answers don't count toward score
   const ta = node.querySelector('.remark');
   ta.addEventListener('input', () => { r.remark = ta.value; scheduleSave(); });
@@ -364,7 +364,7 @@ function energyRow(row, idx, dis, rerender) {
     ${e ? `<p class="hint">${e.icon} ${esc(e.hint)}</p>` : ''}
     <textarea class="remark" data-k="notes" placeholder="Notes on the control…" ${dis ? 'disabled' : ''}>${esc(row.notes || '')}</textarea>
     <div class="photos" data-photos></div>
-    ${dis ? '' : `<div class="energy-row-foot"><label class="photo-add">📷 Add photo<input type="file" accept="image/*" capture="environment" hidden></label><button class="icon-btn del" data-del>🗑 Remove</button></div>`}`;
+    ${dis ? '' : `<div class="energy-row-foot"><label class="photo-add"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add photo<input type="file" accept="image/*" capture="environment" hidden></label><button class="icon-btn del" data-del><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Remove</button></div>`}`;
 
   node.querySelectorAll('[data-k]').forEach((inp) => {
     inp.addEventListener(inp.type === 'checkbox' ? 'change' : 'input', () => {
@@ -395,7 +395,7 @@ function buildJHASteps() {
         <textarea data-k="hazard" placeholder="Hazards" ${dis ? 'disabled' : ''}>${esc(st.hazard || '')}</textarea>
         <textarea data-k="control" placeholder="Controls" ${dis ? 'disabled' : ''}>${esc(st.control || '')}</textarea>
         <select data-k="risk" ${dis ? 'disabled' : ''}>${['Low', 'Medium', 'High'].map((x) => `<option ${st.risk === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-        ${dis ? '<span></span>' : '<button class="icon-btn del" data-del aria-label="Remove row" title="Remove">🗑</button>'}`;
+        ${dis ? '<span></span>' : '<button class="icon-btn del" data-del aria-label="Remove row" title="Remove"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>'}`;
       r.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', () => { st[inp.dataset.k] = inp.value; scheduleSave(); }));
       const del = r.querySelector('[data-del]');
       if (del) del.addEventListener('click', () => { _visit.jhaSteps.splice(i, 1); scheduleSave(); render(); });
@@ -443,7 +443,7 @@ function actionRow(a, dis, rerender) {
       <label class="fld"><span>Status</span><select data-k="status">${['Open', 'In progress', 'Implemented', 'Closed'].map((x) => `<option ${a.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
       <label class="fld"><span>Due date</span><input type="date" data-k="dueDate" value="${esc(a.dueDate)}"/></label>
     </div>
-    <div class="action-foot">${dis ? '' : '<button class="icon-btn del" data-del>🗑 Remove</button>'}</div>`;
+    <div class="action-foot">${dis ? '' : '<button class="icon-btn del" data-del><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Remove</button>'}</div>`;
   node.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', async () => {
     a[inp.dataset.k] = inp.value; await store.saveAction(a);
   }));

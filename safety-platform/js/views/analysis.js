@@ -57,7 +57,7 @@ export async function renderAnalysis(root) {
   root.innerHTML = `
     <header class="view-head">
       <div><h1>Data analysis</h1><p class="muted">Slice field data, surface trends and drill into any field visit. Replaces raw Excel dumps.</p></div>
-      <div class="row-gap"><span id="filterMount"></span><button class="btn" id="exportCsv">⬇ CSV</button><button class="btn" id="exportJson">⬇ JSON</button></div>
+      <div class="row-gap"><span id="filterMount"></span><button class="btn" id="exportCsv">CSV</button><button class="btn" id="exportJson">JSON</button></div>
     </header>
     <div id="chipMount"></div>
 

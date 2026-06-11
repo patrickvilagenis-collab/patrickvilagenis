@@ -15,23 +15,24 @@ import { renderAccidentForm } from './views/accidentForm.js';
 import { renderOles } from './views/oles.js';
 import { renderOleForm } from './views/oleForm.js';
 import { renderIntelligence } from './views/intelligence.js';
+import { icons } from './icons.js';
 
 const NAV_GROUPS = [
   ['Overview', [
-    ['#/dashboard', '📊', 'Overview'],
-    ['#/intel', '🧠', 'Intelligence'],
+    ['#/dashboard', icons.overview, 'Overview'],
+    ['#/intel', icons.intel, 'Intelligence'],
   ]],
   ['Field operations', [
-    ['#/visits', '📋', 'Field visits'],
-    ['#/accidents', '🚨', 'Accidents'],
-    ['#/oles', '🎓', 'OLE'],
+    ['#/visits', icons.visits, 'Field visits'],
+    ['#/accidents', icons.accidents, 'Accidents'],
+    ['#/oles', icons.ole, 'OLE'],
   ]],
   ['Insights', [
-    ['#/analysis', '📈', 'Analysis'],
-    ['#/actions', '✅', 'Actions'],
+    ['#/analysis', icons.analysis, 'Analysis'],
+    ['#/actions', icons.actions, 'Actions'],
   ]],
   ['System', [
-    ['#/settings', '⚙️', 'Settings'],
+    ['#/settings', icons.settings, 'Settings'],
   ]],
 ];
 const NAV = NAV_GROUPS.flatMap(([, items]) => items);
@@ -54,12 +55,12 @@ function shell() {
       <header class="topbar">
         <div class="tb-crumb"><span id="tbSection">Dashboard</span><span class="tb-date">${today}</span></div>
         <div class="tb-search">
-          <span class="tb-search-ic">🔍</span>
+          <span class="tb-search-ic">${icons.search}</span>
           <input id="globalSearch" placeholder="Search visits, accidents, OLEs, actions…" autocomplete="off" aria-label="Search across the platform"/>
           <kbd class="tb-kbd">Ctrl K</kbd>
           <div class="tb-results" id="tbResults"></div>
         </div>
-        <div class="tb-right"><button class="theme-btn" id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
+        <div class="tb-right"><button class="theme-btn" id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">${icons.moon}</button><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
       </header>
       <div id="view"></div>
     </main>
@@ -77,7 +78,7 @@ function initTheme() {
   const apply = (t) => {
     document.documentElement.dataset.theme = t;
     try { localStorage.setItem('shi_theme', t); } catch {}
-    btn.textContent = t === 'dark' ? '☀️' : '🌙';
+    btn.innerHTML = t === 'dark' ? icons.sun : icons.moon;
   };
   apply(document.documentElement.dataset.theme || 'light');
   btn.addEventListener('click', () => apply(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
@@ -128,23 +129,23 @@ function initSearch() {
     const push = (icon, label, sub, href) => out.push({ icon, label, sub, href });
     for (const v of visits) {
       const hay = `${v.templateName} ${v.general.observer} ${v.general.technician} ${v.general.city} ${v.general.zone || ''}`.toLowerCase();
-      if (hay.includes(q)) push('📋', v.templateName, `${v.general.observer || ''} · ${v.general.city || ''}`, `#/visit/${v.id}`);
+      if (hay.includes(q)) push('visits', v.templateName, `${v.general.observer || ''} · ${v.general.city || ''}`, `#/visit/${v.id}`);
     }
     for (const a of accidents) {
       const hay = `${a.refNo} ${a.description} ${a.injuredPerson} ${(a.location || {}).city || ''}`.toLowerCase();
-      if (hay.includes(q)) push('🚨', `${a.refNo} — ${(a.description || '').slice(0, 40)}`, (a.location || {}).city || '', `#/accident/${a.id}`);
+      if (hay.includes(q)) push('accidents', `${a.refNo} — ${(a.description || '').slice(0, 40)}`, (a.location || {}).city || '', `#/accident/${a.id}`);
     }
     for (const o of oles) {
       const hay = `${o.refNo} ${o.title} ${o.task} ${o.facilitator} ${(o.location || {}).city || ''}`.toLowerCase();
-      if (hay.includes(q)) push('🎓', `${o.refNo} — ${o.title || o.task}`, o.facilitator || '', `#/ole/${o.id}`);
+      if (hay.includes(q)) push('ole', `${o.refNo} — ${o.title || o.task}`, o.facilitator || '', `#/ole/${o.id}`);
     }
     for (const a of actions) {
       const hay = `${a.title} ${a.owner} ${a.site}`.toLowerCase();
-      if (hay.includes(q)) push('✅', a.title || '(action)', `${a.owner || ''} · ${a.status}`, a.accidentId ? `#/accident/${a.accidentId}` : a.oleId ? `#/ole/${a.oleId}` : a.visitId ? `#/visit/${a.visitId}` : '#/actions');
+      if (hay.includes(q)) push('actions', a.title || '(action)', `${a.owner || ''} · ${a.status}`, a.accidentId ? `#/accident/${a.accidentId}` : a.oleId ? `#/ole/${a.oleId}` : a.visitId ? `#/visit/${a.visitId}` : '#/actions');
     }
     const top = out.slice(0, 8);
     if (!top.length) { results.innerHTML = '<div class="tb-empty">No matches</div>'; results.classList.add('open'); return; }
-    results.innerHTML = top.map((r) => `<a class="tb-hit" href="${r.href}"><span class="tb-hit-ic">${r.icon}</span><span class="tb-hit-tx"><b>${escHtml(r.label)}</b><small>${escHtml(r.sub)}</small></span></a>`).join('');
+    results.innerHTML = top.map((r) => `<a class="tb-hit" href="${r.href}"><span class="tb-hit-ic">${icons[r.icon] || ''}</span><span class="tb-hit-tx"><b>${escHtml(r.label)}</b><small>${escHtml(r.sub)}</small></span></a>`).join('');
     results.classList.add('open');
   };
 
@@ -172,7 +173,8 @@ function renderUserBox() {
   if (!box) return;
   const u = sync.currentUser();
   if (!u) { box.innerHTML = ''; return; }
-  box.innerHTML = `<div class="user-row"><span class="user-name" title="${u.role}">👤 ${u.username}${u.role === 'admin' ? ' <span class="user-role">admin</span>' : ''}</span><button class="signout" id="signOut">Sign out</button></div>`;
+  const initial = (u.username || '?').slice(0, 1).toUpperCase();
+  box.innerHTML = `<div class="user-row"><span class="avatar" aria-hidden="true">${initial}</span><span class="user-name" title="${u.role}">${u.username}${u.role === 'admin' ? ' <span class="user-role">admin</span>' : ''}</span><button class="signout" id="signOut">Sign out</button></div>`;
   box.querySelector('#signOut').addEventListener('click', async () => { await sync.logout(); location.reload(); });
 }
 

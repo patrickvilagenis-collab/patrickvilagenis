@@ -2,6 +2,7 @@
 
 import { el } from './utils.js';
 import * as sync from './sync.js';
+import { icons } from './icons.js';
 
 // Renders a full-screen login form into `mount`. Calls onSuccess() after login.
 export function renderLogin(mount, onSuccess) {
@@ -14,10 +15,10 @@ export function renderLogin(mount, onSuccess) {
         <h2>Safety &amp; Health<br>Information Tool</h2>
         <p class="login-hero-sub">One platform for field visits, accident investigation and operational learning — in the office or on site, online or offline.</p>
         <ul class="login-points">
-          <li><span>📋</span> Digital safety checklists with photos &amp; actions</li>
-          <li><span>⚡</span> Energy-based SIF classification &amp; root-cause analysis</li>
-          <li><span>🧠</span> Predictive safety intelligence &amp; live KPIs</li>
-          <li><span>📶</span> Works fully offline — syncs when you're back</li>
+          <li><span>${icons.visits}</span> Digital safety checklists with photos &amp; actions</li>
+          <li><span>${icons.zap}</span> Energy-based SIF classification &amp; root-cause analysis</li>
+          <li><span>${icons.intel}</span> Predictive safety intelligence &amp; live KPIs</li>
+          <li><span>${icons.wifi}</span> Works fully offline — syncs when you're back</li>
         </ul>
       </div>
     </section>
