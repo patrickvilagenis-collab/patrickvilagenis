@@ -15,6 +15,7 @@ import { renderAccidentForm } from './views/accidentForm.js';
 import { renderOles } from './views/oles.js';
 import { renderOleForm } from './views/oleForm.js';
 import { renderIntelligence } from './views/intelligence.js';
+import { renderAccimap } from './views/accimap.js';
 import { icons } from './icons.js';
 
 const NAV_GROUPS = [
@@ -29,6 +30,7 @@ const NAV_GROUPS = [
   ]],
   ['Insights', [
     ['#/analysis', icons.analysis, 'Analysis'],
+    ['#/accimap', icons.accimap, 'AcciMap'],
     ['#/actions', icons.actions, 'Actions'],
   ]],
   ['System', [
@@ -209,6 +211,7 @@ async function route() {
       case 'ole': await renderOleForm(view, { oleId: a }); break;
       case 'intel': await renderIntelligence(view); break;
       case 'analysis': await renderAnalysis(view); break;
+      case 'accimap': await renderAccimap(view); break;
       case 'actions': await renderActions(view); break;
       case 'settings': await renderSettings(view); break;
       default: location.hash = '#/dashboard';
