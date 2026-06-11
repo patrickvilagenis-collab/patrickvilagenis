@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benrock Capital — AI Property Services Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #0a1628;
+    --navy-800: #0f1f38;
+    --navy-700: #16294a;
+    --navy-600: #1e3458;
+    --navy-100: #e8edf4;
+    --gold: #c9a861;
+    --gold-soft: rgba(201, 168, 97, 0.14);
+    --white: #ffffff;
+    --ink: #14213a;
+    --grey-600: #5b6b82;
+    --grey-400: #93a1b5;
+    --grey-200: #dde4ec;
+    --grey-100: #f4f6f9;
+    --green: #2e9e6b;
+    --green-soft: rgba(46, 158, 107, 0.12);
+    --amber: #d99a2b;
+    --amber-soft: rgba(217, 154, 43, 0.12);
+    --red: #c4554d;
+    --red-soft: rgba(196, 85, 77, 0.10);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--sans);
+    background: #e9ecf1;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  /* 16:9 stage */
+  .stage {
+    width: 1440px;
+    height: 810px;
+    background: var(--grey-100);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 0 40px 90px -30px rgba(10, 22, 40, 0.45);
+  }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: 232px;
+    background: linear-gradient(180deg, var(--navy-900) 0%, var(--navy-800) 100%);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .brand {
+    padding: 30px 28px 26px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .brand .wordmark {
+    font-family: var(--serif);
+    font-size: 23px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+  }
+  .brand .wordmark span { color: var(--gold); }
+  .brand .sub {
+    margin-top: 4px;
+    font-size: 9.5px;
+    letter-spacing: 3.2px;
+    text-transform: uppercase;
+    color: var(--grey-400);
+    font-weight: 500;
+  }
+  .nav { padding: 20px 14px; flex: 1; }
+  .nav-label {
+    font-size: 9.5px;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.32);
+    padding: 10px 14px 8px;
+    font-weight: 600;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.66);
+    cursor: pointer;
+    margin-bottom: 2px;
+    transition: background .15s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); }
+  .nav-item.active {
+    background: var(--gold-soft);
+    color: var(--white);
+    font-weight: 500;
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
+  .nav-item svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.6; flex-shrink: 0; }
+  .nav-item .pill {
+    margin-left: auto;
+    background: var(--gold);
+    color: var(--navy-900);
+    font-size: 10px;
+    font-weight: 700;
+    border-radius: 9px;
+    padding: 2px 7px;
+  }
+  .sidebar-footer {
+    padding: 20px 22px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--navy-900);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .sidebar-footer .who { font-size: 12.5px; font-weight: 500; }
+  .sidebar-footer .role { font-size: 10.5px; color: var(--grey-400); margin-top: 1px; }
+
+  /* ============ MAIN ============ */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--grey-200);
+    padding: 0 32px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-shrink: 0;
+  }
+  .topbar h1 {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .topbar .crumb { font-size: 11px; color: var(--grey-400); letter-spacing: 1.8px; text-transform: uppercase; margin-top: 2px; }
+  .search {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--grey-100);
+    border: 1px solid var(--grey-200);
+    border-radius: 8px;
+    padding: 9px 16px;
+    width: 280px;
+    color: var(--grey-400);
+    font-size: 12.5px;
+  }
+  .search svg { width: 14px; height: 14px; stroke: var(--grey-400); fill: none; stroke-width: 2; }
+  .icon-btn {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--grey-200);
+    background: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .icon-btn svg { width: 16px; height: 16px; stroke: var(--grey-600); fill: none; stroke-width: 1.8; }
+  .icon-btn .dot {
+    position: absolute; top: 8px; right: 9px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+    border: 1.5px solid var(--white);
+  }
+  .live-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--green-soft);
+    color: var(--green);
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border-radius: 20px;
+    padding: 7px 14px;
+  }
+  .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46,158,107,0.45); }
+    50% { box-shadow: 0 0 0 6px rgba(46,158,107,0); }
+  }
+
+  .content { flex: 1; padding: 26px 32px; overflow: hidden; display: flex; flex-direction: column; gap: 22px; }
+
+  /* KPI strip */
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .kpi {
+    background: var(--white);
+    border: 1px solid var(--grey-200);
+    border-radius: 12px;
+    padding: 18px 22px;
+  }
+  .kpi .label { font-size: 10.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--grey-600); font-weight: 600; }
+  .kpi .value { font-family: var(--serif); font-size: 32px; font-weight: 600; margin-top: 6px; line-height: 1; }
+  .kpi .delta { font-size: 11.5px; margin-top: 8px; font-weight: 500; display: flex; align-items: center; gap: 5px; }
+  .delta.up { color: var(--green); }
+  .delta.down { color: var(--red); }
+  .delta span { color: var(--grey-400); font-weight: 400; }
+
+  /* Module grid */
+  .modules { display: grid; grid-template-columns: 1.05fr 1.15fr 1fr; gap: 18px; flex: 1; min-height: 0; }
+  .card {
+    background: var(--white);
+    border: 1px solid var(--grey-200);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--grey-100);
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .mod-icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: var(--navy-900);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .mod-icon svg { width: 20px; height: 20px; stroke: var(--gold); fill: none; stroke-width: 1.6; }
+  .card-head h2 { font-family: var(--serif); font-size: 19px; font-weight: 600; letter-spacing: 0.2px; }
+  .card-head .desc { font-size: 11px; color: var(--grey-600); margin-top: 2px; letter-spacing: 0.2px; }
+  .badge {
+    margin-left: auto;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border-radius: 14px;
+    padding: 5px 11px;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .badge.live { background: var(--green-soft); color: var(--green); }
+  .badge.auto { background: var(--gold-soft); color: #a37f33; }
+  .card-body { padding: 16px 22px 20px; flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+
+  /* — Chatbot module — */
+  .chat-stats { display: flex; gap: 18px; }
+  .chat-stat .n { font-family: var(--serif); font-size: 24px; font-weight: 600; }
+  .chat-stat .l { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--grey-600); margin-top: 1px; }
+  .chat-feed { display: flex; flex-direction: column; gap: 9px; flex: 1; }
+  .msg {
+    display: flex; gap: 10px;
+    font-size: 12px;
+    align-items: flex-start;
+  }
+  .msg .bubble {
+    background: var(--grey-100);
+    border-radius: 10px 10px 10px 3px;
+    padding: 9px 13px;
+    color: var(--ink);
+    line-height: 1.45;
+    max-width: 86%;
+  }
+  .msg.ai { flex-direction: row-reverse; }
+  .msg.ai .bubble {
+    background: var(--navy-900);
+    color: rgba(255,255,255,0.92);
+    border-radius: 10px 10px 3px 10px;
+  }
+  .msg .tag {
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--gold);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 3px;
+  }
+  .typing {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--grey-600);
+    margin-top: auto;
+    padding-top: 4px;
+  }
+  .typing .dots { display: flex; gap: 3px; }
+  .typing .dots i {
+    width: 5px; height: 5px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+  }
+  .typing .dots i:nth-child(2) { animation-delay: .2s; }
+  .typing .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  /* — Maintenance module — */
+  .wo-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--grey-200);
+    border-radius: 9px;
+    font-size: 12px;
+  }
+  .wo-row .id { font-weight: 600; color: var(--navy-700); font-size: 11.5px; width: 64px; flex-shrink: 0; }
+  .wo-row .what { flex: 1; min-width: 0; }
+  .wo-row .what .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wo-row .what .w { font-size: 10.5px; color: var(--grey-600); margin-top: 1px; }
+  .status {
+    font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border-radius: 12px;
+    padding: 4px 10px;
+    flex-shrink: 0;
+  }
+  .status.dispatched { background: var(--green-soft); color: var(--green); }
+  .status.triaged { background: var(--gold-soft); color: #a37f33; }
+  .status.urgent { background: var(--red-soft); color: var(--red); }
+  .wo-chart { margin-top: auto; }
+  .wo-chart .cap { display: flex; justify-content: space-between; font-size: 10px; color: var(--grey-600); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .bars { display: flex; align-items: flex-end; gap: 7px; height: 56px; }
+  .bars i {
+    flex: 1;
+    background: var(--navy-100);
+    border-radius: 3px 3px 0 0;
+  }
+  .bars i.hl { background: var(--gold); }
+  .bars i.navy { background: var(--navy-700); }
+
+  /* — Screening module — */
+  .ring-wrap { display: flex; align-items: center; gap: 18px; }
+  .ring { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .num {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .ring .num b { font-family: var(--serif); font-size: 25px; font-weight: 600; }
+  .ring .num s { text-decoration: none; font-size: 8.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--grey-600); }
+  .ring-legend { font-size: 11.5px; color: var(--grey-600); display: flex; flex-direction: column; gap: 7px; }
+  .ring-legend b { color: var(--ink); font-weight: 600; }
+  .ring-legend .li { display: flex; align-items: center; gap: 8px; }
+  .ring-legend .sw { width: 9px; height: 9px; border-radius: 2.5px; flex-shrink: 0; }
+  .app-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 12px;
+    border: 1px solid var(--grey-200);
+    border-radius: 9px;
+    font-size: 12px;
+  }
+  .app-row .mini {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--navy-100);
+    color: var(--navy-700);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .app-row .who { flex: 1; min-width: 0; }
+  .app-row .who .n { font-weight: 500; }
+  .app-row .who .u { font-size: 10.5px; color: var(--grey-600); }
+  .score { font-weight: 700; font-size: 12px; }
+  .score.g { color: var(--green); }
+  .score.a { color: var(--amber); }
+
+  .card-foot {
+    padding: 13px 22px;
+    border-top: 1px solid var(--grey-100);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-foot .meta { font-size: 10.5px; color: var(--grey-400); letter-spacing: 0.4px; }
+  .link-btn {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--navy-700);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .link-btn::after { content: '→'; color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="wordmark">Benrock<span>.</span></div>
+      <div class="sub">Capital · AI Services</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-label">Portfolio</div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        AI Dashboard
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1"/></svg>
+        Properties
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Tenant Chat
+        <span class="pill">12</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        Maintenance
+        <span class="pill">5</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Screening
+      </div>
+      <div class="nav-label" style="margin-top:14px;">Operations</div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-4 4 4 5-6"/></svg>
+        Analytics
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8"/></svg>
+        Reports
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.09a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">PV</div>
+      <div>
+        <div class="who">P. Vilagenis</div>
+        <div class="role">Managing Partner</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <div class="crumb">Portfolio · 1,284 Units</div>
+        <h1>AI Services Overview</h1>
+      </div>
+      <div class="live-chip"><span class="pulse"></span> All Systems Live</div>
+      <div class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Search tenants, units, work orders…
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="dot"></span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- KPI strip -->
+      <div class="kpis">
+        <div class="kpi">
+          <div class="label">Tenant Inquiries Resolved</div>
+          <div class="value">2,847</div>
+          <div class="delta up">▲ 18.2% <span>vs. last month</span></div>
+        </div>
+        <div class="kpi">
+          <div class="label">Avg. Response Time</div>
+          <div class="value">38<span style="font-size:18px;color:var(--grey-600);">&nbsp;sec</span></div>
+          <div class="delta up">▼ 96% <span>vs. manual handling</span></div>
+        </div>
+        <div class="kpi">
+          <div class="label">Work Orders Automated</div>
+          <div class="value">94<span style="font-size:18px;color:var(--grey-600);">%</span></div>
+          <div class="delta up">▲ 6.1% <span>this quarter</span></div>
+        </div>
+        <div class="kpi">
+          <div class="label">Screening Turnaround</div>
+          <div class="value">4.2<span style="font-size:18px;color:var(--grey-600);">&nbsp;hrs</span></div>
+          <div class="delta up">▼ 2.3 days <span>vs. industry avg.</span></div>
+        </div>
+      </div>
+
+      <!-- Three AI modules -->
+      <div class="modules">
+
+        <!-- Module 1: Tenant Chatbot -->
+        <section class="card">
+          <div class="card-head">
+            <div class="mod-icon">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 9h.01M13 9h.01"/></svg>
+            </div>
+            <div>
+              <h2>24/7 Tenant Concierge</h2>
+              <div class="desc">AI chatbot · 11 active conversations</div>
+            </div>
+            <span class="badge live"><span class="pulse" style="width:6px;height:6px;"></span>Live</span>
+          </div>
+          <div class="card-body">
+            <div class="chat-stats">
+              <div class="chat-stat"><div class="n">142</div><div class="l">Today</div></div>
+              <div class="chat-stat"><div class="n">98.1%</div><div class="l">Resolution</div></div>
+              <div class="chat-stat"><div class="n">4.9</div><div class="l">CSAT</div></div>
+            </div>
+            <div class="chat-feed">
+              <div class="msg">
+                <div class="bubble"><span class="tag">Unit 4B · Riverside Tower</span>My garage remote stopped working — can someone help?</div>
+              </div>
+              <div class="msg ai">
+                <div class="bubble"><span class="tag">Benrock AI · 0:02s</span>Of course. I've logged this and a replacement remote is reserved at the front desk. Would tomorrow 9–11 AM work for pickup?</div>
+              </div>
+              <div class="msg">
+                <div class="bubble"><span class="tag">Unit 12A · The Meridian</span>When is rent due this month with the holiday?</div>
+              </div>
+            </div>
+            <div class="typing">
+              <div class="dots"><i></i><i></i><i></i></div>
+              Benrock AI is responding to Unit 12A…
+            </div>
+          </div>
+          <div class="card-foot">
+            <span class="meta">Escalated to staff: 3 today</span>
+            <span class="link-btn">Open Console</span>
+          </div>
+        </section>
+
+        <!-- Module 2: Maintenance -->
+        <section class="card">
+          <div class="card-head">
+            <div class="mod-icon">
+              <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <div>
+              <h2>Maintenance &amp; Work Orders</h2>
+              <div class="desc">Automated triage, dispatch &amp; tracking</div>
+            </div>
+            <span class="badge auto">Auto-Dispatch</span>
+          </div>
+          <div class="card-body">
+            <div class="wo-row">
+              <span class="id">#WO-2841</span>
+              <div class="what">
+                <div class="t">HVAC — no cooling, Unit 7C</div>
+                <div class="w">Vendor: ArcticAir · ETA today 2:30 PM</div>
+              </div>
+              <span class="status urgent">Urgent</span>
+            </div>
+            <div class="wo-row">
+              <span class="id">#WO-2840</span>
+              <div class="what">
+                <div class="t">Kitchen faucet leak, Unit 3F</div>
+                <div class="w">Vendor: Hudson Plumbing · Scheduled Thu</div>
+              </div>
+              <span class="status dispatched">Dispatched</span>
+            </div>
+            <div class="wo-row">
+              <span class="id">#WO-2839</span>
+              <div class="what">
+                <div class="t">Hallway light flickering, Floor 9</div>
+                <div class="w">AI triage complete · Awaiting vendor match</div>
+              </div>
+              <span class="status triaged">Triaged</span>
+            </div>
+            <div class="wo-chart">
+              <div class="cap"><span>Work orders · last 7 days</span><span>avg. 31/day</span></div>
+              <div class="bars">
+                <i style="height:42%"></i><i style="height:58%" class="navy"></i><i style="height:36%"></i><i style="height:70%" class="navy"></i><i style="height:52%"></i><i style="height:88%" class="hl"></i><i style="height:64%" class="navy"></i>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot">
+            <span class="meta">Avg. time-to-dispatch: 11 min</span>
+            <span class="link-btn">View Queue</span>
+          </div>
+        </section>
+
+        <!-- Module 3: Screening -->
+        <section class="card">
+          <div class="card-head">
+            <div class="mod-icon">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>
+            </div>
+            <div>
+              <h2>Tenant Screening</h2>
+              <div class="desc">Automated verification pipeline</div>
+            </div>
+            <span class="badge auto">Automated</span>
+          </div>
+          <div class="card-body">
+            <div class="ring-wrap">
+              <div class="ring">
+                <svg width="96" height="96" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="41" fill="none" stroke="#e8edf4" stroke-width="9"/>
+                  <circle cx="48" cy="48" r="41" fill="none" stroke="#c9a861" stroke-width="9" stroke-linecap="round" stroke-dasharray="257.6" stroke-dashoffset="46.4"/>
+                </svg>
+                <div class="num"><b>82%</b><s>Approved</s></div>
+              </div>
+              <div class="ring-legend">
+                <div class="li"><span class="sw" style="background:var(--gold)"></span><span><b>27</b> applications this week</span></div>
+                <div class="li"><span class="sw" style="background:var(--navy-700)"></span><span><b>22</b> auto-verified</span></div>
+                <div class="li"><span class="sw" style="background:var(--grey-200)"></span><span><b>5</b> pending manual review</span></div>
+              </div>
+            </div>
+            <div class="app-row">
+              <span class="mini">SM</span>
+              <div class="who"><div class="n">S. Mercer</div><div class="u">Unit 14D · The Meridian</div></div>
+              <span class="score g">A · 94</span>
+            </div>
+            <div class="app-row">
+              <span class="mini">JK</span>
+              <div class="who"><div class="n">J. Kowalski</div><div class="u">Unit 2A · Riverside Tower</div></div>
+              <span class="score g">A · 91</span>
+            </div>
+            <div class="app-row">
+              <span class="mini">RT</span>
+              <div class="who"><div class="n">R. Tan</div><div class="u">Unit 9F · Park Lane West</div></div>
+              <span class="score a">B · 76</span>
+            </div>
+          </div>
+          <div class="card-foot">
+            <span class="meta">Credit · income · background · references</span>
+            <span class="link-btn">Pipeline</span>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

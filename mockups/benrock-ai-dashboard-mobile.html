@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benrock Capital — AI Services (Mobile)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-900: #0a1628;
+    --navy-800: #0f1f38;
+    --navy-700: #16294a;
+    --navy-100: #e8edf4;
+    --gold: #c9a861;
+    --gold-soft: rgba(201, 168, 97, 0.14);
+    --white: #ffffff;
+    --ink: #14213a;
+    --grey-600: #5b6b82;
+    --grey-400: #93a1b5;
+    --grey-200: #dde4ec;
+    --grey-100: #f4f6f9;
+    --green: #2e9e6b;
+    --green-soft: rgba(46, 158, 107, 0.12);
+    --amber: #d99a2b;
+    --red: #c4554d;
+    --red-soft: rgba(196, 85, 77, 0.10);
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Inter', -apple-system, sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--sans);
+    background: #e9ecf1;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  /* 9:16 phone stage */
+  .phone {
+    width: 393px;
+    height: 699px; /* 9:16 with frame padding */
+    background: var(--grey-100);
+    border-radius: 36px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 40px 90px -30px rgba(10, 22, 40, 0.5), 0 0 0 10px #0c1626, 0 0 0 12px #2a3a52;
+    position: relative;
+  }
+
+  /* Status bar + header (dark navy hero) */
+  .hero {
+    background: linear-gradient(168deg, var(--navy-900) 0%, var(--navy-800) 78%, var(--navy-700) 100%);
+    color: var(--white);
+    padding: 14px 22px 22px;
+    flex-shrink: 0;
+    border-radius: 36px 36px 0 0;
+  }
+  .statusbar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; font-weight: 600;
+    padding-bottom: 14px;
+  }
+  .statusbar .icons { display: flex; gap: 5px; align-items: center; }
+  .statusbar svg { width: 15px; height: 12px; fill: var(--white); }
+  .hero-row { display: flex; align-items: center; gap: 12px; }
+  .wordmark {
+    font-family: var(--serif);
+    font-size: 19px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  .wordmark span { color: var(--gold); }
+  .hero .sub { font-size: 8.5px; letter-spacing: 2.6px; text-transform: uppercase; color: var(--grey-400); margin-top: 2px; font-weight: 500; }
+  .bell {
+    margin-left: auto;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .bell svg { width: 15px; height: 15px; stroke: rgba(255,255,255,0.85); fill: none; stroke-width: 1.8; }
+  .bell .dot { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--red); border: 1.5px solid var(--navy-900); }
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: var(--navy-900);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 12px;
+  }
+  .hero h1 { font-family: var(--serif); font-size: 25px; font-weight: 600; margin-top: 18px; letter-spacing: 0.3px; }
+  .hero .live-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 10px;
+    background: rgba(46,158,107,0.18);
+    color: #5fd49d;
+    font-size: 9.5px; font-weight: 600;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-radius: 16px;
+    padding: 6px 12px;
+  }
+  .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #5fd49d;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(95,212,157,0.4); }
+    50% { box-shadow: 0 0 0 5px rgba(95,212,157,0); }
+  }
+
+  /* KPI ticker overlapping hero */
+  .scroll { flex: 1; overflow-y: auto; padding: 0 16px 84px; scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .kpis {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: -2px;
+    transform: translateY(-26px);
+    margin-bottom: -10px;
+  }
+  .kpi {
+    background: var(--white);
+    border: 1px solid var(--grey-200);
+    border-radius: 12px;
+    padding: 12px 12px 11px;
+    box-shadow: 0 10px 24px -14px rgba(10,22,40,0.35);
+  }
+  .kpi .label { font-size: 8px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--grey-600); font-weight: 600; }
+  .kpi .value { font-family: var(--serif); font-size: 21px; font-weight: 600; margin-top: 4px; line-height: 1; }
+  .kpi .delta { font-size: 9px; margin-top: 5px; font-weight: 600; color: var(--green); }
+
+  .section-label {
+    font-size: 9.5px; letter-spacing: 2.2px; text-transform: uppercase;
+    color: var(--grey-600); font-weight: 600;
+    margin: 8px 4px 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--grey-200); }
+
+  /* Cards */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--grey-200);
+    border-radius: 16px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 16px 16px 13px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--grey-100);
+  }
+  .mod-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--navy-900);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .mod-icon svg { width: 17px; height: 17px; stroke: var(--gold); fill: none; stroke-width: 1.6; }
+  .card-head h2 { font-family: var(--serif); font-size: 17.5px; font-weight: 600; }
+  .card-head .desc { font-size: 10px; color: var(--grey-600); margin-top: 1px; }
+  .badge {
+    margin-left: auto;
+    font-size: 8.5px; font-weight: 700;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    border-radius: 12px;
+    padding: 5px 9px;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .badge.live { background: var(--green-soft); color: var(--green); }
+  .badge.auto { background: var(--gold-soft); color: #a37f33; }
+  .card-body { padding: 13px 16px 15px; display: flex; flex-direction: column; gap: 9px; }
+
+  /* Chat */
+  .msg { display: flex; font-size: 11.5px; }
+  .msg .bubble {
+    background: var(--grey-100);
+    border-radius: 11px 11px 11px 3px;
+    padding: 9px 12px;
+    line-height: 1.45;
+    max-width: 88%;
+  }
+  .msg.ai { justify-content: flex-end; }
+  .msg.ai .bubble {
+    background: var(--navy-900);
+    color: rgba(255,255,255,0.92);
+    border-radius: 11px 11px 3px 11px;
+  }
+  .msg .tag { font-size: 8px; font-weight: 700; letter-spacing: 0.9px; color: var(--gold); text-transform: uppercase; display: block; margin-bottom: 3px; }
+  .typing { display: flex; align-items: center; gap: 7px; font-size: 10px; color: var(--grey-600); padding-top: 2px; }
+  .typing .dots { display: flex; gap: 3px; }
+  .typing .dots i { width: 4.5px; height: 4.5px; background: var(--gold); border-radius: 50%; animation: blink 1.2s infinite; }
+  .typing .dots i:nth-child(2) { animation-delay: .2s; }
+  .typing .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  .chat-stats {
+    display: flex;
+    border-top: 1px solid var(--grey-100);
+    margin: 4px -16px -15px;
+    padding: 11px 16px 13px;
+    background: #fbfcfd;
+  }
+  .chat-stat { flex: 1; text-align: center; }
+  .chat-stat + .chat-stat { border-left: 1px solid var(--grey-200); }
+  .chat-stat .n { font-family: var(--serif); font-size: 18px; font-weight: 600; }
+  .chat-stat .l { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey-600); margin-top: 1px; }
+
+  /* Work orders */
+  .wo-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--grey-200);
+    border-radius: 10px;
+    font-size: 11.5px;
+  }
+  .wo-row .what { flex: 1; min-width: 0; }
+  .wo-row .what .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wo-row .what .w { font-size: 9.5px; color: var(--grey-600); margin-top: 1px; }
+  .status {
+    font-size: 8.5px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase;
+    border-radius: 10px;
+    padding: 4px 9px;
+    flex-shrink: 0;
+  }
+  .status.dispatched { background: var(--green-soft); color: var(--green); }
+  .status.triaged { background: var(--gold-soft); color: #a37f33; }
+  .status.urgent { background: var(--red-soft); color: var(--red); }
+  .wo-chart { margin-top: 3px; }
+  .wo-chart .cap { display: flex; justify-content: space-between; font-size: 8.5px; color: var(--grey-600); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 7px; }
+  .bars { display: flex; align-items: flex-end; gap: 6px; height: 44px; }
+  .bars i { flex: 1; background: var(--navy-100); border-radius: 3px 3px 0 0; }
+  .bars i.hl { background: var(--gold); }
+  .bars i.navy { background: var(--navy-700); }
+
+  /* Screening */
+  .ring-wrap { display: flex; align-items: center; gap: 16px; padding: 2px 0 4px; }
+  .ring { position: relative; width: 84px; height: 84px; flex-shrink: 0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring .num b { font-family: var(--serif); font-size: 22px; font-weight: 600; }
+  .ring .num s { text-decoration: none; font-size: 7.5px; letter-spacing: 1px; text-transform: uppercase; color: var(--grey-600); }
+  .ring-legend { font-size: 10.5px; color: var(--grey-600); display: flex; flex-direction: column; gap: 6px; }
+  .ring-legend b { color: var(--ink); font-weight: 600; }
+  .ring-legend .li { display: flex; align-items: center; gap: 7px; }
+  .ring-legend .sw { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .app-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--grey-200);
+    border-radius: 10px;
+    font-size: 11.5px;
+  }
+  .app-row .mini {
+    width: 27px; height: 27px;
+    border-radius: 50%;
+    background: var(--navy-100);
+    color: var(--navy-700);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .app-row .who { flex: 1; min-width: 0; }
+  .app-row .who .n { font-weight: 500; }
+  .app-row .who .u { font-size: 9.5px; color: var(--grey-600); }
+  .score { font-weight: 700; font-size: 11px; }
+  .score.g { color: var(--green); }
+  .score.a { color: var(--amber); }
+
+  .card-foot {
+    padding: 11px 16px;
+    border-top: 1px solid var(--grey-100);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-foot .meta { font-size: 9px; color: var(--grey-400); }
+  .link-btn {
+    font-size: 9.5px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    color: var(--navy-700);
+  }
+  .link-btn::after { content: ' →'; color: var(--gold); }
+
+  /* Bottom tab bar */
+  .tabbar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--grey-200);
+    display: flex;
+    padding: 10px 8px 18px;
+    border-radius: 0 0 36px 36px;
+  }
+  .tab {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 8.5px; font-weight: 600;
+    letter-spacing: 0.4px;
+    color: var(--grey-400);
+    position: relative;
+  }
+  .tab svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+  .tab.active { color: var(--navy-900); }
+  .tab.active::before {
+    content: '';
+    position: absolute; top: -10px;
+    width: 26px; height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--gold);
+  }
+  .tab .pill {
+    position: absolute; top: -4px; right: 22%;
+    background: var(--gold);
+    color: var(--navy-900);
+    font-size: 8px; font-weight: 700;
+    border-radius: 8px;
+    padding: 1px 5px;
+  }
+  .home-indicator {
+    position: absolute; bottom: 6px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 4px;
+    border-radius: 2px;
+    background: var(--navy-900);
+    opacity: 0.25;
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Hero header -->
+  <header class="hero">
+    <div class="statusbar">
+      <span>9:41</span>
+      <div class="icons">
+        <svg viewBox="0 0 18 12"><path d="M1 8h2v4H1zM5 6h2v6H5zM9 4h2v8H9zM13 1h2v11h-2z"/></svg>
+        <svg viewBox="0 0 16 12"><path d="M8 9.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.6 7.1l1.8 1.8a5 5 0 0 1 7.2 0l1.8-1.8a7.6 7.6 0 0 0-10.8 0zM0 4.5l1.8 1.8a10 10 0 0 1 12.4 0L16 4.5a12.6 12.6 0 0 0-16 0z"/></svg>
+        <svg viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3" fill="none" stroke="#fff" opacity="0.5"/><rect x="2" y="2" width="16" height="8" rx="1.5"/><path d="M23 4v4a2.2 2.2 0 0 0 0-4z"/></svg>
+      </div>
+    </div>
+    <div class="hero-row">
+      <div>
+        <div class="wordmark">Benrock<span>.</span></div>
+        <div class="sub">Capital · AI Services</div>
+      </div>
+      <div class="bell">
+        <svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="dot"></span>
+      </div>
+      <div class="avatar">PV</div>
+    </div>
+    <h1>AI Services Overview</h1>
+    <div class="live-chip"><span class="pulse"></span> All Systems Live · 1,284 Units</div>
+  </header>
+
+  <!-- Scrollable content -->
+  <div class="scroll">
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="label">Resolved</div>
+        <div class="value">2,847</div>
+        <div class="delta">▲ 18.2%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Response</div>
+        <div class="value">38s</div>
+        <div class="delta">▼ 96%</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Automated</div>
+        <div class="value">94%</div>
+        <div class="delta">▲ 6.1%</div>
+      </div>
+    </div>
+
+    <div class="section-label">AI Service Modules</div>
+
+    <!-- Module 1: Chatbot -->
+    <section class="card">
+      <div class="card-head">
+        <div class="mod-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9 9h.01M13 9h.01"/></svg>
+        </div>
+        <div>
+          <h2>24/7 Tenant Concierge</h2>
+          <div class="desc">11 active conversations</div>
+        </div>
+        <span class="badge live"><span class="pulse" style="width:5px;height:5px;"></span>Live</span>
+      </div>
+      <div class="card-body">
+        <div class="msg">
+          <div class="bubble"><span class="tag">Unit 4B · Riverside Tower</span>My garage remote stopped working — can someone help?</div>
+        </div>
+        <div class="msg ai">
+          <div class="bubble"><span class="tag">Benrock AI · 0:02s</span>Of course. A replacement remote is reserved at the front desk. Would tomorrow 9–11 AM work for pickup?</div>
+        </div>
+        <div class="typing">
+          <div class="dots"><i></i><i></i><i></i></div>
+          Benrock AI is responding to Unit 12A…
+        </div>
+        <div class="chat-stats">
+          <div class="chat-stat"><div class="n">142</div><div class="l">Today</div></div>
+          <div class="chat-stat"><div class="n">98.1%</div><div class="l">Resolution</div></div>
+          <div class="chat-stat"><div class="n">4.9</div><div class="l">CSAT</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Module 2: Maintenance -->
+    <section class="card">
+      <div class="card-head">
+        <div class="mod-icon">
+          <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <div>
+          <h2>Maintenance &amp; Work Orders</h2>
+          <div class="desc">Automated triage &amp; dispatch</div>
+        </div>
+        <span class="badge auto">Auto</span>
+      </div>
+      <div class="card-body">
+        <div class="wo-row">
+          <div class="what">
+            <div class="t">#WO-2841 · HVAC — no cooling, Unit 7C</div>
+            <div class="w">ArcticAir · ETA today 2:30 PM</div>
+          </div>
+          <span class="status urgent">Urgent</span>
+        </div>
+        <div class="wo-row">
+          <div class="what">
+            <div class="t">#WO-2840 · Kitchen faucet leak, Unit 3F</div>
+            <div class="w">Hudson Plumbing · Scheduled Thu</div>
+          </div>
+          <span class="status dispatched">Dispatched</span>
+        </div>
+        <div class="wo-row">
+          <div class="what">
+            <div class="t">#WO-2839 · Hallway light, Floor 9</div>
+            <div class="w">AI triage complete · Vendor match</div>
+          </div>
+          <span class="status triaged">Triaged</span>
+        </div>
+        <div class="wo-chart">
+          <div class="cap"><span>Last 7 days</span><span>avg. 31/day</span></div>
+          <div class="bars">
+            <i style="height:42%"></i><i style="height:58%" class="navy"></i><i style="height:36%"></i><i style="height:70%" class="navy"></i><i style="height:52%"></i><i style="height:88%" class="hl"></i><i style="height:64%" class="navy"></i>
+          </div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <span class="meta">Avg. time-to-dispatch: 11 min</span>
+        <span class="link-btn">View Queue</span>
+      </div>
+    </section>
+
+    <!-- Module 3: Screening -->
+    <section class="card">
+      <div class="card-head">
+        <div class="mod-icon">
+          <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>
+        </div>
+        <div>
+          <h2>Tenant Screening</h2>
+          <div class="desc">Automated verification pipeline</div>
+        </div>
+        <span class="badge auto">Auto</span>
+      </div>
+      <div class="card-body">
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg width="84" height="84" viewBox="0 0 84 84">
+              <circle cx="42" cy="42" r="36" fill="none" stroke="#e8edf4" stroke-width="8"/>
+              <circle cx="42" cy="42" r="36" fill="none" stroke="#c9a861" stroke-width="8" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="40.7"/>
+            </svg>
+            <div class="num"><b>82%</b><s>Approved</s></div>
+          </div>
+          <div class="ring-legend">
+            <div class="li"><span class="sw" style="background:var(--gold)"></span><span><b>27</b> applications this week</span></div>
+            <div class="li"><span class="sw" style="background:var(--navy-700)"></span><span><b>22</b> auto-verified</span></div>
+            <div class="li"><span class="sw" style="background:var(--grey-200)"></span><span><b>5</b> pending review</span></div>
+          </div>
+        </div>
+        <div class="app-row">
+          <span class="mini">SM</span>
+          <div class="who"><div class="n">S. Mercer</div><div class="u">Unit 14D · The Meridian</div></div>
+          <span class="score g">A · 94</span>
+        </div>
+        <div class="app-row">
+          <span class="mini">JK</span>
+          <div class="who"><div class="n">J. Kowalski</div><div class="u">Unit 2A · Riverside Tower</div></div>
+          <span class="score g">A · 91</span>
+        </div>
+        <div class="app-row">
+          <span class="mini">RT</span>
+          <div class="who"><div class="n">R. Tan</div><div class="u">Unit 9F · Park Lane West</div></div>
+          <span class="score a">B · 76</span>
+        </div>
+      </div>
+      <div class="card-foot">
+        <span class="meta">Credit · income · background · references</span>
+        <span class="link-btn">Pipeline</span>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Bottom navigation -->
+  <nav class="tabbar">
+    <div class="tab active">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Chat
+      <span class="pill">12</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      Maintenance
+      <span class="pill">5</span>
+    </div>
+    <div class="tab">
+      <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>
+      Screening
+    </div>
+  </nav>
+  <div class="home-indicator"></div>
+</div>
+</body>
+</html>
