@@ -17,6 +17,7 @@ import { renderOleForm } from './views/oleForm.js';
 import { renderIntelligence } from './views/intelligence.js';
 import { renderAccimap } from './views/accimap.js';
 import { icons } from './icons.js';
+import { initInstall } from './install.js';
 
 const NAV_GROUPS = [
   ['Overview', [
@@ -267,6 +268,7 @@ async function boot() {
   if (!location.hash) location.hash = '#/dashboard';
   route();
   registerServiceWorker();
+  initInstall();
 }
 
 function registerServiceWorker() {

@@ -1422,3 +1422,25 @@ html[data-theme="dark"] .am-port { border-color: #6a707b; }
   .am-side.closed { margin-left: 0; display: none; }
   .am-canvas-wrap { height: 60vh; min-height: 420px; }
 }
+
+/* ============================================================
+   INSTALL BANNER — "Add to Home Screen" prompt (PWA)
+   ============================================================ */
+.install-banner { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 24px);
+  z-index: 220; display: flex; align-items: center; gap: 14px; width: min(560px, calc(100vw - 28px));
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 16px 44px rgba(16,18,25,.22); padding: 13px 15px; opacity: 0; transition: opacity .25s, transform .25s; }
+.install-banner.show { opacity: 1; transform: translate(-50%, 0); }
+.install-banner .ib-ic { width: 42px; height: 42px; border-radius: 11px; flex: 0 0 auto; box-shadow: 0 2px 6px rgba(226,0,26,.25); }
+.install-banner .ib-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.install-banner .ib-tx b { font-size: .9rem; font-weight: 650; letter-spacing: -.01em; }
+.install-banner .ib-tx span { font-size: .79rem; color: var(--muted); line-height: 1.4; }
+.install-banner .ib-tx span b { color: var(--ink-soft); font-weight: 650; }
+.install-banner .ib-actions { display: flex; gap: 7px; flex: 0 0 auto; align-items: center; }
+.install-banner .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.install-banner .btn.ghost:hover { color: var(--ink); background: var(--line-soft); }
+@media (max-width: 600px) {
+  .install-banner { flex-wrap: wrap; bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .install-banner .ib-tx { flex-basis: calc(100% - 56px); }
+  .install-banner .ib-actions { margin-left: auto; }
+}
