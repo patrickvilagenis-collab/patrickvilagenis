@@ -973,3 +973,56 @@ a:focus-visible, .rowlink:focus-visible { outline: 2px solid var(--brand); outli
 [data-theme="dark"] .atype-opt.warn, [data-theme="dark"] .atype-card.warn { border-top-color: var(--warn); }
 [data-theme="dark"] .atype-opt.good, [data-theme="dark"] .atype-card.good { border-top-color: var(--good); }
 [data-theme="dark"] .atype-opt.muted, [data-theme="dark"] .atype-card.muted { border-top-color: #4a4e57; }
+
+/* ============================================================
+   APP CHROME v2 — premium branded shell matching the login.
+   Dark rail + refined topbar/cards, in BOTH light and dark themes.
+   ============================================================ */
+.sidebar {
+  background: linear-gradient(180deg, #191a20 0%, #121318 100%);
+  border-right: 1px solid #24262e;
+  border-top: none;
+  position: relative;
+}
+.sidebar::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--brand), #ff5a6a); }
+.brand { border-bottom: 1px solid #23252d; padding-bottom: 16px; }
+.brand-txt b { color: #f4f5f7; }
+.brand-txt small { color: #888d98; }
+.nav-label { color: #6b7079; }
+.nav a { color: #aab0bb; border-left-color: transparent; }
+.nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+.nav a.active { background: rgba(226,0,26,.18); color: #ff8a94; border-left-color: var(--brand); box-shadow: none; }
+.sidebar-foot { border-top: 1px solid #23252d; padding-top: 12px; }
+.user-name { color: #c9cdd6; }
+.user-role { background: rgba(226,0,26,.22); color: #ff9aa3; }
+.signout { color: #9aa0a8; border-color: #2c2e36; background: transparent; }
+.signout:hover { color: #ff8a94; border-color: var(--brand); }
+.net.on { color: #5fd0a0; } .net.off { color: #ff7a85; }
+.mem-notice { background: rgba(224,134,0,.16); color: #f0b35a; border-color: rgba(224,134,0,.3); }
+.sidebar *::-webkit-scrollbar-thumb { background: #2c2e36; }
+
+/* topbar: a touch more refined, sits on the light canvas */
+.topbar { box-shadow: 0 1px 0 rgba(20,20,20,.04); }
+.tb-crumb #tbSection { letter-spacing: -.02em; }
+
+/* mobile tab bar to match the dark rail */
+.tabbar { background: #16171b; border-top: 1px solid #24262e; }
+.tabbar a { color: #9aa0a8; }
+.tabbar a.active { color: #ff8a94; }
+
+/* content canvas: subtle premium depth in light mode */
+html[data-theme="light"] body { background:
+  radial-gradient(1200px 380px at 78% -8%, #fdeef0 0%, rgba(253,238,240,0) 60%),
+  radial-gradient(900px 320px at -6% 4%, #f1f2f6 0%, rgba(241,242,246,0) 55%),
+  #f4f5f8; background-attachment: fixed; }
+
+/* cards: crisper, premium elevation + hairline */
+.card { border-radius: 14px; border-color: #ececef; box-shadow: 0 1px 2px rgba(16,18,24,.05), 0 10px 26px rgba(16,18,24,.05); }
+.kpi { border-radius: 14px; }
+.btn { border-radius: 10px; }
+.btn.primary { box-shadow: 0 2px 10px rgba(226,0,26,.22); }
+
+/* keep the dark rail dark even in dark theme (already dark — just align borders) */
+html[data-theme="dark"] .sidebar { background: linear-gradient(180deg, #15161b 0%, #0f1014 100%); border-right-color: #22242b; }
+html[data-theme="dark"] .topbar { box-shadow: none; }
