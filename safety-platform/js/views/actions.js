@@ -27,7 +27,7 @@ export async function renderActions(root) {
       <td><b>${esc(a.title || '(untitled)')}</b><div class="sub">${esc(a.description || '')}</div></td>
       <td>${esc(a.owner || '—')}</td>
       <td>${esc(a.site || '—')}</td>
-      <td>${a.dueDate ? fmtDate(a.dueDate) : '—'} ${escalation(a)}</td>
+      <td><span class="nowrap">${a.dueDate ? fmtDate(a.dueDate) : '—'}</span> ${escalation(a)}</td>
       <td>
         <select class="select small" data-status="${a.id}">
           ${['Open', 'In progress', 'Implemented', 'Closed'].map((s) => `<option ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}
@@ -66,7 +66,7 @@ export async function renderActions(root) {
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Priority</th><th>Action</th><th>Owner</th><th>Site</th><th>Due</th><th>Status</th><th class="num">Source</th></tr></thead>
-        <tbody id="rows">${actions.map(row).join('') || '<tr><td colspan="7" class="empty">No actions yet.</td></tr>'}</tbody>
+        <tbody id="rows">${actions.map(row).join('') || '<tr><td colspan="7" class="empty"><b>No actions here yet.</b><br>Corrective actions raised in visits, accident reports and OLEs all land in this tracker.</td></tr>'}</tbody>
       </table>
     </div>
   `;
@@ -102,7 +102,7 @@ export async function renderActions(root) {
     const implemented = actions.filter((a) => a.status === 'Implemented');
     if (!implemented.length) { toast('No implemented actions to close'); return; }
     for (const a of implemented) { a.status = 'Closed'; await store.saveAction(a); }
-    toast(`${implemented.length} action(s) closed`, 'good');
+    toast(`${implemented.length} ${implemented.length === 1 ? 'action' : 'actions'} closed`, 'good');
     renderActions(root);
   });
 

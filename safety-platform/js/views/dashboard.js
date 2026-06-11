@@ -71,7 +71,7 @@ export async function renderDashboard(root) {
       <div class="it-left">
         <div class="it-num">${pre.total}</div>
         <div><h2>Your next SIF is likely already in your system</h2>
-          <p>${pre.total} high-energy exposure(s) without an effective direct control · barrier coverage ${barrier.coverage != null ? barrier.coverage + '%' : '—'}. Open Intelligence for the heatmap, patterns and predictive model →</p></div>
+          <p>${pre.total} high-energy ${pre.total === 1 ? 'exposure' : 'exposures'} without an effective direct control · barrier coverage ${barrier.coverage != null ? barrier.coverage + '%' : '—'}. Open Intelligence for the heatmap, patterns and predictive model →</p></div>
       </div>
       <div class="it-chips">${pre.groups.slice(0, 4).map((g) => `<span class="it-chip">${g.energyIcon} ${esc(g.energyLabel)} · ${esc(g.zoneLabel)} <b>${g.count}</b></span>`).join('') || '<span class="it-chip good">No uncontrolled high-energy exposures 👍</span>'}</div>
     </a>
@@ -101,8 +101,29 @@ export async function renderDashboard(root) {
       </div>
       <div class="card span2">
         <h3>Recent activity</h3>
-        ${feed.length ? `<div class="feed">${feed.map((f) => `<a class="feed-row" href="${f.href}"><span class="feed-ic">${f.icon}</span><span class="feed-tx"><b>${esc(f.t)}</b><small>${esc(f.sub)}</small></span><span class="feed-date">${fmtDate(f.date)}</span></a>`).join('')}</div>` : '<p class="hint">No activity yet.</p>'}
+        ${feed.length ? `<div class="feed">${feed.map((f) => `<a class="feed-row" href="${f.href}"><span class="feed-ic">${f.icon}</span><span class="feed-tx"><b>${esc(f.t)}</b><small>${esc(f.sub)}</small></span><span class="feed-date">${fmtDate(f.date)}</span></a>`).join('')}</div>` : '<p class="hint">Nothing recorded yet — new visits, accident reports and OLEs appear here.</p>'}
       </div>
     </section>
   `;
+
+  countUpKpis(root);
+}
+
+// Animate KPI numbers on entry (skipped for users who prefer reduced motion).
+function countUpKpis(root) {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  root.querySelectorAll('.kpi-val').forEach((el) => {
+    const m = /^(\d+)(%?)$/.exec(el.textContent.trim());
+    if (!m) return;
+    const target = +m[1];
+    if (!target) return;
+    const dur = 550, t0 = performance.now();
+    const tick = (t) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * eased) + m[2];
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
 }

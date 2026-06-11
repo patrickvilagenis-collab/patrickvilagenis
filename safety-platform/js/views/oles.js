@@ -37,8 +37,8 @@ export async function renderOles(root) {
         <td class="num">${out ? `<span class="pill bad">${out}</span>` : '0'}</td>
         <td class="num">${oleActs.length || '—'}</td>
         <td>${statusPill(o.status)}</td>
-        <td>${fmtDate(o.date || o.createdAt)}</td>
-        <td class="num"><button class="icon-btn" data-del="${o.id}" title="Delete">🗑</button></td>
+        <td class="nowrap">${fmtDate(o.date || o.createdAt)}</td>
+        <td class="num"><button class="icon-btn" data-del="${o.id}" title="Delete OLE" aria-label="Delete OLE">🗑</button></td>
       </tr>`;
   };
 
@@ -71,7 +71,7 @@ export async function renderOles(root) {
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Ref / title</th><th>Facilitator / site</th><th class="num">Steps</th><th class="num">Findings</th><th class="num">Var.</th><th class="num">Outside</th><th class="num">Actions</th><th>Status</th><th>Date</th><th></th></tr></thead>
-        <tbody id="rows">${all.sort((a, b) => (b.date || b.createdAt).localeCompare(a.date || a.createdAt)).map(row).join('') || '<tr><td colspan="10" class="empty">No OLEs yet. <a href="#/oles/new">Create one →</a></td></tr>'}</tbody>
+        <tbody id="rows">${all.sort((a, b) => (b.date || b.createdAt).localeCompare(a.date || a.createdAt)).map(row).join('') || '<tr><td colspan="10" class="empty"><b>No learning events yet.</b><br>Run your first OLE to learn how work is really done.<br><br><a class="btn primary" href="#/oles/new">+ New OLE</a></td></tr>'}</tbody>
       </table>
     </div>
   `;

@@ -151,7 +151,7 @@ function buildAttendees() {
         <input data-k="name" value="${esc(at.name)}" placeholder="Name"/>
         <select data-k="role">${ATTENDEE_ROLES.map((x) => `<option ${at.role === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
         <select data-k="company">${['Schindler', 'Subcontractor', 'Third party'].map((x) => `<option ${at.company === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-        <button class="icon-btn" data-del>🗑</button>`;
+        <button class="icon-btn" data-del aria-label="Remove" title="Remove">🗑</button>`;
       r.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', () => { at[inp.dataset.k] = inp.value; scheduleSave(); }));
       r.querySelector('[data-del]').addEventListener('click', () => { _o.attendees.splice(i, 1); scheduleSave(); render(); });
       host.append(r);
@@ -181,7 +181,7 @@ function stepCard(st, idx, rerenderSteps) {
       <span class="step-n">${idx + 1}</span>
       <input class="step-name" data-k="name" value="${esc(st.name)}" placeholder="Step name"/>
       <button class="btn small" data-addfind>+ Finding</button>
-      <button class="icon-btn" data-delstep>🗑</button>
+      <button class="icon-btn" data-delstep aria-label="Remove step" title="Remove step">🗑</button>
     </div>
     <div class="step-findings"></div>`;
   card.querySelector('[data-k="name"]').addEventListener('input', (e) => { st.name = e.target.value; scheduleSave(); });
@@ -220,7 +220,7 @@ function findingCard(f, rerender) {
   card.innerHTML = `
     <div class="finding-top">
       <textarea class="finding-desc" data-k="description" placeholder="What did the team find?">${esc(f.description)}</textarea>
-      <button class="icon-btn" data-delfind>🗑</button>
+      <button class="icon-btn" data-delfind aria-label="Remove finding" title="Remove finding">🗑</button>
     </div>
     <div class="finding-meta">
       <div class="fourd-chips">${FOUR_D.map((d) => `<button type="button" class="fourd-chip ${(f.fourD || []).includes(d.id) ? 'on ' + d.id : ''}" data-4d="${d.id}" title="${esc(d.desc)}">${d.icon} ${d.label}</button>`).join('')}</div>
@@ -279,7 +279,7 @@ function actionRow(a, rerender) {
     <select data-k="priority">${['High', 'Medium', 'Low'].map((x) => `<option ${a.priority === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
     <select data-k="status">${['Open', 'In progress', 'Implemented', 'Closed'].map((x) => `<option ${a.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
     <input type="date" data-k="dueDate" value="${esc(a.dueDate)}"/>
-    <button class="icon-btn" data-del>🗑</button>`;
+    <button class="icon-btn" data-del aria-label="Remove" title="Remove">🗑</button>`;
   node.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', async () => { a[inp.dataset.k] = inp.value; await store.saveAction(a); }));
   node.querySelector('[data-del]').addEventListener('click', async () => { await store.delAction(a.id); _actions = _actions.filter((x) => x.id !== a.id); rerender(); buildTrace(); });
   return node;
@@ -312,7 +312,7 @@ function buildSurvey() {
 
 function buildNav() {
   const nav = _root.querySelector('#secNav');
-  const links = [['General', 'sec-general'], ['👥 Attendees', 'sec-attendees'], ['🧩 Steps & findings', 'sec-steps'], ['🚧 Outside swimlane', 'sec-outside'], ['✅ Actions', 'sec-actions'], ['📋 Survey', 'sec-survey']];
+  const links = [['📄 General', 'sec-general'], ['👥 Attendees', 'sec-attendees'], ['🧩 Steps & findings', 'sec-steps'], ['🚧 Outside swimlane', 'sec-outside'], ['✅ Actions', 'sec-actions'], ['📋 Survey', 'sec-survey']];
   nav.innerHTML = links.map(([l, id]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join('');
   nav.addEventListener('click', (e) => { const a = e.target.closest('[data-to]'); if (!a) return; e.preventDefault(); document.getElementById(a.dataset.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
@@ -336,7 +336,7 @@ function openSwimlane() {
   const outsideLane = lane('🚧 Outside the swimlane', oleOutsideFindings(_o), 'outside');
   modal.innerHTML = `
     <div class="swim-panel">
-      <div class="swim-head"><h2>🏊 Swimlane — ${esc(_o.refNo)}</h2><button class="icon-btn" id="swimClose">✕</button></div>
+      <div class="swim-head"><h2>🏊 Swimlane — ${esc(_o.refNo)}</h2><button class="icon-btn" id="swimClose" aria-label="Close swimlane" title="Close">✕</button></div>
       <p class="hint">Steps as lanes with their findings, 4D tags, variability and actions. Systemic findings sit in their own lane.</p>
       <div class="swim-board">${stepLanes || '<div class="swim-empty">No steps yet.</div>'}${outsideLane}</div>
       <div class="swim-legend">${FOUR_D.map((d) => `<span class="leg"><i class="swim-4d ${d.id}">${d.icon}</i>${d.label}</span>`).join('')}<span class="leg"><i class="swim-var">VAR</i>Variability</span></div>

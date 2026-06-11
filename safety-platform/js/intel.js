@@ -262,7 +262,7 @@ export function recommendations(precursors, hots, barrier) {
   for (const g of precursors.groups.slice(0, 3)) {
     recs.push({
       priority: 'High',
-      text: `Verify or install a direct control for ${g.energyIcon} ${g.energyLabel} at ${g.zoneLabel}${g.location && g.location !== '—' ? ' · ' + g.location : ''} — ${g.count} uncontrolled high-energy exposure(s)${g.sif ? `, ${g.sif} already SIF-class` : ''}.`,
+      text: `Verify or install a direct control for ${g.energyIcon} ${g.energyLabel} at ${g.zoneLabel}${g.location && g.location !== '—' ? ' · ' + g.location : ''} — ${g.count} uncontrolled high-energy ${g.count === 1 ? 'exposure' : 'exposures'}${g.sif ? `, ${g.sif} already SIF-class` : ''}.`,
     });
   }
   if (barrier.coverage != null && barrier.coverage < 85) {

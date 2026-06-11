@@ -80,7 +80,7 @@ function openDrawer(accidents, onChange) {
   };
 
   drawer.innerHTML = `
-    <div class="fdrawer-head"><h3>Filters</h3><button class="icon-btn" id="fClose">✕</button></div>
+    <div class="fdrawer-head"><h3>Filters</h3><button class="icon-btn" id="fClose" title="Close" aria-label="Close filters">✕</button></div>
     <div class="fdrawer-body">
       <label class="fdrawer-fld"><span>Incident type</span>
         <select data-fkey="type"><option value="">All</option>

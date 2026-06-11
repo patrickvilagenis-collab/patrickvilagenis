@@ -19,17 +19,17 @@ export async function renderVisits(root) {
         <td><b>${esc(v.templateName)}</b><div class="sub">${esc(v.general.city || '')}${v.general.branch ? ' · ' + esc(v.general.branch) : ''}</div></td>
         <td>${esc(v.general.observer || '—')}</td>
         <td>${esc(v.general.technician || '—')}<div class="sub">${esc(v.general.employeeType || '')}</div></td>
-        <td>${fmtDate(v.general.date || v.createdAt)}</td>
+        <td class="nowrap">${fmtDate(v.general.date || v.createdAt)}</td>
         <td class="num">${scoreBadge}</td>
         <td class="num">${vars ? `<span class="pill bad">${vars}</span>` : '0'}</td>
         <td class="num">${photos ? `📎 ${photos}` : '—'}</td>
-        <td class="num"><button class="icon-btn del" data-del="${v.id}" title="Delete">🗑</button></td>
+        <td class="num"><button class="icon-btn del" data-del="${v.id}" title="Delete visit" aria-label="Delete visit">🗑</button></td>
       </tr>`;
   };
 
   root.innerHTML = `
     <header class="view-head">
-      <div><h1>Field visits</h1><p class="muted">${visits.length} record(s) · stored locally, available offline.</p></div>
+      <div><h1>Field visits</h1><p class="muted">${visits.length} ${visits.length === 1 ? 'record' : 'records'} · stored locally, available offline.</p></div>
       <a class="btn primary" href="#/new">+ New field visit</a>
     </header>
     <div class="toolbar">
@@ -39,7 +39,7 @@ export async function renderVisits(root) {
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Status</th><th>Type / site</th><th>Observer</th><th>Technician</th><th>Date</th><th class="num">Score</th><th class="num">Var.</th><th class="num">Photos</th><th></th></tr></thead>
-        <tbody id="rows">${visits.map(row).join('') || `<tr><td colspan="9" class="empty">No visits yet. <a href="#/new">Create the first one →</a></td></tr>`}</tbody>
+        <tbody id="rows">${visits.map(row).join('') || `<tr><td colspan="9" class="empty"><b>No field visits yet.</b><br>Capture your first observation in under two minutes.<br><br><a class="btn primary" href="#/new">+ New field visit</a></td></tr>`}</tbody>
       </table>
     </div>
   `;

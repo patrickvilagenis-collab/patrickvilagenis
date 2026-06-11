@@ -72,7 +72,7 @@ function paint() {
       </div>
       <div class="form-head-actions">
         <label class="fld" style="min-width:170px"><span>Status</span>
-          <select id="statusSel">${['draft', 'reported', 'investigation', 'closed'].map((s) => `<option ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+          <select id="statusSel">${['draft', 'reported', 'investigation', 'closed'].map((s) => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${s[0].toUpperCase() + s.slice(1)}</option>`).join('')}</select></label>
       </div>
     </div>
 
@@ -379,7 +379,7 @@ function bindRowPhotos(node, holder) {
     for (const pid of holder.photos || []) {
       const p = await store.photo(pid); if (!p) continue;
       const thumb = el('div', { class: 'thumb' });
-      thumb.innerHTML = `<img src="${p.dataURL}"/><button class="thumb-del" data-pid="${pid}">×</button>`;
+      thumb.innerHTML = `<img src="${p.dataURL}"/><button class="thumb-del" data-pid="${pid}" aria-label="Delete photo" title="Delete photo">×</button>`;
       thumb.querySelector('img').addEventListener('click', () => { const lb = el('div', { class: 'lightbox', onClick: () => lb.remove() }); lb.innerHTML = `<img src="${p.dataURL}"/>`; document.body.append(lb); });
       thumb.querySelector('.thumb-del').addEventListener('click', async () => { holder.photos = holder.photos.filter((x) => x !== pid); await store.delPhoto(pid); scheduleSave(); render(); });
       cont.append(thumb);
@@ -403,7 +403,7 @@ function buildPhotos() {
     for (const pid of _acc.photos || []) {
       const p = await store.photo(pid); if (!p) continue;
       const thumb = el('div', { class: 'thumb' });
-      thumb.innerHTML = `<img src="${p.dataURL}"/><button class="thumb-del" data-pid="${pid}">×</button>`;
+      thumb.innerHTML = `<img src="${p.dataURL}"/><button class="thumb-del" data-pid="${pid}" aria-label="Delete photo" title="Delete photo">×</button>`;
       thumb.querySelector('img').addEventListener('click', () => {
         const lb = el('div', { class: 'lightbox', onClick: () => lb.remove() }); lb.innerHTML = `<img src="${p.dataURL}"/>`; document.body.append(lb);
       });
@@ -461,7 +461,7 @@ function rcaFiveWhys(host) {
     d.branches.forEach((br, bi) => {
       const card = el('div', { class: 'why-branch' });
       const chainHtml = br.whys.map((w, i) =>
-        `<div class="why-row"><span class="why-n">Why ${i + 1}?</span><textarea data-i="${i}" placeholder="Because…">${esc(w)}</textarea>${br.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${i}">🗑</button>` : ''}</div>`).join('');
+        `<div class="why-row"><span class="why-n">Why ${i + 1}?</span><textarea data-i="${i}" placeholder="Because…">${esc(w)}</textarea>${br.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${i}" aria-label="Remove this why" title="Remove">🗑</button>` : ''}</div>`).join('');
       card.innerHTML = `
         <div class="why-branch-head">
           <b>Causal factor ${bi + 1}</b>
@@ -506,7 +506,7 @@ function rcaFishbone(host) {
       card.innerHTML = `<h4>${esc(cat)}</h4>`;
       d.causes[cat].forEach((c, i) => {
         const r = el('div', { class: 'fish-cause' });
-        r.innerHTML = `<input value="${esc(c)}" data-i="${i}" placeholder="Cause…"/>${d.causes[cat].length > 1 ? `<button class="icon-btn" data-del="${i}">×</button>` : ''}`;
+        r.innerHTML = `<input value="${esc(c)}" data-i="${i}" placeholder="Cause…"/>${d.causes[cat].length > 1 ? `<button class="icon-btn" data-del="${i}" aria-label="Remove" title="Remove">×</button>` : ''}`;
         card.append(r);
       });
       const add = el('button', { class: 'linklike', onClick: () => { d.causes[cat].push(''); scheduleSave(); render(); } }, '+ add');
@@ -542,7 +542,7 @@ function rcaTripod(host) {
     d.barriers.forEach((bar, i) => {
       const card = el('div', { class: 'barrier-card' });
       card.innerHTML = `
-        <div class="barrier-head"><b>Barrier ${i + 1}</b><button class="icon-btn" data-del>🗑</button></div>
+        <div class="barrier-head"><b>Barrier ${i + 1}</b><button class="icon-btn" data-del aria-label="Remove barrier" title="Remove">🗑</button></div>
         <label class="fld"><span>Barrier (control that failed/was missing)</span><input data-k="desc" value="${esc(bar.desc)}"/></label>
         <div class="tripod-causes">
           <label class="fld"><span>Active failure (immediate act/condition)</span><textarea data-k="active">${esc(bar.active)}</textarea></label>
@@ -579,7 +579,7 @@ function rcaTapRoot(host) {
     const row = el('div', { class: 'snap-row' });
     d.events.forEach((ev, i) => {
       const step = el('div', { class: 'snap-step' });
-      step.innerHTML = `<span class="snap-n">${i + 1}</span><input value="${esc(ev)}" data-i="${i}" placeholder="Event step"/>${d.events.length > 1 ? `<button class="icon-btn" data-del="${i}">×</button>` : ''}`;
+      step.innerHTML = `<span class="snap-n">${i + 1}</span><input value="${esc(ev)}" data-i="${i}" placeholder="Event step"/>${d.events.length > 1 ? `<button class="icon-btn" data-del="${i}" aria-label="Remove" title="Remove">×</button>` : ''}`;
       row.append(step);
     });
     seq.append(row);
@@ -600,9 +600,9 @@ function rcaTapRoot(host) {
       if (!Array.isArray(f.whys)) f.whys = [''];
       const card = el('div', { class: 'factor-card' });
       const chainHtml = f.whys.map((w, wi) =>
-        `<div class="why-row"><span class="why-n">Why ${wi + 1}?</span><textarea data-why="${wi}" placeholder="Because…">${esc(w)}</textarea>${f.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${wi}">🗑</button>` : ''}</div>`).join('');
+        `<div class="why-row"><span class="why-n">Why ${wi + 1}?</span><textarea data-why="${wi}" placeholder="Because…">${esc(w)}</textarea>${f.whys.length > 1 ? `<button class="icon-btn" data-delwhy="${wi}" aria-label="Remove this why" title="Remove">🗑</button>` : ''}</div>`).join('');
       card.innerHTML = `
-        <div class="barrier-head"><b>Causal factor ${i + 1}</b><button class="icon-btn" data-del>🗑</button></div>
+        <div class="barrier-head"><b>Causal factor ${i + 1}</b><button class="icon-btn" data-del aria-label="Remove causal factor" title="Remove">🗑</button></div>
         <label class="fld"><span>Causal factor</span><input data-k="desc" value="${esc(f.desc)}"/></label>
         <div class="why-chain">${chainHtml}</div>
         <button class="btn small" data-addwhy>+ Add why</button>
@@ -633,7 +633,7 @@ async function buildActions() {
   const wrap = _root.querySelector('#accActions');
   const all = (await store.actions()).filter((x) => x.accidentId === _acc.id);
   wrap.innerHTML = '';
-  if (!all.length) wrap.innerHTML = '<p class="hint empty-row">No actions yet.</p>';
+  if (!all.length) wrap.innerHTML = '<p class="hint empty-row">No actions yet — use “+ Add action” to assign the first corrective action.</p>';
   all.forEach((a) => wrap.append(actionRow(a)));
   const add = _root.querySelector('#addAction');
   if (add && !add._bound) {
@@ -664,7 +664,7 @@ function actionRow(a) {
 // --- Section nav ------------------------------------------------------------
 function buildNav() {
   const nav = _root.querySelector('#secNav');
-  const links = [['Classification', 'sec-class'], ['What happened', 'sec-what'], ['Categorisation', 'sec-cat'],
+  const links = [['🚦 Classification', 'sec-class'], ['📝 What happened', 'sec-what'], ['🗂️ Categorisation', 'sec-cat'],
     ['🏷️ AIP', 'sec-aip'], ['🚨 Bodies & media', 'sec-notify'],
     ['⚡ Energy', 'sec-energy'], ['📷 Evidence', 'sec-photos'], ['🔎 RCA', 'sec-rca'], ['✅ Actions', 'sec-actions']];
   nav.innerHTML = links.map(([l, id]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join('');

@@ -48,7 +48,7 @@ export async function renderIntelligence(root) {
         <div class="hero-sif-num">${pre.total}</div>
         <div>
           <h2>Your next SIF is likely already in your system</h2>
-          <p>${pre.total} high-energy exposure(s) are currently recorded <b>without an effective direct control</b> — the precondition for a Serious Injury or Fatality. These are where to focus first.</p>
+          <p>${pre.total} high-energy ${pre.total === 1 ? 'exposure is' : 'exposures are'} currently recorded <b>without an effective direct control</b> — the precondition for a Serious Injury or Fatality. These are where to focus first.</p>
         </div>
       </div>
       <div class="hero-sif-list">

@@ -105,8 +105,9 @@ export async function renderSettings(root) {
     if (opStatus) opStatus.textContent = 'Uploading…';
     const res = await sync.pushBulk(db);
     if (res.unauthorized) { toast('Not authorized', 'bad'); return; }
-    toast(`Uploaded ${res.pushed} record(s)`, 'good');
-    if (opStatus) opStatus.textContent = `Uploaded ${res.pushed} record(s).`;
+    const recWord = res.pushed === 1 ? 'record' : 'records';
+    toast(`Uploaded ${res.pushed} ${recWord}`, 'good');
+    if (opStatus) opStatus.textContent = `Uploaded ${res.pushed} ${recWord}.`;
   });
 
   root.querySelector('#backup').addEventListener('click', async () => {

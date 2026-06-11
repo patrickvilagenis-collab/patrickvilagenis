@@ -44,7 +44,7 @@ function smoothPath(pts) {
 
 export function lineChart(data, { w = 520, h = 220, color = '#E2001A' } = {}) {
   if (data.length < 1) return emptyChart(w, h);
-  const pad = { l: 36, r: 14, t: 14, b: 28 };
+  const pad = { l: 36, r: 26, t: 14, b: 28 }; // right pad keeps the last axis label inside the viewBox
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
   const max = Math.max(...data.map((d) => d[1]), 1);
   const step = data.length > 1 ? cw / (data.length - 1) : 0;

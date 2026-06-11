@@ -7,15 +7,32 @@ import * as sync from './sync.js';
 export function renderLogin(mount, onSuccess) {
   const box = el('div', { class: 'login-screen' });
   box.innerHTML = `
-    <form class="login-card" autocomplete="on">
-      <img class="login-logo" src="./assets/schindler.svg" alt="Schindler"/>
-      <h1>Safety &amp; Health Information Tool</h1>
-      <p class="login-sub">Sign in to continue</p>
-      <label class="fld"><span>Username</span><input id="lgUser" autocomplete="username" autofocus required></label>
-      <label class="fld"><span>Password</span><input id="lgPass" type="password" autocomplete="current-password" required></label>
-      <button class="btn primary login-btn" id="lgBtn" type="submit">Sign in</button>
-      <p class="login-msg" id="lgMsg"></p>
-    </form>`;
+    <section class="login-hero" aria-hidden="true">
+      <img class="login-wheel" src="./assets/hazard-wheel.png" alt=""/>
+      <div class="login-hero-inner">
+        <img class="login-hero-logo" src="./assets/schindler.svg" alt=""/>
+        <h2>Safety &amp; Health<br>Information Tool</h2>
+        <p class="login-hero-sub">One platform for field visits, accident investigation and operational learning — in the office or on site, online or offline.</p>
+        <ul class="login-points">
+          <li><span>📋</span> Digital safety checklists with photos &amp; actions</li>
+          <li><span>⚡</span> Energy-based SIF classification &amp; root-cause analysis</li>
+          <li><span>🧠</span> Predictive safety intelligence &amp; live KPIs</li>
+          <li><span>📶</span> Works fully offline — syncs when you're back</li>
+        </ul>
+      </div>
+    </section>
+    <section class="login-panel">
+      <form class="login-card" autocomplete="on">
+        <img class="login-logo" src="./assets/schindler.svg" alt="Schindler"/>
+        <h1>Welcome back</h1>
+        <p class="login-sub">Sign in to your Safety &amp; Health workspace.</p>
+        <label class="fld"><span>Username</span><input id="lgUser" autocomplete="username" autofocus required></label>
+        <label class="fld"><span>Password</span><input id="lgPass" type="password" autocomplete="current-password" required></label>
+        <button class="btn primary login-btn" id="lgBtn" type="submit">Sign in</button>
+        <p class="login-msg" id="lgMsg" role="status"></p>
+        <p class="login-foot">Authorised personnel only · Schindler Group</p>
+      </form>
+    </section>`;
   mount.innerHTML = '';
   mount.append(box);
 

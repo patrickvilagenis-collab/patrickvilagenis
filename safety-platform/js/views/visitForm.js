@@ -286,7 +286,7 @@ function bindPhotos(node, holder, dis) {
       const p = await store.photo(pid);
       if (!p) continue;
       const thumb = el('div', { class: 'thumb' });
-      thumb.innerHTML = `<img src="${p.dataURL}" alt="photo"/>${dis ? '' : `<button class="thumb-del" data-pid="${pid}">×</button>`}`;
+      thumb.innerHTML = `<img src="${p.dataURL}" alt="photo"/>${dis ? '' : `<button class="thumb-del" data-pid="${pid}" aria-label="Delete photo" title="Delete photo">×</button>`}`;
       thumb.querySelector('img').addEventListener('click', () => openLightbox(p.dataURL));
       const del = thumb.querySelector('.thumb-del');
       if (del) del.addEventListener('click', async () => {
@@ -395,7 +395,7 @@ function buildJHASteps() {
         <textarea data-k="hazard" placeholder="Hazards" ${dis ? 'disabled' : ''}>${esc(st.hazard || '')}</textarea>
         <textarea data-k="control" placeholder="Controls" ${dis ? 'disabled' : ''}>${esc(st.control || '')}</textarea>
         <select data-k="risk" ${dis ? 'disabled' : ''}>${['Low', 'Medium', 'High'].map((x) => `<option ${st.risk === x ? 'selected' : ''}>${x}</option>`).join('')}</select>
-        ${dis ? '<span></span>' : '<button class="icon-btn del" data-del>🗑</button>'}`;
+        ${dis ? '<span></span>' : '<button class="icon-btn del" data-del aria-label="Remove row" title="Remove">🗑</button>'}`;
       r.querySelectorAll('[data-k]').forEach((inp) => inp.addEventListener('input', () => { st[inp.dataset.k] = inp.value; scheduleSave(); }));
       const del = r.querySelector('[data-del]');
       if (del) del.addEventListener('click', () => { _visit.jhaSteps.splice(i, 1); scheduleSave(); render(); });

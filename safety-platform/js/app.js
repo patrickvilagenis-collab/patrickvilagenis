@@ -55,11 +55,11 @@ function shell() {
         <div class="tb-crumb"><span id="tbSection">Dashboard</span><span class="tb-date">${today}</span></div>
         <div class="tb-search">
           <span class="tb-search-ic">🔍</span>
-          <input id="globalSearch" placeholder="Search visits, accidents, OLEs, actions…" autocomplete="off"/>
+          <input id="globalSearch" placeholder="Search visits, accidents, OLEs, actions…" autocomplete="off" aria-label="Search across the platform"/>
           <kbd class="tb-kbd">Ctrl K</kbd>
           <div class="tb-results" id="tbResults"></div>
         </div>
-        <div class="tb-right"><button class="theme-btn" id="themeBtn" title="Toggle dark mode">🌙</button><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
+        <div class="tb-right"><button class="theme-btn" id="themeBtn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button><span id="netState" class="net"></span><div id="userBox" class="user-box"></div></div>
       </header>
       <div id="view"></div>
     </main>

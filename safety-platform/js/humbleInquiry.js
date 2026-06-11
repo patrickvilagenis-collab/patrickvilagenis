@@ -113,7 +113,7 @@ export function openHumbleInquiry() {
     <div class="hi-panel">
       <div class="hi-head">
         <h2>💬 Humble Inquiry — how to ask</h2>
-        <button class="icon-btn" id="hiClose">✕</button>
+        <button class="icon-btn" id="hiClose" title="Close" aria-label="Close">✕</button>
       </div>
       <div class="hi-body">
         <blockquote class="hi-quote">“${esc(hi.definition)}”<cite>— ${esc(hi.author)}</cite></blockquote>

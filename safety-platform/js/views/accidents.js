@@ -55,8 +55,8 @@ export async function renderAccidents(root) {
       <td>${a.directControlPresent ? '<span class="pill good">Yes</span>' : '<span class="pill bad">No</span>'}</td>
       <td>${a.methodology ? esc((getMethodology(a.methodology) || {}).label || '') : '<span class="muted">—</span>'}</td>
       <td><span class="status ${a.status}">${esc(a.status)}</span></td>
-      <td>${fmtDate(a.occurredAt || a.createdAt)}</td>
-      <td class="num"><button class="icon-btn" data-del="${a.id}" title="Delete">🗑</button></td>
+      <td class="nowrap">${fmtDate(a.occurredAt || a.createdAt)}</td>
+      <td class="num"><button class="icon-btn" data-del="${a.id}" title="Delete report" aria-label="Delete accident report">🗑</button></td>
     </tr>`;
 
   root.innerHTML = `
@@ -86,7 +86,7 @@ export async function renderAccidents(root) {
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Type</th><th>Ref / site</th><th>What happened</th><th>Person</th><th>Control</th><th>RCA</th><th>Status</th><th>Date</th><th></th></tr></thead>
-        <tbody id="rows">${reported.map(row).join('') || '<tr><td colspan="9" class="empty">No accident reports match the filters. <a href="#/accidents/new">Create one →</a></td></tr>'}</tbody>
+        <tbody id="rows">${reported.map(row).join('') || '<tr><td colspan="9" class="empty"><b>No accident reports match the current filters.</b><br>Clear the filters above, or record a new incident.<br><br><a class="btn primary" href="#/accidents/new">+ New accident report</a></td></tr>'}</tbody>
       </table>
     </div>
   `;
@@ -131,7 +131,7 @@ export function renderNewAccident(root) {
           <div class="atype-tag ${t.tone}">${esc(t.label)}</div>
           <p>${esc(t.desc)}</p>
           <div class="picker-meta">
-            <span class="chip">${t.highEnergy === true ? '⚡ High energy' : t.highEnergy === false ? 'Low energy' : 'Energy: t.b.d.'}</span>
+            <span class="chip">${t.highEnergy === true ? '⚡ High energy' : t.highEnergy === false ? 'Low energy' : 'Energy assessed per case'}</span>
             ${t.control === true ? '<span class="chip">🛡️ Control present</span>' : t.control === false ? '<span class="chip">No direct control</span>' : ''}
             ${t.sif ? '<span class="chip">SIF</span>' : ''}
           </div>
