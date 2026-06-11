@@ -96,43 +96,43 @@ function paint() {
     </section>
 
     <section class="card" id="sec-aip">
-      <div class="card-head"><h3>🏷️ Classification (AIP)</h3><span id="iirBadge"></span></div>
+      <div class="card-head"><h3>Classification (AIP)</h3><span id="iirBadge"></span></div>
       <div class="grid2" id="aipFields"></div>
     </section>
 
     <section class="card" id="sec-impact">
-      <h3>🧍 Impacted person</h3>
+      <h3>Impacted person</h3>
       <div class="grid4" id="impactFields"></div>
     </section>
 
     <section class="card" id="sec-notify">
-      <h3>🚨 External bodies & media</h3>
+      <h3>External bodies & media</h3>
       <p class="hint">If any external body is involved (or it is a fatality), an Immediate Incident Report (IIR) is required.</p>
       <div class="fld"><span>Involved bodies</span><div class="energy-chips" id="bodyChips"></div></div>
       <div id="mediaFlags" class="media-flags"></div>
     </section>
 
     <details class="card aip-product" id="sec-product">
-      <summary><h3 style="display:inline">🛗 Equipment & product details</h3></summary>
+      <summary><h3 style="display:inline">Equipment & product details</h3></summary>
       <div class="grid4" id="productFields" style="margin-top:12px"></div>
     </details>
 
     <section class="card" id="sec-energy">
-      <div class="card-head"><h3>⚡ Hazard Wheel — Energy & control</h3>
+      <div class="card-head"><h3>Hazard Wheel — Energy & control</h3>
         <button class="btn small" id="addEnergyAcc">+ Add hazard</button></div>
       <p class="hint">Add each hazardous energy involved (e.g. a fall from a moving ladder = Mechanical + Gravity). For each, set the danger zone, whether a direct control existed and its condition.</p>
-      <details class="wheel-details"><summary>🛞 Schindler Hazard Wheel</summary><div class="wheel-host">${hazardWheelSVG(280)}</div></details>
+      <details class="wheel-details"><summary>Schindler Hazard Wheel</summary><div class="wheel-host">${hazardWheelSVG(280)}</div></details>
       <div id="energyRowsAcc"></div>
     </section>
 
     <section class="card" id="sec-photos">
-      <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Evidence</h3>
+      <h3>Evidence</h3>
       <div class="photos" id="accPhotos"></div>
       <label class="photo-add"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Add photo<input type="file" accept="image/*" capture="environment" hidden id="accPhotoInput"></label>
     </section>
 
     <section class="card" id="sec-rca">
-      <div class="card-head"><h3>🔎 Investigation — Root Cause Analysis</h3></div>
+      <div class="card-head"><h3>Investigation — Root Cause Analysis</h3></div>
       <div class="method-picker" id="methodPicker"></div>
       <div class="method-hint" id="methodHint"></div>
       <div id="rcaLayout"></div>
@@ -140,7 +140,7 @@ function paint() {
     </section>
 
     <section class="card" id="sec-actions">
-      <div class="card-head"><h3>✅ Corrective / preventive actions</h3><button class="btn small" id="addAction">+ Add action</button></div>
+      <div class="card-head"><h3>Corrective / preventive actions</h3><button class="btn small" id="addAction">+ Add action</button></div>
       <p class="hint">Each action carries an owner, priority and deadline, and feeds the global action tracker.</p>
       <div id="accActions"></div>
     </section>
@@ -664,9 +664,9 @@ function actionRow(a) {
 // --- Section nav ------------------------------------------------------------
 function buildNav() {
   const nav = _root.querySelector('#secNav');
-  const links = [['🚦 Classification', 'sec-class'], ['📝 What happened', 'sec-what'], ['🗂️ Categorisation', 'sec-cat'],
-    ['🏷️ AIP', 'sec-aip'], ['🚨 Bodies & media', 'sec-notify'],
-    ['⚡ Energy', 'sec-energy'], ['<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg> Evidence', 'sec-photos'], ['🔎 RCA', 'sec-rca'], ['✅ Actions', 'sec-actions']];
+  const links = [['Classification', 'sec-class'], ['What happened', 'sec-what'], ['Categorisation', 'sec-cat'],
+    ['AIP', 'sec-aip'], ['Bodies & media', 'sec-notify'],
+    ['Energy', 'sec-energy'], ['Evidence', 'sec-photos'], ['RCA', 'sec-rca'], ['Actions', 'sec-actions']];
   nav.innerHTML = links.map(([l, id]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join('');
   nav.addEventListener('click', (e) => {
     const a = e.target.closest('[data-to]'); if (!a) return; e.preventDefault();

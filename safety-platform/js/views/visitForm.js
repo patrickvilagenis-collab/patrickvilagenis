@@ -58,7 +58,7 @@ function paint() {
       <div class="form-head-actions">
         <div class="score-chip ${s.score == null ? 'muted' : s.score >= 90 ? 'good' : s.score >= 75 ? 'warn' : 'bad'}">
           <b>${s.score == null ? '—' : s.score + '%'}</b><span>compliance</span></div>
-        <button class="btn" id="humbleBtn" title="Humble Inquiry — how to ask">💬 How to ask</button>
+        <button class="btn" id="humbleBtn" title="Humble Inquiry — how to ask">How to ask</button>
         ${v.status === 'draft'
           ? '<button class="btn primary" id="submitBtn">Submit visit</button>'
           : '<button class="btn" id="reopenBtn">Reopen</button>'}
@@ -80,11 +80,11 @@ function paint() {
 
     ${t.hasEBS ? `
     <section class="card" id="sec-ebs">
-      <div class="card-head"><h3>⚡ Hazard Wheel — Energy-Based Safety</h3>
+      <div class="card-head"><h3>Hazard Wheel — Energy-Based Safety</h3>
         <button class="btn small" id="addEnergy">+ Add hazard</button></div>
       <p class="hint">Identify the high-energy hazards present (Schindler Hazard Wheel — "STKY"). For each, set the danger zone, whether a <b>direct control</b> exists and its condition.</p>
       <details class="wheel-details" open>
-        <summary>🛞 Schindler Hazard Wheel</summary>
+        <summary>Schindler Hazard Wheel</summary>
         <div class="wheel-host">${hazardWheelSVG(300)}</div>
         <p class="hint wheel-cap">10 high-energy hazard types — use the wheel to systematically check what could hurt you in this task.</p>
       </details>
@@ -93,7 +93,7 @@ function paint() {
 
     ${t.isJHA ? `
     <section class="card" id="sec-errortraps">
-      <h3>🪤 Error traps</h3>
+      <h3>Error traps</h3>
       <p class="hint">Tick the conditions present today that make an error more likely.</p>
       <div id="errorTraps"></div>
     </section>` : ''}
@@ -102,13 +102,13 @@ function paint() {
 
     ${t.isJHA ? `
     <section class="card" id="sec-jhasteps">
-      <div class="card-head"><h3>🧩 Job steps · zone · hazards · controls</h3><button class="btn small" id="addStep">+ Add step</button></div>
+      <div class="card-head"><h3>Job steps · zone · hazards · controls</h3><button class="btn small" id="addStep">+ Add step</button></div>
       <div id="jhaSteps"></div>
     </section>` : ''}
 
     ${t.hasActions ? `
     <section class="card" id="sec-actions">
-      <div class="card-head"><h3>✅ Actions</h3><button class="btn small" id="addAction">+ Add action</button></div>
+      <div class="card-head"><h3>Actions</h3><button class="btn small" id="addAction">+ Add action</button></div>
       <p class="hint">Actions feed the closed-loop tracker (assignee, due date, status, escalation).</p>
       <div id="actionsList"></div>
     </section>` : ''}
@@ -473,11 +473,11 @@ function updateHeaderScore() {
 function buildNav() {
   const nav = _root.querySelector('#secNav');
   const links = [['General', 'sec-general']];
-  if (_template.hasEBS) links.push(['⚡ Hazard Wheel', 'sec-ebs']);
-  if (_template.isJHA) links.push(['🪤 Error traps', 'sec-errortraps']);
+  if (_template.hasEBS) links.push(['Hazard Wheel', 'sec-ebs']);
+  if (_template.isJHA) links.push(['Error traps', 'sec-errortraps']);
   for (const sec of _template.sections) links.push([sec.title, `sec-${sec.id}`]);
-  if (_template.isJHA) links.push(['🧩 Steps', 'sec-jhasteps']);
-  if (_template.hasActions) links.push(['✅ Actions', 'sec-actions']);
+  if (_template.isJHA) links.push(['Steps', 'sec-jhasteps']);
+  if (_template.hasActions) links.push(['Actions', 'sec-actions']);
   nav.innerHTML = links.map(([label, id]) => `<a href="#" data-to="${id}">${esc(label)}</a>`).join('');
   nav.addEventListener('click', (e) => {
     const a = e.target.closest('[data-to]');

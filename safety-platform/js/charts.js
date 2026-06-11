@@ -1,7 +1,9 @@
 // charts.js — dependency-free SVG charts (works offline).
 // Each function returns an SVG string.
 
-const PALETTE = ['#E2001A', '#2b2f36', '#0073a8', '#e08600', '#1b9e5a', '#7a3b8f', '#c0392b', '#0e9aa7', '#e67e22', '#7f8c8d'];
+// Refined, low-saturation palette: brand red as the single accent, the rest a
+// muted graphite/slate ramp so dashboards read mature rather than colourful.
+const PALETTE = ['#E2001A', '#39414f', '#5b7795', '#b07d44', '#4f7d6b', '#6a6488', '#9a4f49', '#4c828a', '#8a7a66', '#838893'];
 
 function svg(w, h, inner) {
   return `<svg viewBox="0 0 ${w} ${h}" class="chart" preserveAspectRatio="xMidYMid meet" role="img">${inner}</svg>`;

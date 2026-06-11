@@ -1107,3 +1107,212 @@ html[data-theme="dark"] .feed-ic { background: #23242b; color: #aeb3bc; }
 .kpi { display: flex; flex-direction: column; }
 .kpi-spark { margin-top: auto; padding-top: 10px; }
 .filter-btn .fi { display: inline-flex; }
+
+/* ============================================================
+   DESIGN SYSTEM v4 — enterprise product pass.
+   Reference altitude: Linear / Vercel / Stripe Dashboard.
+   Mature neutral palette, generous rhythm, deliberate hierarchy.
+   Final append layer — wins the cascade in both themes.
+   ============================================================ */
+
+/* --- tokens: refined neutrals + spacing rhythm ------------------------------ */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #14161b;
+  --ink-soft: #3b4049;
+  --muted: #6c727c;
+  --faint: #969ba4;
+  --line: #e8e9ee;
+  --line-soft: #f0f1f4;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(17,19,24,.04);
+  --shadow-lift: 0 4px 16px rgba(17,19,24,.07), 0 1px 2px rgba(17,19,24,.04);
+  --sidebar: 244px;
+}
+
+body { background: var(--bg); color: var(--ink); letter-spacing: -.003em; }
+
+/* --- content rhythm: room to breathe ---------------------------------------- */
+.content { max-width: 1320px; padding: 0 36px 72px; }
+#view { padding-top: 26px; }
+.card-grid { gap: 18px; }
+.kpi-grid { gap: 16px; margin-bottom: 22px; }
+.card { margin-bottom: 18px; }
+
+/* --- typography: a deliberate scale ------------------------------------------ */
+h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.025em; color: var(--ink); line-height: 1.2; }
+h3 { font-size: .8rem; font-weight: 650; letter-spacing: .005em; color: var(--ink-soft); }
+.muted { color: var(--muted); font-size: .9rem; line-height: 1.5; }
+
+/* --- page header: a real section header with a hairline rule ----------------- */
+.view-head { align-items: flex-start; gap: 16px; margin: 0 0 26px;
+  padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.view-head > div:first-child { display: flex; flex-direction: column; gap: 5px; }
+.view-head h1 { letter-spacing: -.03em; }
+.view-head .muted { font-size: .9rem; max-width: 64ch; }
+
+/* --- cards: crisp hairline architecture, quiet elevation --------------------- */
+.card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+  box-shadow: var(--shadow); padding: 22px 24px; }
+.card:hover { border-color: var(--line); box-shadow: var(--shadow); }
+.card > h3:first-child, .card-head { margin-bottom: 18px; }
+.card > h3 { display: flex; align-items: center; gap: 8px; text-transform: none;
+  font-size: .82rem; font-weight: 650; letter-spacing: 0; color: var(--ink); }
+.table-wrap { border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+html[data-theme="dark"] .card { background: var(--surface); border-color: #262931; }
+
+/* --- KPI / stat cards: the marketing centrepiece ----------------------------- */
+.kpi-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+/* six-up / four-up stat rows sit on a single line on desktop */
+@media (min-width: 1180px) {
+  .kpi-grid { grid-template-columns: repeat(6, 1fr); }
+  .kpi-grid.four { grid-template-columns: repeat(4, 1fr); }
+}
+.kpi, .kpi.good, .kpi.warn, .kpi.bad {
+  border: 1px solid var(--line); border-left: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface); padding: 17px 18px 16px; box-shadow: var(--shadow); }
+.kpi:hover { transform: none; box-shadow: var(--shadow-lift); border-color: #dcdee5; }
+html[data-theme="dark"] .kpi { background: var(--surface); border-color: #262931; }
+html[data-theme="dark"] .kpi:hover { border-color: #383b44; }
+.kpi-lbl { order: -1; display: flex; align-items: center; gap: 7px; margin: 0 0 10px;
+  font-size: .68rem; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.kpi-val { font-size: 1.95rem; font-weight: 700; letter-spacing: -.035em; color: var(--ink); line-height: 1; }
+.kpi-sub { margin-top: 9px; font-size: .76rem; color: var(--muted); }
+.kpi.good .kpi-lbl::before, .kpi.warn .kpi-lbl::before, .kpi.bad .kpi-lbl::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; flex: 0 0 auto; }
+.kpi.good .kpi-lbl::before { background: var(--good); }
+.kpi.warn .kpi-lbl::before { background: var(--warn); }
+.kpi.bad  .kpi-lbl::before { background: var(--bad); }
+.kpi-spark { margin-top: 14px; padding-top: 0; }
+.kpi-spark .spark { height: 32px; opacity: .9; }
+/* delta chips: quiet, not loud */
+.delta { font-size: .66rem; font-weight: 700; padding: 1px 6px; border-radius: 5px; letter-spacing: .01em; }
+.delta.up { background: var(--good-bg); color: #0a7a48; }
+.delta.down { background: var(--bad-bg); color: var(--bad); }
+
+/* --- buttons: flat, confident ----------------------------------------------- */
+.btn { border-radius: var(--radius-sm); padding: 8px 14px; font-size: .85rem; font-weight: 600;
+  letter-spacing: -.005em; border-color: var(--line); }
+.btn:hover { border-color: #cdd0d7; box-shadow: none; background: #fbfbfc; }
+html[data-theme="dark"] .btn:hover { background: #1f2128; }
+.btn.primary { background: var(--brand); border-color: var(--brand); box-shadow: none; }
+.btn.primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); box-shadow: none; }
+.btn .ic { width: 15px; height: 15px; }
+
+/* --- inputs & search: refined ----------------------------------------------- */
+.search, .select, .fld input, .fld select, .fld textarea, .remark,
+.tb-search input { border-radius: var(--radius-sm); border-color: var(--line); }
+.toolbar { margin: 0 0 16px; gap: 8px; }
+
+/* --- tables: editorial, comfortable density --------------------------------- */
+.table { font-size: .855rem; }
+.table th { background: var(--surface); border-bottom: 1px solid var(--line);
+  font-size: .67rem; font-weight: 650; letter-spacing: .06em; color: var(--faint); padding: 13px 16px; }
+.table td { padding: 13px 16px; border-bottom: 1px solid var(--line-soft); }
+.table tbody tr:hover td { background: #fafbfc; }
+html[data-theme="dark"] .table th { background: var(--surface); color: #7e848e; border-color: #262931; }
+html[data-theme="dark"] .table td { border-color: #20222a; }
+html[data-theme="dark"] .table tbody tr:hover td { background: #1c1e25; }
+.table .sub { color: var(--muted); }
+
+/* --- charts: muted, refined ------------------------------------------------- */
+.chart .grid { stroke: var(--line-soft); }
+.chart .ax { fill: var(--faint); font-size: 10px; font-weight: 500; letter-spacing: .01em; }
+.chart .val { fill: var(--muted); font-weight: 600; }
+.chart .donut-num { fill: var(--ink); font-size: 27px; font-weight: 700; letter-spacing: -.02em; }
+.chart .donut-lbl { fill: var(--faint); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+html[data-theme="dark"] .chart .grid { stroke: #23252c; }
+.hbar { gap: 11px; }
+.hbar-row { grid-template-columns: minmax(116px, 36%) 1fr 52px; font-size: .82rem; }
+.hbar-label { color: var(--ink-soft); font-weight: 550; }
+.hbar-track { background: var(--line-soft); height: 9px; border-radius: 6px; }
+html[data-theme="dark"] .hbar-track { background: #24262e; }
+.hbar-val { color: var(--ink); font-weight: 700; }
+.hb-d { font-size: .64rem; padding: 1px 5px; }
+.legend { gap: 8px 16px; margin-top: 14px; }
+.leg { font-size: .76rem; }
+.leg i { width: 9px; height: 9px; border-radius: 3px; }
+
+/* --- intelligence banner: confident, editorial ------------------------------ */
+.intel-teaser { padding: 20px 24px; border-radius: var(--radius); border: 1px solid var(--line);
+  border-left: 3px solid var(--brand); box-shadow: var(--shadow); }
+.intel-teaser:hover { box-shadow: var(--shadow-lift); transform: none; }
+.it-left { gap: 20px; }
+.it-num { font-size: 2.4rem; font-weight: 700; letter-spacing: -.04em; }
+.intel-teaser h2 { font-size: 1.02rem; font-weight: 650; letter-spacing: -.02em; }
+.intel-teaser p { font-size: .86rem; line-height: 1.5; }
+.it-chip { font-size: .73rem; padding: 4px 11px; border-radius: 7px; }
+
+/* --- overview feed & activity rows ------------------------------------------ */
+.act-row { padding: 12px 10px; border-radius: var(--radius-sm); }
+.act-lbl { font-weight: 600; font-size: .87rem; }
+.act-num { font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+.feed-row { padding: 11px 8px; border-color: var(--line-soft); }
+.feed-tx b { font-size: .86rem; font-weight: 600; }
+.feed-date { font-size: .74rem; }
+
+/* --- empty states: spacious, intentional ------------------------------------ */
+.empty { padding: 52px 24px; line-height: 1.6; }
+.empty b { color: var(--ink); font-size: 1rem; font-weight: 650; }
+.empty .btn { margin-top: 14px; }
+
+/* --- topbar: quiet, precise ------------------------------------------------- */
+.topbar { padding: 11px 36px; border-bottom: 1px solid var(--line); }
+.tb-crumb #tbSection { font-size: .9rem; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+.tb-date { font-size: .68rem; color: var(--faint); letter-spacing: .01em; }
+.tb-search input { font-size: .85rem; }
+.net { font-size: .72rem; font-weight: 600; letter-spacing: .01em; }
+
+/* --- sidebar: refined dark rail --------------------------------------------- */
+#app .sidebar { width: var(--sidebar); flex-basis: var(--sidebar); padding: 20px 12px 14px; }
+#app .brand { padding: 2px 10px 18px; }
+#app .brand-txt b { letter-spacing: -.01em; }
+#app .nav-label { font-size: .61rem; letter-spacing: .11em; padding: 18px 10px 6px; color: #565b65; }
+#app .nav a { padding: 8px 11px; font-size: .855rem; font-weight: 500; letter-spacing: -.005em; border-radius: 8px; }
+#app .nav a.active { background: rgba(255,255,255,.09); color: #fff; font-weight: 550; }
+
+/* --- pills & status: calm, legible ------------------------------------------ */
+.pill, .status, .atype, .prio { font-weight: 650; letter-spacing: .005em; }
+.status { padding: 3px 10px; font-size: .72rem; }
+
+/* --- scrollbars & focus ----------------------------------------------------- */
+* { scrollbar-color: #d2d4da transparent; }
+*::-webkit-scrollbar-thumb { background: #d2d4da; }
+html[data-theme="dark"] * { scrollbar-color: #2c2e36 transparent; }
+
+/* --- responsive polish ------------------------------------------------------ */
+@media (max-width: 760px) {
+  .content { padding: 0 16px 88px; }
+  #view { padding-top: 18px; }
+  .topbar { padding: 10px 16px; }
+  .view-head { margin-bottom: 20px; padding-bottom: 14px; }
+  h1 { font-size: 1.32rem; }
+  .kpi-val { font-size: 1.75rem; }
+}
+
+/* --- v4: section nav (form tabs) — quiet, precise -------------------------- */
+.section-nav { gap: 7px; padding: 4px 0 16px; background: transparent; }
+.section-nav a { font-size: .79rem; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+  border-color: var(--line); color: var(--muted); }
+.section-nav a:hover { color: var(--ink); border-color: #cdd0d7; background: #fbfbfc; }
+html[data-theme="dark"] .section-nav a:hover { background: #1f2128; }
+
+/* --- v4: form section cards & headers ------------------------------------- */
+.form-head { margin-bottom: 18px; }
+.form-head h1 { letter-spacing: -.03em; }
+.energy-row, .action-row, .barrier-card, .factor-card, .step-card,
+.finding-card, .tripod-node, .fish-cat, .why-branch, .att-row input,
+.att-row select { border-radius: var(--radius-sm); }
+
+/* --- v4: feature chips & picker cards -------------------------------------- */
+.chip { background: var(--line-soft); color: var(--ink-soft); font-weight: 600; font-size: .72rem;
+  padding: 4px 10px; border-radius: 7px; }
+html[data-theme="dark"] .chip { background: #23252c; color: #aeb3bc; }
+.picker { border-radius: var(--radius); border-color: var(--line); padding: 20px 22px; box-shadow: var(--shadow); }
+.picker:hover { transform: none; border-color: #cfd2d9; box-shadow: var(--shadow-lift); }
+.picker-tag, .atype-tag { font-size: .64rem; letter-spacing: .07em; padding: 3px 9px; border-radius: 6px; }
+.picker h3 { font-size: .95rem; font-weight: 650; }
+.picker p { font-size: .83rem; line-height: 1.5; }
+.picker-grid { gap: 18px; }

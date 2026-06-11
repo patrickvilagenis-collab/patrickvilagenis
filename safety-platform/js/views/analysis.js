@@ -71,7 +71,7 @@ export async function renderAnalysis(root) {
     <section class="card-grid">
       <div class="card"><h3>Compliance by type</h3>${hbarChart(byFam, { color: '#E2001A', valueFmt: (x) => x + '%', drills: famDrills, deltaGoodUp: true })}</div>
       <div class="card"><h3>Compliance by zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36', valueFmt: (x) => x + '%', drills: zoneDrills, deltaGoodUp: true })}</div>
-      <div class="card"><h3>Compliance by city</h3>${hbarChart(byCity, { color: '#0073a8', valueFmt: (x) => x + '%', drills: cityDrills, deltaGoodUp: true })}</div>
+      <div class="card"><h3>Compliance by city</h3>${hbarChart(byCity, { color: '#5b7795', valueFmt: (x) => x + '%', drills: cityDrills, deltaGoodUp: true })}</div>
       <div class="card"><h3>Schindler vs subcontractor</h3><div class="center">${donutChart(empEntries, { drills: empEntries.map(([k]) => 'employeeType:' + k) })}</div>${legend(empEntries)}
         <p class="hint">▲▼ pp vs last month · click to filter.</p></div>
       <div class="card span2"><h3>Most frequent variabilities</h3>${top.length

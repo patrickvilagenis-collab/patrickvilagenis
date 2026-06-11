@@ -63,7 +63,7 @@ export async function renderDashboard(root) {
       ${kpi('Field visits', vk.totalVisits, `${vk.visitsThisMonth} this month ${deltaChip(vMon.delta)}`, '', `<div class="kpi-spark">${sparkline(vMon.vals)}</div>`, '#/visits')}
       ${kpi('Avg. compliance', vk.avgScore != null ? vk.avgScore + '%' : '—', `${vk.totalVariabilities} variabilities`, vk.avgScore != null && vk.avgScore < 80 ? 'warn' : 'good', '', '#/analysis')}
       ${kpi('Accidents', ak.total, `${ak.sif} SIF · ${ak.month} this month ${deltaChip(aMon.delta)}`, ak.sif ? 'bad' : '', `<div class="kpi-spark">${sparkline(aMon.vals, { color: '#cc1122' })}</div>`, '#/accidents')}
-      ${kpi('Learning events', ok.total, `${ok.findings} findings · ${ok.variabilities} variabilities`, '', `<div class="kpi-spark">${sparkline(oMon.vals, { color: '#0073a8' })}</div>`, '#/oles')}
+      ${kpi('Learning events', ok.total, `${ok.findings} findings · ${ok.variabilities} variabilities`, '', `<div class="kpi-spark">${sparkline(oMon.vals, { color: '#5b7795' })}</div>`, '#/oles')}
       ${kpi('Open actions', openActions.length, `${overdue.length} overdue`, overdue.length ? 'bad' : '', '', '#/actions')}
       ${kpi('SIF precursors', pre.total, 'high-energy · no control', pre.total ? 'bad' : 'good', '', '#/intel')}
     </section>
@@ -81,7 +81,7 @@ export async function renderDashboard(root) {
       <div class="card span2">
         <h3>Activity (last 6 months)</h3>
         <div class="act-rows">
-          ${[['Field visits', vMon, '#/visits', '#E2001A'], ['Accidents', aMon, '#/accidents', '#cc1122'], ['Learning events', oMon, '#/oles', '#0073a8']].map(([lbl, s, href, col]) => `
+          ${[['Field visits', vMon, '#/visits', '#E2001A'], ['Accidents', aMon, '#/accidents', '#39414f'], ['Learning events', oMon, '#/oles', '#5b7795']].map(([lbl, s, href, col]) => `
             <a class="act-row" href="${href}">
               <span class="act-lbl"><i class="dot" style="background:${col}"></i>${lbl}</span>
               <span class="act-spark">${sparkline(s.vals, { color: col, w: 200 })}</span>
@@ -91,8 +91,8 @@ export async function renderDashboard(root) {
       </div>
       <div class="card">
         <h3>Records by module</h3>
-        <div class="center">${donutChart(modDonut, { colors: ['#E2001A', '#cc1122', '#0073a8'] })}</div>
-        ${legend(modDonut, { colors: ['#E2001A', '#cc1122', '#0073a8'] })}
+        <div class="center">${donutChart(modDonut, { colors: ['#E2001A', '#39414f', '#5b7795'] })}</div>
+        ${legend(modDonut, { colors: ['#E2001A', '#39414f', '#5b7795'] })}
       </div>
 
       <div class="card">

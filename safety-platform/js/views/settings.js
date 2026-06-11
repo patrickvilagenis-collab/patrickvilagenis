@@ -31,7 +31,7 @@ export async function renderSettings(root) {
 
     ${admin ? `
     <div class="card">
-      <div class="card-head"><h3>🔐 Users — who can access</h3></div>
+      <div class="card-head"><h3>Users — who can access</h3></div>
       <p class="hint">Create accounts for the people allowed into the platform. Only admins see this panel.</p>
       <div class="grid4" style="align-items:end">
         <label class="fld"><span>Username</span><input id="nuUser" placeholder="e.g. j.doe"></label>
@@ -49,7 +49,7 @@ export async function renderSettings(root) {
 
     ${admin ? `
     <div class="card">
-      <h3>🌐 Server (advanced)</h3>
+      <h3>Server (advanced)</h3>
       <div class="grid2">
         <label class="fld"><span>API base URL</span><input id="apiUrl" type="url" value="${esc(sync.getConfig().url || '')}"></label>
       </div>

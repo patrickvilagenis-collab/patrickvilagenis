@@ -62,7 +62,7 @@ export async function renderIntelligence(root) {
     </section>
 
     <section class="card focus-card">
-      <h3>🎯 Recommended focus (auto-generated)</h3>
+      <h3>Recommended focus (auto-generated)</h3>
       ${recs.length ? `<ol class="focus-list">${recs.map((r) => `<li><span class="prio ${r.priority.toLowerCase()}">${r.priority}</span> ${esc(r.text)}</li>`).join('')}</ol>` : '<p class="hint">No priority recommendations — keep monitoring.</p>'}
     </section>
 
@@ -85,14 +85,14 @@ export async function renderIntelligence(root) {
     </section>
 
     <section class="card">
-      <h3>🗺️ Risk heatmap — energy × danger zone</h3>
+      <h3>Risk heatmap — energy × danger zone</h3>
       <p class="hint">Darker = more uncontrolled high-energy exposure (weighted by recency and prior SIF). This is where energy and missing barriers concentrate.</p>
       <div class="heatmap-wrap">${heatmap(matrix.rowLabels, matrix.colLabels, matrix.cells, { cell: 46 })}</div>
     </section>
 
     <section class="card-grid">
       <div class="card span2">
-        <h3>🔎 Patterns that precede bad outcomes <span class="opt">(association mining)</span></h3>
+        <h3>Patterns that precede bad outcomes <span class="opt">(association mining)</span></h3>
         <p class="hint">Combinations that co-occur with SIF or uncontrolled high energy more than chance. <b>Lift</b> = how many times more likely than baseline.</p>
         ${patterns.length ? `<div class="pattern-list">${patterns.map((p) => `
           <div class="pattern">
@@ -101,14 +101,14 @@ export async function renderIntelligence(root) {
           </div>`).join('')}</div>` : '<p class="hint">Not enough data yet to mine reliable patterns.</p>'}
       </div>
       <div class="card">
-        <h3>📊 What predicts a SIF in your data</h3>
+        <h3>What predicts a SIF in your data</h3>
         <p class="hint">Model weights — <b style="color:var(--bad)">red increases</b> predicted SIF risk, <b style="color:var(--good)">green decreases</b> it.</p>
         ${driverBars(topDrivers)}
       </div>
     </section>
 
     <section class="card">
-      <div class="card-head"><h3>🤖 Predictive model — what-if estimator</h3>
+      <div class="card-head"><h3>Predictive model — what-if estimator</h3>
         <span class="${model.trained ? 'pill good' : 'pill warn'}">${model.trained ? `trained · ${model.samples} exposures` : 'learning'}</span></div>
       <p class="hint">Logistic regression trained on your exposures (energy, danger zone, high-energy, control effectiveness, workforce). Estimate the SIF probability of a scenario.</p>
       <div class="grid4 whatif">
@@ -122,7 +122,7 @@ export async function renderIntelligence(root) {
     </section>
 
     <section class="card">
-      <h3>📥 Open precursors ranked by predicted SIF risk</h3>
+      <h3>Open precursors ranked by predicted SIF risk</h3>
       <p class="hint">Current field exposures (high energy, no effective control), highest model risk first — your queue.</p>
       <div class="table-wrap"><table class="table"><thead><tr><th>Energy</th><th>Zone</th><th>Location</th><th>Workforce</th><th class="num">Predicted SIF risk</th><th class="num">Source</th></tr></thead>
         <tbody>${ranked.map((x) => `<tr>

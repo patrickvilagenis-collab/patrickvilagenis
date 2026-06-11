@@ -46,7 +46,7 @@ function paint() {
           <span id="saveState" class="save-state">Saved · ${fmtDateTime(o.updatedAt)}</span></div>
       </div>
       <div class="form-head-actions">
-        <button class="btn" id="swimBtn">🏊 Swimlane</button>
+        <button class="btn" id="swimBtn">Swimlane</button>
         <label class="fld" style="min-width:160px"><span>Status</span>
           <select id="statusSel">${OLE_STATUSES.map((s) => `<option value="${s.id}" ${o.status === s.id ? 'selected' : ''}>${s.label}</option>`).join('')}</select></label>
       </div>
@@ -57,34 +57,34 @@ function paint() {
     <section class="card" id="sec-general"><h3>General</h3><div class="grid2" id="genFields"></div></section>
 
     <section class="card" id="sec-attendees">
-      <div class="card-head"><h3>👥 Attendees</h3><button class="btn small" id="addAtt">+ Add attendee</button></div>
+      <div class="card-head"><h3>Attendees</h3><button class="btn small" id="addAtt">+ Add attendee</button></div>
       <div id="attList"></div>
     </section>
 
     <section class="card" id="sec-prep">
-      <h3>📝 Preparatory notes</h3>
+      <h3>Preparatory notes</h3>
       <textarea id="prep" class="remark" placeholder="Agenda, objectives, topics, references to share before the session…">${esc(o.prepNotes || '')}</textarea>
     </section>
 
     <section class="card" id="sec-steps">
-      <div class="card-head"><h3>🧩 Process steps & findings</h3><button class="btn small" id="addStep">+ Add step</button></div>
+      <div class="card-head"><h3>Process steps & findings</h3><button class="btn small" id="addStep">+ Add step</button></div>
       <p class="hint">Break the task into steps, then add findings on each step. Capture process <b>variability</b> and map the <b>4 D's</b>. Findings that aren't tied to a step go to <b>Outside the swimlane</b>.</p>
       <div id="stepsHost"></div>
     </section>
 
     <section class="card" id="sec-outside">
-      <div class="card-head"><h3>🚧 Outside the swimlane <span class="opt">(systemic / not tied to a step)</span></h3><button class="btn small" id="addOutside">+ Add finding</button></div>
+      <div class="card-head"><h3>Outside the swimlane <span class="opt">(systemic / not tied to a step)</span></h3><button class="btn small" id="addOutside">+ Add finding</button></div>
       <div id="outsideHost"></div>
     </section>
 
     <section class="card" id="sec-actions">
-      <h3>✅ Actions & traceability</h3>
+      <h3>Actions & traceability</h3>
       <p class="hint">Every action keeps a link back to its finding and step, and feeds the global action tracker.</p>
       <div id="traceHost"></div>
     </section>
 
     <section class="card" id="sec-survey">
-      <h3>📋 Closing survey</h3>
+      <h3>Closing survey</h3>
       <div class="grid2" id="surveyFields"></div>
     </section>
 
@@ -312,7 +312,7 @@ function buildSurvey() {
 
 function buildNav() {
   const nav = _root.querySelector('#secNav');
-  const links = [['📄 General', 'sec-general'], ['👥 Attendees', 'sec-attendees'], ['🧩 Steps & findings', 'sec-steps'], ['🚧 Outside swimlane', 'sec-outside'], ['✅ Actions', 'sec-actions'], ['📋 Survey', 'sec-survey']];
+  const links = [['General', 'sec-general'], ['Attendees', 'sec-attendees'], ['Steps & findings', 'sec-steps'], ['Outside swimlane', 'sec-outside'], ['Actions', 'sec-actions'], ['Survey', 'sec-survey']];
   nav.innerHTML = links.map(([l, id]) => `<a href="#" data-to="${id}">${esc(l)}</a>`).join('');
   nav.addEventListener('click', (e) => { const a = e.target.closest('[data-to]'); if (!a) return; e.preventDefault(); document.getElementById(a.dataset.to)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
 }
@@ -336,7 +336,7 @@ function openSwimlane() {
   const outsideLane = lane('🚧 Outside the swimlane', oleOutsideFindings(_o), 'outside');
   modal.innerHTML = `
     <div class="swim-panel">
-      <div class="swim-head"><h2>🏊 Swimlane — ${esc(_o.refNo)}</h2><button class="icon-btn" id="swimClose" aria-label="Close swimlane" title="Close">✕</button></div>
+      <div class="swim-head"><h2>Swimlane — ${esc(_o.refNo)}</h2><button class="icon-btn" id="swimClose" aria-label="Close swimlane" title="Close">✕</button></div>
       <p class="hint">Steps as lanes with their findings, 4D tags, variability and actions. Systemic findings sit in their own lane.</p>
       <div class="swim-board">${stepLanes || '<div class="swim-empty">No steps yet.</div>'}${outsideLane}</div>
       <div class="swim-legend">${FOUR_D.map((d) => `<span class="leg"><i class="swim-4d ${d.id}">${d.icon}</i>${d.label}</span>`).join('')}<span class="leg"><i class="swim-var">VAR</i>Variability</span></div>

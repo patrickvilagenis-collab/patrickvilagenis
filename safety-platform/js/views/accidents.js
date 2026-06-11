@@ -79,7 +79,7 @@ export async function renderAccidents(root) {
       <div class="card span2"><h3>Incidents per month</h3>${lineChart(months, { color: '#E2001A' })}</div>
       <div class="card"><h3>By classification (SIF)</h3>${hbarChart(byType, { color: '#E2001A', drills: typeDrills })}<p class="hint">▲▼ vs last month · click to filter.</p></div>
       <div class="card"><h3>Direct control present?</h3><div class="center">${donutChart(ctrl, { colors: ['#1b9e5a', '#cc1122'], drills: ['control:with', 'control:without'] })}</div>${legend(ctrl, { colors: ['#1b9e5a', '#cc1122'] })}</div>
-      <div class="card"><h3>Energy involved</h3>${hbarChart(byEnergy, { color: '#e08600', drills: energyDrills })}</div>
+      <div class="card"><h3>Energy involved</h3>${hbarChart(byEnergy, { color: '#b07d44', drills: energyDrills })}</div>
       <div class="card"><h3>By zone / hub</h3>${hbarChart(byZone, { color: '#2b2f36', drills: zoneDrills })}</div>
     </section>
 
@@ -131,8 +131,8 @@ export function renderNewAccident(root) {
           <div class="atype-tag ${t.tone}">${esc(t.label)}</div>
           <p>${esc(t.desc)}</p>
           <div class="picker-meta">
-            <span class="chip">${t.highEnergy === true ? '⚡ High energy' : t.highEnergy === false ? 'Low energy' : 'Energy assessed per case'}</span>
-            ${t.control === true ? '<span class="chip">🛡️ Control present</span>' : t.control === false ? '<span class="chip">No direct control</span>' : ''}
+            <span class="chip">${t.highEnergy === true ? 'High energy' : t.highEnergy === false ? 'Low energy' : 'Energy assessed per case'}</span>
+            ${t.control === true ? '<span class="chip">Control present</span>' : t.control === false ? '<span class="chip">No direct control</span>' : ''}
             ${t.sif ? '<span class="chip">SIF</span>' : ''}
           </div>
         </a>`).join('')}

@@ -60,7 +60,7 @@ export async function renderOles(root) {
     <section class="card-grid">
       <div class="card span2"><h3>OLEs per month</h3>${lineChart(months, { color: '#E2001A' })}</div>
       <div class="card"><h3>By status</h3><div class="center">${donutChart(byStatus, { drills: statusDrills })}</div>${legend(byStatus)}</div>
-      <div class="card span3"><h3>Findings by 4D</h3>${hbarChart(fourD, { color: '#e08600' })}<p class="hint">▲▼ vs last month.</p></div>
+      <div class="card span3"><h3>Findings by 4D</h3>${hbarChart(fourD, { color: '#b07d44' })}<p class="hint">▲▼ vs last month.</p></div>
     </section>
 
     <div class="toolbar">
