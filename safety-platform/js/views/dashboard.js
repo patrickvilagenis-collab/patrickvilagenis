@@ -1,126 +1,108 @@
-// views/dashboard.js — KPI cockpit and trend charts.
+// views/dashboard.js — Overview: a cross-module summary (visits + accidents +
+// OLE + Intelligence teaser). The EBS/compliance deep-dives live in their own
+// homes (Intelligence and Analysis); this page never duplicates them.
 
-import { store, buildKpis, visitsByMonth, visitsByFamily, actionsByStatus,
-  energyDistribution, controlHierarchyDistribution, topVariabilitySections, monthDeltas } from '../store.js';
-import { hbarChart, lineChart, donutChart, legend, gauge, sparkline, PALETTE } from '../charts.js';
-import { monthLabel } from '../utils.js';
-import { ENERGY_TYPES, CONTROL_HIERARCHY } from '../checklists.js';
-import { filterButton, filterVisits, filterActions, activeFilterChips, filters, setFilter } from '../filters.js';
+import { store, buildKpis, buildAccidentKpis, buildOleKpis, actionsByStatus } from '../store.js';
+import { hbarChart, donutChart, legend, sparkline } from '../charts.js';
+import { monthKey, fmtDate, esc } from '../utils.js';
+import { extractExposures, sifPrecursors, barrierHealth } from '../intel.js';
+import { getAccidentType } from '../accidents.js';
+
+function lastMonths(n) {
+  const out = []; const d = new Date(); d.setDate(1);
+  for (let i = n - 1; i >= 0; i--) { const x = new Date(d); x.setMonth(d.getMonth() - i); out.push(monthKey(x.toISOString())); }
+  return out;
+}
+function series(items, dateFn) {
+  const keys = lastMonths(6); const m = {};
+  for (const it of items) { const k = monthKey(dateFn(it) || ''); if (k) m[k] = (m[k] || 0) + 1; }
+  const vals = keys.map((k) => m[k] || 0);
+  return { vals, total: items.length, month: vals[vals.length - 1], delta: vals.length > 1 ? vals[vals.length - 1] - vals[vals.length - 2] : 0 };
+}
 
 export async function renderDashboard(root) {
-  const [allVisits, allActions] = await Promise.all([store.visits(), store.actions()]);
-  const submittedAll = allVisits.filter((v) => v.status === 'submitted');
-  const visits = filterVisits(allVisits);
+  const [visits, accidents, oles, actions] = await Promise.all([store.visits(), store.accidents(), store.oles(), store.actions()]);
   const submitted = visits.filter((v) => v.status === 'submitted');
-  const actions = filterActions(allActions, submitted);
-  const k = buildKpis(visits, actions);
+  const reported = accidents.filter((a) => a.status !== 'draft');
+  const vk = buildKpis(visits, actions);
+  const ak = buildAccidentKpis(accidents, actions);
+  const ok = buildOleKpis(oles, actions);
+  const openActions = actions.filter((a) => a.status !== 'Closed' && a.status !== 'Implemented');
+  const overdue = openActions.filter((a) => a.dueDate && new Date(a.dueDate) < new Date());
+  const exposures = extractExposures(visits, accidents);
+  const pre = sifPrecursors(exposures);
+  const barrier = barrierHealth(exposures);
 
-  const months = visitsByMonth(submitted).map(([m, n]) => [monthLabel(m), n]);
-  const fam = visitsByFamily(submitted);
-  const famDrills = fam.map(([f]) => 'type:' + f);
+  const vMon = series(submitted, (v) => v.general.date || v.createdAt);
+  const aMon = series(reported, (a) => a.occurredAt || a.createdAt);
+  const oMon = series(oles, (o) => o.date || o.createdAt);
 
-  // month-over-month deltas per category
-  const energyRows = submitted.flatMap((v) => (v.energy || []).filter((e) => e.present && e.energyId)
-    .map((e) => ({ date: v.general.date || v.createdAt, energyId: e.energyId, controlType: e.controlType })));
-  const energyDelta = monthDeltas(energyRows, (x) => x.date, (x) => x.energyId);
-  const ctrlDelta = monthDeltas(energyRows, (x) => x.date, (x) => x.controlType);
-  const statusDelta = monthDeltas(actions, (a) => a.createdAt, (a) => a.status);
+  const modDonut = [['Field visits', submitted.length], ['Accidents', reported.length], ['OLEs', oles.length]];
+  const actStatus = actionsByStatus(actions);
 
-  const actStatus = actionsByStatus(actions).map(([s, n]) => [s, n, statusDelta[s] ?? null]);
-  const energyDist = energyDistribution(submitted);
-  const energy = energyDist.map(([id, n]) => {
-    const e = ENERGY_TYPES.find((x) => x.id === id);
-    return [e ? `${e.icon} ${e.label}` : id, n, energyDelta[id] ?? null];
-  });
-  const energyDrills = energyDist.map(([id]) => 'hazard:' + id);
-  const ctrl = controlHierarchyDistribution(submitted);
-  const ctrlEntries = CONTROL_HIERARCHY.map((c) => [c.label, ctrl[c.id] || 0, ctrlDelta[c.id] ?? null]);
-  const topVar = topVariabilitySections(submitted);
+  const feed = [
+    ...submitted.map((v) => ({ icon: '📋', t: v.templateName, sub: `${v.general.observer || ''}${v.general.city ? ' · ' + v.general.city : ''}`, date: v.general.date || v.createdAt, href: `#/visit/${v.id}` })),
+    ...reported.map((a) => ({ icon: '🚨', t: `${a.refNo} · ${(getAccidentType(a.type) || {}).short || ''}`, sub: (a.location || {}).city || '', date: a.occurredAt || a.createdAt, href: `#/accident/${a.id}` })),
+    ...oles.map((o) => ({ icon: '🎓', t: `${o.refNo} · ${o.title || o.task || 'OLE'}`, sub: o.facilitator || '', date: o.date || o.createdAt, href: `#/ole/${o.id}` })),
+  ].sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 7);
 
-  const kpi = (label, value, sub, tone = '', extra = '') =>
-    `<div class="kpi ${tone}"><div class="kpi-val">${value}</div><div class="kpi-lbl">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}${extra}</div>`;
-
-  // month-over-month delta for visit activity
-  const mvals = months.map((m) => m[1]);
-  const lastM = mvals.length ? mvals[mvals.length - 1] : 0;
-  const prevM = mvals.length > 1 ? mvals[mvals.length - 2] : null;
-  const delta = prevM ? Math.round(((lastM - prevM) / prevM) * 100) : null;
-  const deltaChip = delta == null ? '' : `<span class="delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}%</span>`;
+  const deltaChip = (d) => d ? `<span class="delta ${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d)}</span>` : '';
+  const kpi = (label, value, sub, tone = '', extra = '', href = '') => {
+    const inner = `<div class="kpi ${tone} ${href ? 'kpi-link' : ''}"><div class="kpi-val">${value}</div><div class="kpi-lbl">${label}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}${extra}</div>`;
+    return href ? `<a href="${href}">${inner}</a>` : inner;
+  };
 
   root.innerHTML = `
     <header class="view-head">
-      <div>
-        <h1>Safety cockpit</h1>
-        <p class="muted">Live view of field safety activity, controls and open actions.</p>
-      </div>
-      <div class="row-gap"><span id="filterMount"></span><a class="btn primary" href="#/new">+ New field visit</a></div>
+      <div><h1>Overview</h1><p class="muted">Organisation-wide snapshot across field visits, accidents and learning events.</p></div>
+      <div class="row-gap"><a class="btn" href="#/intel">🧠 Intelligence</a><a class="btn primary" href="#/new">+ New field visit</a></div>
     </header>
-    <div id="chipMount"></div>
 
     <section class="kpi-grid">
-      ${kpi('Visits (total)', k.totalVisits, `${k.visitsThisMonth} this month ${deltaChip}`, '', mvals.length > 1 ? `<div class="kpi-spark">${sparkline(mvals)}</div>` : '')}
-      ${kpi('Avg. compliance', k.avgScore != null ? k.avgScore + '%' : '—', `${k.totalVariabilities} variabilities`, k.avgScore != null && k.avgScore < 80 ? 'warn' : 'good')}
-      ${kpi('Open actions', k.openActions, `${k.overdueActions} overdue`, k.overdueActions ? 'bad' : '')}
-      ${kpi('EBS control coverage', k.controlCoverage != null ? k.controlCoverage + '%' : '—', `${k.energyPresent} energies assessed`, k.controlCoverage != null && k.controlCoverage < 80 ? 'warn' : 'good')}
-      ${kpi('High-energy exposures', k.highEnergy, `${k.highUncontrolled} without direct control`, k.highUncontrolled ? 'bad' : 'good')}
-      ${kpi('Drafts in progress', k.drafts, 'auto-saved offline')}
+      ${kpi('Field visits', vk.totalVisits, `${vk.visitsThisMonth} this month ${deltaChip(vMon.delta)}`, '', `<div class="kpi-spark">${sparkline(vMon.vals)}</div>`, '#/visits')}
+      ${kpi('Avg. compliance', vk.avgScore != null ? vk.avgScore + '%' : '—', `${vk.totalVariabilities} variabilities`, vk.avgScore != null && vk.avgScore < 80 ? 'warn' : 'good', '', '#/analysis')}
+      ${kpi('Accidents', ak.total, `${ak.sif} SIF · ${ak.month} this month ${deltaChip(aMon.delta)}`, ak.sif ? 'bad' : '', `<div class="kpi-spark">${sparkline(aMon.vals, { color: '#cc1122' })}</div>`, '#/accidents')}
+      ${kpi('Learning events', ok.total, `${ok.findings} findings · ${ok.variabilities} variabilities`, '', `<div class="kpi-spark">${sparkline(oMon.vals, { color: '#0073a8' })}</div>`, '#/oles')}
+      ${kpi('Open actions', openActions.length, `${overdue.length} overdue`, overdue.length ? 'bad' : '', '', '#/actions')}
+      ${kpi('SIF precursors', pre.total, 'high-energy · no control', pre.total ? 'bad' : 'good', '', '#/intel')}
     </section>
+
+    <a class="intel-teaser" href="#/intel">
+      <div class="it-left">
+        <div class="it-num">${pre.total}</div>
+        <div><h2>Your next SIF is likely already in your system</h2>
+          <p>${pre.total} high-energy exposure(s) without an effective direct control · barrier coverage ${barrier.coverage != null ? barrier.coverage + '%' : '—'}. Open Intelligence for the heatmap, patterns and predictive model →</p></div>
+      </div>
+      <div class="it-chips">${pre.groups.slice(0, 4).map((g) => `<span class="it-chip">${g.energyIcon} ${esc(g.energyLabel)} · ${esc(g.zoneLabel)} <b>${g.count}</b></span>`).join('') || '<span class="it-chip good">No uncontrolled high-energy exposures 👍</span>'}</div>
+    </a>
 
     <section class="card-grid">
       <div class="card span2">
-        <h3>Visits per month</h3>
-        ${lineChart(months, { color: '#E2001A' })}
+        <h3>Activity (last 6 months)</h3>
+        <div class="act-rows">
+          ${[['📋 Field visits', vMon, '#/visits', '#E2001A'], ['🚨 Accidents', aMon, '#/accidents', '#cc1122'], ['🎓 Learning events', oMon, '#/oles', '#0073a8']].map(([lbl, s, href, col]) => `
+            <a class="act-row" href="${href}">
+              <span class="act-lbl">${lbl}</span>
+              <span class="act-spark">${sparkline(s.vals, { color: col, w: 200 })}</span>
+              <span class="act-num">${s.month} ${deltaChip(s.delta)}</span>
+            </a>`).join('')}
+        </div>
       </div>
       <div class="card">
-        <h3>Avg. compliance</h3>
-        <div class="center">${gauge(k.avgScore, { label: 'conform rate' })}</div>
+        <h3>Records by module</h3>
+        <div class="center">${donutChart(modDonut, { colors: ['#E2001A', '#cc1122', '#0073a8'] })}</div>
+        ${legend(modDonut, { colors: ['#E2001A', '#cc1122', '#0073a8'] })}
       </div>
 
       <div class="card">
-        <h3>Visits by type</h3>
-        <div class="center">${donutChart(fam, { drills: famDrills })}</div>
-        ${legend(fam)}
-      </div>
-      <div class="card">
-        <h3>Actions by status</h3>
+        <h3>Open actions by status</h3>
         ${hbarChart(actStatus, { color: '#2b2f36' })}
-        <p class="hint">▲▼ vs last month (created).</p>
+        <p class="hint"><a class="link" href="#/actions">Open the action tracker →</a></p>
       </div>
-      <div class="card">
-        <h3>Hierarchy of controls used</h3>
-        ${hbarChart(ctrlEntries, { color: '#1b9e5a', deltaGoodUp: true })}
-        <p class="hint">Stronger controls (elimination / engineering) at the top.</p>
-      </div>
-
       <div class="card span2">
-        <h3>Hazardous energies present (EBS)</h3>
-        ${hbarChart(energy, { color: '#e08600', drills: energyDrills })}
-        <p class="hint">▲▼ vs last month · click a row to filter the cockpit.</p>
-      </div>
-      <div class="card">
-        <h3>Top areas with variabilities</h3>
-        ${topVar.length ? `<ul class="rank">${topVar.map((t, i) =>
-          `<li><span class="rank-n" style="background:${PALETTE[i % PALETTE.length]}">${i + 1}</span><span class="rank-lbl">${t[0]}</span><b>${t[1]}</b></li>`).join('')}</ul>`
-          : '<p class="hint">No variabilities recorded yet.</p>'}
+        <h3>Recent activity</h3>
+        ${feed.length ? `<div class="feed">${feed.map((f) => `<a class="feed-row" href="${f.href}"><span class="feed-ic">${f.icon}</span><span class="feed-tx"><b>${esc(f.t)}</b><small>${esc(f.sub)}</small></span><span class="feed-date">${fmtDate(f.date)}</span></a>`).join('')}</div>` : '<p class="hint">No activity yet.</p>'}
       </div>
     </section>
   `;
-
-  const rerender = () => renderDashboard(root);
-  root.querySelector('#filterMount').append(filterButton(submittedAll, rerender));
-  const chips = activeFilterChips(rerender);
-  if (chips) root.querySelector('#chipMount').append(chips);
-  bindDrill(root, rerender);
-}
-
-// Click a chart bar/segment to toggle the matching filter.
-function bindDrill(root, rerender) {
-  root.addEventListener('click', (e) => {
-    const d = e.target.closest && e.target.closest('[data-drill]');
-    if (!d || !root.contains(d)) return;
-    const i = d.dataset.drill.indexOf(':');
-    const key = d.dataset.drill.slice(0, i), value = d.dataset.drill.slice(i + 1);
-    setFilter(key, filters[key] === value ? '' : value);
-    rerender();
-  });
 }

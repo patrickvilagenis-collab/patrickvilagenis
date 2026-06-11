@@ -18,7 +18,7 @@ import { renderIntelligence } from './views/intelligence.js';
 
 const NAV_GROUPS = [
   ['Overview', [
-    ['#/dashboard', '📊', 'Dashboard'],
+    ['#/dashboard', '📊', 'Overview'],
     ['#/intel', '🧠', 'Intelligence'],
   ]],
   ['Field operations', [
