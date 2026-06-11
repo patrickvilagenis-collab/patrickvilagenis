@@ -52,7 +52,11 @@ function newDiagram(title = 'Untitled AcciMap') {
 export async function renderAccimap(root) {
   _root = root;
   await loadAll();
-  if (!_diagrams.length) _diagrams.push(newDiagram());
+  if (!_diagrams.length) {
+    // first visit: start with the worked example so the method is self-evident
+    _diagrams.push(exampleDiagram());
+    await store.setMeta('accimaps', _diagrams);
+  }
   _d = _diagrams[0];
   _sel = { node: null, link: null };
   paint();
@@ -439,29 +443,40 @@ function checkLogic() {
 }
 
 // --- example (built per the method's template & wording tips) -------------------
-function loadExample() {
+function exampleDiagram() {
   const N = (level, text, x, y, causal = false, outcome = false) => ({ id: uid('amn'), level, text, x, y, causal, outcome });
   const n = {
-    market: N('societal', 'Market pressure for shorter installation lead times', 620, 38, false),
+    market: N('societal', 'Market pressure for shorter installation lead times', 660, 38, false),
+    values: N('societal', 'Customer priority on cost over safety in contract awards', 180, 56, false),
     enforce: N('government', 'Inadequate enforcement of working-at-height regulations', 220, BAND_H + 38, false),
-    budget: N('corporate', 'Corporate cost cutting reduced site supervision budget', 640, BAND_H * 2 + 38, true),
-    ra: N('organisational', 'Inadequate pre-task risk assessment procedure', 420, BAND_H * 3 + 30, true),
+    permits: N('government', 'Site permits granted without hoistway-access audit', 1080, BAND_H + 52, false),
+    budget: N('corporate', 'Corporate cost cutting reduced site supervision budget', 660, BAND_H * 2 + 38, true),
+    bidding: N('corporate', 'Contracts bid below cost — schedule pressure on crews', 180, BAND_H * 2 + 56, false),
+    ra: N('organisational', 'Inadequate pre-task risk assessment procedure', 450, BAND_H * 3 + 30, true),
     training: N('organisational', 'Insufficient technician training on hoistway access', 90, BAND_H * 3 + 64, false),
-    superv: N('organisational', 'Supervisor coverage insufficient across sites', 820, BAND_H * 3 + 64, false),
-    door: N('physical', 'Landing door could be unlocked with the car away', 280, BAND_H * 4 + 40, true),
-    cwt: N('physical', 'Counterweight moving in the hoistway', 760, BAND_H * 4 + 52, false),
-    entry: N('actor', 'Technician entered the hoistway without securing the car', 360, BAND_H * 5 + 24, true),
-    outcome: N('actor', 'Technician struck by counterweight — serious injury', 700, BAND_H * 5 + 84, false, true),
+    superv: N('organisational', 'Supervisor coverage insufficient across sites', 860, BAND_H * 3 + 64, false),
+    audit: N('organisational', 'Internal audits did not cover car-securing practice', 1180, BAND_H * 3 + 30, false),
+    door: N('physical', 'Landing door could be unlocked with the car away', 300, BAND_H * 4 + 40, true),
+    cwt: N('physical', 'Counterweight moving in the hoistway', 800, BAND_H * 4 + 52, false),
+    entry: N('actor', 'Technician entered the hoistway without securing the car', 400, BAND_H * 5 + 22, true),
+    outcome: N('actor', 'Technician struck by counterweight — serious injury', 760, BAND_H * 5 + 84, false, true),
   };
   const L = (a, b) => ({ id: uid('aml'), from: n[a].id, to: n[b].id });
   const d = newDiagram('Hoistway access — example AcciMap');
   d.nodes = Object.values(n);
   d.links = [
-    L('market', 'budget'), L('budget', 'superv'), L('budget', 'ra'),
-    L('enforce', 'training'), L('enforce', 'ra'),
+    L('values', 'bidding'), L('market', 'budget'),
+    L('bidding', 'ra'), L('budget', 'superv'), L('budget', 'ra'),
+    L('enforce', 'training'), L('enforce', 'ra'), L('permits', 'audit'),
+    L('audit', 'superv'),
     L('ra', 'entry'), L('training', 'entry'), L('superv', 'entry'),
     L('door', 'entry'), L('entry', 'outcome'), L('cwt', 'outcome'),
   ];
+  return d;
+}
+
+function loadExample() {
+  const d = exampleDiagram();
   _diagrams.unshift(d); _d = d; _sel = { node: null, link: null };
   persist(); paint();
   toast('Example AcciMap loaded', 'good');
