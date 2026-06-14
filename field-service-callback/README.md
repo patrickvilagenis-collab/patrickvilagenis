@@ -30,21 +30,27 @@ A zero-dependency reference backend in [`server/`](server/) implements the full
 `/fsc/v1` contract, so you can run the whole system end to end immediately:
 
 ```bash
-# 1. Backend (Python stdlib only)
+# 1. Backend — serves the API AND the three web pages on one URL (Python stdlib only)
 cd server
 FSC_ROLE_KEY_TECHNICIAN=devtech FSC_ROLE_KEY_SUPERVISOR=devsup \
 FSC_BASE_URL=http://localhost:8080 python3 reference_server.py
 
-# 2. Web UIs (any static server) — set window.FSC_API_BASE="http://localhost:8080" in the pages
-cd .. && python3 -m http.server 5500 --directory web
+# 2. Open it: http://localhost:8080/  (landing -> Cliente / Supervisor / Técnico)
 
 # 3. End-to-end acceptance test (build spec §9.7)
-cd server && python3 smoke_test.py
+python3 smoke_test.py
 ```
 
-The reference backend doubles as the thin datastore behind n8n (it serves both
-`/fsc/v1/*` and the `/tickets/*` storage paths), so the two modes share one store.
-See [`server/README.md`](server/README.md).
+The backend serves both the web UI and the API (same origin), so no second server is
+needed. It also doubles as the thin datastore behind n8n (it serves the `/tickets/*`
+storage paths too), so both modes share one store. See [`server/README.md`](server/README.md).
+
+### Deploy it for real (hosted, multi-user, real WhatsApp/SMS)
+
+To let real customers submit, share one dashboard across devices, and send real
+WhatsApp/SMS, deploy the single-service `Dockerfile` (one URL = API + UI). Step-by-step
+runbook (Render/Twilio/WhatsApp Cloud, env vars, persistence, costs):
+**[`server/DEPLOY.md`](server/DEPLOY.md)**. A Render blueprint is in [`render.yaml`](render.yaml).
 
 ## Prerequisites
 

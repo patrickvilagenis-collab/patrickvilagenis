@@ -28,6 +28,10 @@ import threading
 import secrets
 import datetime
 import html
+import mimetypes
+import base64
+import urllib.request
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -36,6 +40,7 @@ from urllib.parse import urlparse, parse_qs
 # ---------------------------------------------------------------------------
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get("FSC_DATA_DIR", os.path.join(os.path.dirname(HERE), "data"))
+WEB_DIR = os.path.join(os.path.dirname(HERE), "web")
 STORE_PATH = os.path.join(DATA_DIR, "tickets.json")
 NOTIFY_LOG = os.path.join(DATA_DIR, "notifications.log")
 EVENTS_LOG = os.path.join(DATA_DIR, "events.log")
@@ -46,6 +51,13 @@ CFG = {
     "base_url": os.environ.get("FSC_BASE_URL", "http://localhost:8080"),
     "locale": os.environ.get("FSC_LOCALE", "es"),
     "port": int(os.environ.get("FSC_PORT", "8080")),
+    # Notification delivery (real WhatsApp/SMS when configured; otherwise just logs).
+    "notify_provider": os.environ.get("FSC_NOTIFY_PROVIDER", "log"),  # log | twilio | whatsapp_cloud
+    "notify_from": os.environ.get("FSC_NOTIFY_FROM", ""),
+    "twilio_sid": os.environ.get("FSC_TWILIO_SID", ""),
+    "twilio_token": os.environ.get("FSC_TWILIO_TOKEN", ""),
+    "wa_token": os.environ.get("FSC_NOTIFY_API_KEY", ""),
+    "wa_phone_id": os.environ.get("FSC_WA_PHONE_ID", ""),
 }
 
 EQUIPMENT = {"hvac", "refrigeration", "electrical", "plumbing", "appliance", "other"}
@@ -269,8 +281,43 @@ def notify(ticket, template, event_name):
 
 
 def _deliver(phone, body):
-    # Reference delivery: log it. Replace with WhatsApp Cloud API / Twilio call.
-    _append_log(NOTIFY_LOG, {"at": _now(), "to": phone, "body": body})
+    """Send the message via the configured provider; always log for audit/debug.
+    Raises on provider failure so notify() records 'failed' (dead-letter, §7.5)."""
+    provider = CFG["notify_provider"]
+    if provider == "twilio" and CFG["twilio_sid"] and CFG["twilio_token"]:
+        _deliver_twilio(phone, body)
+    elif provider == "whatsapp_cloud" and CFG["wa_token"] and CFG["wa_phone_id"]:
+        _deliver_whatsapp_cloud(phone, body)
+    # provider == "log" (or creds missing) -> no external send; just recorded below.
+    _append_log(NOTIFY_LOG, {"at": _now(), "to": phone, "body": body, "provider": provider})
+
+
+def _deliver_twilio(phone, body):
+    """Twilio Messages API (SMS or WhatsApp). For WhatsApp set FSC_NOTIFY_FROM=whatsapp:+1...."""
+    frm = CFG["notify_from"]
+    to = phone
+    if frm.startswith("whatsapp:") and not to.startswith("whatsapp:"):
+        to = "whatsapp:" + to
+    url = "https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json" % CFG["twilio_sid"]
+    data = urllib.parse.urlencode({"To": to, "From": frm, "Body": body}).encode()
+    req = urllib.request.Request(url, data=data, method="POST")
+    auth = base64.b64encode(("%s:%s" % (CFG["twilio_sid"], CFG["twilio_token"])).encode()).decode()
+    req.add_header("Authorization", "Basic " + auth)
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    with urllib.request.urlopen(req, timeout=15) as r:
+        r.read()
+
+
+def _deliver_whatsapp_cloud(phone, body):
+    """Meta WhatsApp Cloud API."""
+    url = "https://graph.facebook.com/v19.0/%s/messages" % CFG["wa_phone_id"]
+    payload = json.dumps({"messaging_product": "whatsapp", "to": phone.lstrip("+"),
+                          "type": "text", "text": {"body": body}}).encode()
+    req = urllib.request.Request(url, data=payload, method="POST")
+    req.add_header("Authorization", "Bearer " + CFG["wa_token"])
+    req.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req, timeout=15) as r:
+        r.read()
 
 
 def _render_message(t, tpl):
@@ -397,11 +444,33 @@ class Handler(BaseHTTPRequestHandler):
                 if not t:
                     raise ApiError(404, "NOT_FOUND", "Ticket no encontrado.")
                 return self._send(200, t)
-            raise ApiError(404, "NOT_FOUND", "Ruta no encontrada.")
+            # Anything else: serve the static web UI (intake/supervisor/technician)
+            return self._serve_static(u.path)
         except ApiError as e:
             self._err(e)
         except Exception as e:  # noqa
             self._send(500, {"error": {"code": "INTERNAL", "message": str(e)}})
+
+    def _serve_static(self, path):
+        rel = path.lstrip("/") or "index.html"
+        if rel.endswith("/"):
+            rel += "index.html"
+        full = os.path.normpath(os.path.join(WEB_DIR, rel))
+        if not (full == WEB_DIR or full.startswith(WEB_DIR + os.sep)):
+            raise ApiError(403, "FORBIDDEN", "Ruta no permitida.")
+        if os.path.isdir(full):
+            full = os.path.join(full, "index.html")
+        if not os.path.isfile(full):
+            raise ApiError(404, "NOT_FOUND", "No encontrado: " + rel)
+        ctype = mimetypes.guess_type(full)[0] or "application/octet-stream"
+        with open(full, "rb") as fh:
+            data = fh.read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
 
     def do_POST(self):
         u = urlparse(self.path)
@@ -478,10 +547,11 @@ def _create_response(t):
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     srv = ThreadingHTTPServer(("0.0.0.0", CFG["port"]), Handler)
-    print("FSC reference backend on http://localhost:%d" % CFG["port"])
+    print("FSC backend on http://localhost:%d" % CFG["port"])
+    print("  web UI     : /  ·  /intake/  ·  /supervisor/  ·  /technician/")
     print("  public API : /fsc/v1/tickets ...")
     print("  datastore  : /tickets ...  (point FSC_DATASTORE_URL here for n8n)")
-    print("  data dir   : %s" % DATA_DIR)
+    print("  notify     : provider=%s  data dir=%s" % (CFG["notify_provider"], DATA_DIR))
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

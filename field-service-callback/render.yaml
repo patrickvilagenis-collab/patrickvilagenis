@@ -1,0 +1,45 @@
+# Render.com blueprint — deploy the whole system as ONE web service with a
+# persistent disk. In Render: New + > Blueprint > pick this repo. Then set the
+# secret env vars (marked sync:false) in the dashboard. See server/DEPLOY.md.
+services:
+  - type: web
+    name: field-service-callback
+    runtime: docker
+    repo: https://github.com/patrickvilagenis-collab/patrickvilagenis
+    branch: claude/sleepy-newton-16jg8i
+    rootDir: field-service-callback
+    dockerfilePath: ./Dockerfile
+    plan: starter            # 'starter' is required for a persistent disk (paid). 'free' has NO disk -> data resets.
+    healthCheckPath: /
+    envVars:
+      - key: FSC_PORT
+        value: "8080"
+      - key: FSC_DATA_DIR
+        value: /data
+      - key: FSC_LOCALE
+        value: es
+      # Public URL of this service (used in the customer status links). Fill after first deploy.
+      - key: FSC_BASE_URL
+        sync: false
+      # Staff login keys — set to strong random secrets.
+      - key: FSC_ROLE_KEY_TECHNICIAN
+        sync: false
+      - key: FSC_ROLE_KEY_SUPERVISOR
+        sync: false
+      # Notifications: start as 'log', switch to 'twilio' or 'whatsapp_cloud' when ready.
+      - key: FSC_NOTIFY_PROVIDER
+        value: log
+      - key: FSC_NOTIFY_FROM
+        sync: false
+      - key: FSC_TWILIO_SID
+        sync: false
+      - key: FSC_TWILIO_TOKEN
+        sync: false
+      - key: FSC_NOTIFY_API_KEY     # WhatsApp Cloud API token (if using whatsapp_cloud)
+        sync: false
+      - key: FSC_WA_PHONE_ID        # WhatsApp Cloud phone number id (if using whatsapp_cloud)
+        sync: false
+    disk:
+      name: fsc-data
+      mountPath: /data
+      sizeGB: 1
