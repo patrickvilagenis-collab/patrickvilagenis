@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solicitud de servicio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css" />
+  <script>window.FSC_API_BASE = "";</script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="logo">🔧</span> Servicio Técnico</div>
+    </header>
+
+    <main class="container-sm">
+      <!-- ===== Intake form ===== -->
+      <section id="formCard" class="card">
+        <h1>Solicitar servicio</h1>
+        <p class="muted small" style="margin:4px 0 18px">Cuéntanos qué equipo falla. Te asignaremos un técnico y te avisaremos por WhatsApp.</p>
+        <form id="intakeForm" novalidate>
+          <div class="field">
+            <label class="req" for="customer_name">Nombre</label>
+            <input id="customer_name" autocomplete="name" />
+            <div class="field-error" data-for="customer_name"></div>
+          </div>
+          <div class="field">
+            <label class="req" for="customer_phone">Teléfono (WhatsApp)</label>
+            <input id="customer_phone" inputmode="tel" placeholder="+34600111222" />
+            <div class="hint">Formato internacional. Aquí recibirás las novedades.</div>
+            <div class="field-error" data-for="customer_phone"></div>
+          </div>
+          <div class="field">
+            <label class="req" for="equipment_type">Tipo de equipo</label>
+            <select id="equipment_type">
+              <option value="">Selecciona…</option>
+              <option value="hvac">Climatización (HVAC)</option>
+              <option value="refrigeration">Refrigeración</option>
+              <option value="electrical">Eléctrico</option>
+              <option value="plumbing">Fontanería</option>
+              <option value="appliance">Electrodoméstico</option>
+              <option value="other">Otro</option>
+            </select>
+            <div class="field-error" data-for="equipment_type"></div>
+          </div>
+          <div class="field">
+            <label class="req" for="symptom_description">¿Qué problema tiene?</label>
+            <textarea id="symptom_description" placeholder="Describe la avería…"></textarea>
+            <div class="field-error" data-for="symptom_description"></div>
+          </div>
+          <div class="field">
+            <label for="customer_address">Dirección (opcional)</label>
+            <input id="customer_address" autocomplete="street-address" />
+          </div>
+          <button id="submitBtn" class="btn btn-lg" type="submit">Enviar solicitud</button>
+        </form>
+      </section>
+
+      <!-- ===== Success ===== -->
+      <section id="successCard" class="card hidden center">
+        <div style="font-size:2.4rem">✅</div>
+        <h1 style="margin-top:8px">¡Solicitud recibida!</h1>
+        <p class="muted">Tu número de ticket es</p>
+        <div style="font-size:1.5rem;font-weight:700;margin:4px 0 16px" id="resTicketId">—</div>
+        <a id="resStatusLink" class="btn btn-block" href="#">Ver seguimiento en vivo</a>
+        <p class="hint">Guarda este enlace o búscalo en el WhatsApp que te enviamos.</p>
+      </section>
+
+      <!-- ===== Tracker (?id=&t=) ===== -->
+      <section id="trackerCard" class="hidden">
+        <div class="card">
+          <div class="spread">
+            <div>
+              <div class="t-3 small">Ticket</div>
+              <h1 id="trTicketId">—</h1>
+            </div>
+            <span id="trBadge" class="badge"><span class="dot"></span><span></span></span>
+          </div>
+
+          <div id="trStepper" class="stepper"></div>
+
+          <div id="trEtaHero" class="card hidden" style="background:var(--c-primary-soft);border-color:transparent;text-align:center;box-shadow:none">
+            <div class="small" style="color:var(--c-primary);font-weight:600">Llegada estimada</div>
+            <div id="trEta" style="font-size:1.4rem;font-weight:700;color:var(--c-primary)">—</div>
+          </div>
+
+          <div id="trTechCard" class="row hidden" style="margin-top:14px;padding:12px;border:1px solid var(--c-border);border-radius:var(--r)">
+            <span class="avatar lg" id="trTechAv">—</span>
+            <div>
+              <div class="small t-3">Tu técnico</div>
+              <div style="font-weight:600" id="trTechName">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:12px">Detalles</h2>
+          <dl class="kv">
+            <div><dt>Equipo</dt><dd id="trEquip">—</dd></div>
+            <div><dt>Solicitado</dt><dd id="trCreated">—</dd></div>
+          </dl>
+        </div>
+
+        <div class="card">
+          <h2 style="margin-bottom:14px">Historial</h2>
+          <div id="trTimeline" class="timeline"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../shared/api.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    const E = FSC.escapeHtml;
+    const params = new URLSearchParams(location.search);
+    const viewId = params.get("id"), viewToken = params.get("t");
+
+    function clearErrors() { document.querySelectorAll(".field-error").forEach(e => e.textContent = ""); }
+    function showErrors(map) { Object.entries(map || {}).forEach(([f, m]) => { const el = document.querySelector('.field-error[data-for="' + f + '"]'); if (el) el.textContent = m; }); }
+
+    function renderStepper(container, status) {
+      const order = FSC.LIFECYCLE.filter(s => s !== "Close").concat(["Close"]);
+      const cur = order.indexOf(status);
+      container.innerHTML = order.map((s, i) => {
+        const cls = i < cur ? "done" : (i === cur ? "current" : "");
+        const icon = i < cur ? "✓" : (i + 1);
+        return '<div class="step ' + cls + '"><div class="bullet">' + icon + '</div>' +
+               '<div class="lbl">' + E(FSC.STATUS_ES[s]) + '</div></div>';
+      }).join("");
+    }
+
+    async function loadTracker() {
+      try {
+        const t = await FSC.getTicket(viewId, { token: viewToken });
+        document.getElementById("trTicketId").textContent = t.ticket_id;
+        const badge = document.getElementById("trBadge");
+        badge.dataset.status = t.status;
+        badge.querySelector("span:last-child").textContent = FSC.STATUS_ES[t.status] || t.status;
+        renderStepper(document.getElementById("trStepper"), t.status);
+
+        const etaHero = document.getElementById("trEtaHero");
+        if (t.eta && t.status !== "Close") { etaHero.classList.remove("hidden"); document.getElementById("trEta").textContent = FSC.fmtDateTime(t.eta); }
+        else etaHero.classList.add("hidden");
+
+        const techCard = document.getElementById("trTechCard");
+        if (t.assigned_technician) {
+          techCard.classList.remove("hidden");
+          document.getElementById("trTechName").textContent = t.assigned_technician;
+          document.getElementById("trTechAv").textContent = FSC.initials(t.assigned_technician);
+        } else techCard.classList.add("hidden");
+
+        document.getElementById("trEquip").textContent = FSC.EQUIP_ES[t.equipment_type] || t.equipment_type || "—";
+        document.getElementById("trCreated").textContent = FSC.fmtDateTime(t.created_at);
+
+        const tl = (t.timeline || []);
+        document.getElementById("trTimeline").innerHTML = tl.slice().reverse().map(ev =>
+          '<div class="tl-item"><span class="tl-dot"></span>' +
+          '<div class="tl-title">' + E(FSC.STATUS_ES[ev.to_status] || ev.to_status) + '</div>' +
+          '<div class="tl-meta">' + E(FSC.fmtDateTime(ev.at)) + ' · ' + E(FSC.timeAgo(ev.at)) + '</div></div>'
+        ).join("");
+      } catch (err) { FSC.toast(err.message || "No se pudo cargar el ticket.", "err"); }
+    }
+
+    if (viewId && viewToken) {
+      document.getElementById("formCard").classList.add("hidden");
+      document.getElementById("trackerCard").classList.remove("hidden");
+      loadTracker();
+      setInterval(loadTracker, 30000);
+      return;
+    }
+
+    // ---- Form ----
+    const form = document.getElementById("intakeForm");
+    const idem = "intake-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+    function clientValidate(d) {
+      const e = {};
+      if (!d.customer_name || d.customer_name.length < 2) e.customer_name = "Indica tu nombre.";
+      if (!/^\+[1-9][0-9]{7,14}$/.test(d.customer_phone || "")) e.customer_phone = "Teléfono en formato +34600111222.";
+      if (!d.equipment_type) e.equipment_type = "Selecciona el tipo de equipo.";
+      if (!d.symptom_description || d.symptom_description.length < 5) e.symptom_description = "Describe el problema.";
+      return e;
+    }
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault(); clearErrors();
+      const d = {
+        customer_name: form.customer_name.value.trim(),
+        customer_phone: form.customer_phone.value.trim(),
+        equipment_type: form.equipment_type.value,
+        symptom_description: form.symptom_description.value.trim(),
+        customer_address: form.customer_address.value.trim() || null,
+      };
+      const errs = clientValidate(d);
+      if (Object.keys(errs).length) { showErrors(errs); return; }
+      const btn = document.getElementById("submitBtn"); btn.disabled = true; btn.textContent = "Enviando…";
+      try {
+        const res = await FSC.createTicket(d, idem);
+        document.getElementById("formCard").classList.add("hidden");
+        document.getElementById("successCard").classList.remove("hidden");
+        document.getElementById("resTicketId").textContent = res.ticket_id;
+        const link = (window.FSC_API_BASE || location.origin) + location.pathname +
+          "?id=" + encodeURIComponent(res.ticket_id) + "&t=" + encodeURIComponent(res.access_token);
+        document.getElementById("resStatusLink").href = link;
+      } catch (err) {
+        if (err.code === "VALIDATION_FAILED" && err.fields) showErrors(err.fields);
+        else FSC.toast(err.message || "No se pudo enviar.", "err");
+        btn.disabled = false; btn.textContent = "Enviar solicitud";
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

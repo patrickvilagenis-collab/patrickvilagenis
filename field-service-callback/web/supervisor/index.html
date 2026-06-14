@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supervisión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css" />
+  <script>window.FSC_API_BASE = "";</script>
+</head>
+<body>
+  <div class="app">
+    <!-- ===== Login ===== -->
+    <main id="authView" class="container-sm">
+      <div class="card">
+        <div class="brand" style="margin-bottom:6px"><span class="logo">🗂️</span> Supervisión</div>
+        <h1 style="margin-bottom:16px">Acceder</h1>
+        <div class="field"><label class="req" for="supId">Tu nombre</label><input id="supId" placeholder="ana" /></div>
+        <div class="field"><label class="req" for="roleKey">Clave de acceso</label><input id="roleKey" type="password" placeholder="••••••••" /></div>
+        <button id="loginBtn" class="btn btn-block" type="button">Entrar</button>
+      </div>
+    </main>
+
+    <!-- ===== App ===== -->
+    <div id="appView" class="hidden">
+      <header class="topbar">
+        <div class="brand"><span class="logo">🗂️</span> Service Desk</div>
+        <input id="search" placeholder="Buscar cliente o ticket…" style="max-width:280px;min-height:38px" />
+        <div class="grow"></div>
+        <span class="avatar" id="supAv">—</span>
+        <button class="icon-btn" id="logoutBtn" title="Salir">⎋</button>
+      </header>
+      <div class="layout">
+        <nav class="sidenav">
+          <a class="active" href="#" data-nav="board">📊 Tablero</a>
+          <a href="#" data-nav="techs">👷 Técnicos</a>
+          <a href="#" id="navRefresh">↻ Actualizar</a>
+        </nav>
+        <div class="content">
+          <!-- KPIs -->
+          <div class="kpis" id="kpis"></div>
+          <!-- Alerts -->
+          <div id="alerts"></div>
+
+          <div class="spread" style="margin:6px 0 14px">
+            <div class="seg">
+              <button data-view="board" class="active">Tablero</button>
+              <button data-view="table">Tabla</button>
+              <button data-view="techs">Técnicos</button>
+            </div>
+            <div class="row">
+              <select id="fPriority" style="min-height:38px;width:auto"><option value="">Prioridad: todas</option><option value="low">Baja</option><option value="normal">Normal</option><option value="high">Alta</option></select>
+            </div>
+          </div>
+
+          <div id="boardView" class="board"></div>
+          <div id="tableView" class="hidden table-wrap"><table class="tbl"><thead><tr><th>Ticket</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Prioridad</th><th>Técnico</th><th>ETA</th><th>Aviso</th></tr></thead><tbody id="rows"></tbody></table></div>
+          <div id="techsView" class="hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Detail drawer ===== -->
+  <div id="drawerBackdrop" class="drawer-backdrop hidden">
+    <aside class="drawer">
+      <div class="drawer-head"><h2 id="dTitle">Ticket</h2><button class="icon-btn" id="dClose">✕</button></div>
+      <div class="drawer-body" id="dBody"></div>
+    </aside>
+  </div>
+
+  <script src="../shared/api.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    const E = FSC.escapeHtml;
+    let supId = sessionStorage.getItem("fsc_sup_id") || "";
+    let roleKey = sessionStorage.getItem("fsc_sup_key") || "";
+    let all = [], view = "board", timer = null, openId = null;
+
+    const STATES = FSC.LIFECYCLE;
+    const isOpen = t => t.status !== "Close";
+    const today = () => new Date().toISOString().slice(0, 10);
+    const stuck = t => ["Intake", "Triage"].includes(t.status) && (Date.now() - new Date(t.created_at).getTime() > 2 * 3600 * 1000);
+
+    function priBadge(p) {
+      if (p === "high") return '<span class="badge badge-pri" data-p="high">Alta</span>';
+      if (p === "critical") return '<span class="badge badge-pri" data-p="critical">🔥 Crítica</span>';
+      if (p === "low") return '<span class="badge badge-pri" data-p="low">Baja</span>';
+      return '<span class="badge badge-pri" data-p="normal">Normal</span>';
+    }
+    function statusBadge(s) { return '<span class="badge" data-status="' + E(s) + '"><span class="dot"></span>' + E(FSC.STATUS_ES[s]) + '</span>'; }
+
+    function filtered() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const fp = document.getElementById("fPriority").value;
+      return all.filter(t => {
+        if (fp && (t.priority || "normal") !== fp) return false;
+        if (q && !((t.customer_name || "").toLowerCase().includes(q) || t.ticket_id.toLowerCase().includes(q))) return false;
+        return true;
+      });
+    }
+
+    function renderKpis() {
+      const open = all.filter(isOpen).length;
+      const unassigned = all.filter(t => !t.assigned_technician && ["Intake", "Triage"].includes(t.status)).length;
+      const overdue = all.filter(stuck).length;
+      const closedToday = all.filter(t => t.status === "Close" && (t.updated_at || "").slice(0, 10) === today()).length;
+      document.getElementById("kpis").innerHTML =
+        '<div class="kpi"><div class="v">' + open + '</div><div class="l">Abiertos</div></div>' +
+        '<div class="kpi ' + (unassigned ? 'warn' : '') + '"><div class="v">' + unassigned + '</div><div class="l">Sin asignar</div></div>' +
+        '<div class="kpi ' + (overdue ? 'alert' : '') + '"><div class="v">' + overdue + '</div><div class="l">Vencidos (&gt;2h)</div></div>' +
+        '<div class="kpi"><div class="v">' + closedToday + '</div><div class="l">Cerrados hoy</div></div>';
+    }
+    function renderAlerts() {
+      const failed = all.filter(t => t.notification_status === "failed");
+      const overdue = all.filter(stuck);
+      let h = "";
+      if (overdue.length) h += '<div class="card" style="border-left:3px solid var(--c-warn);padding:12px 16px;margin-bottom:10px"><strong class="flag-warn">⏱ ' + overdue.length + '</strong> aviso(s) llevan más de 2h sin avanzar.</div>';
+      if (failed.length) h += '<div class="card" style="border-left:3px solid var(--c-err);padding:12px 16px;margin-bottom:10px"><strong class="flag">⚠ ' + failed.length + '</strong> aviso(s) con notificación fallida.</div>';
+      document.getElementById("alerts").innerHTML = h;
+    }
+
+    function kcard(t) {
+      return '<div class="kcard" data-id="' + E(t.ticket_id) + '" data-p="' + E(t.priority || 'normal') + '">' +
+        '<div class="spread"><span class="id">' + E(t.ticket_id) + '</span>' + (t.notification_status === "failed" ? '<span class="flag">⚠</span>' : '') + '</div>' +
+        '<div class="name">' + E(t.customer_name) + '</div>' +
+        '<div class="row" style="gap:6px">' + priBadge(t.priority) + '<span class="tag">' + E(FSC.EQUIP_ES[t.equipment_type] || t.equipment_type) + '</span></div>' +
+        (t.assigned_technician ? '<div class="row" style="margin-top:8px"><span class="avatar" style="width:24px;height:24px;font-size:.65rem">' + E(FSC.initials(t.assigned_technician)) + '</span><span class="small muted">' + E(t.assigned_technician) + '</span></div>' : '') +
+        '</div>';
+    }
+    function renderBoard() {
+      const items = filtered();
+      document.getElementById("boardView").innerHTML = STATES.map(s => {
+        const col = items.filter(t => t.status === s);
+        return '<div class="kcol"><div class="kcol-head"><div class="row" style="gap:6px">' + statusBadge(s) + '</div><span class="count">' + col.length + '</span></div>' +
+          '<div class="kcol-body">' + (col.map(kcard).join("") || '<div class="small t-3" style="padding:6px">—</div>') + '</div></div>';
+      }).join("");
+      document.querySelectorAll(".kcard").forEach(c => c.addEventListener("click", () => openDrawer(c.dataset.id)));
+    }
+    function renderTable() {
+      const items = filtered();
+      document.getElementById("rows").innerHTML = items.map(t =>
+        '<tr class="clickable" data-id="' + E(t.ticket_id) + '"><td>' + E(t.ticket_id) + (stuck(t) ? ' <span class="flag-warn">⏱</span>' : '') + '</td>' +
+        '<td>' + E(t.customer_name) + '</td><td>' + E(FSC.EQUIP_ES[t.equipment_type] || t.equipment_type) + '</td>' +
+        '<td>' + statusBadge(t.status) + '</td><td>' + priBadge(t.priority) + '</td>' +
+        '<td>' + E(t.assigned_technician || "—") + '</td><td>' + (t.eta ? E(FSC.fmtDateTime(t.eta)) : "—") + '</td>' +
+        '<td>' + (t.notification_status === "failed" ? '<span class="flag">⚠ fallo</span>' : E(t.notification_status || "—")) + '</td></tr>'
+      ).join("") || '<tr><td colspan="8" class="muted center">Sin tickets</td></tr>';
+      document.querySelectorAll("#rows tr.clickable").forEach(r => r.addEventListener("click", () => openDrawer(r.dataset.id)));
+    }
+    function renderTechs() {
+      const map = {};
+      all.filter(isOpen).forEach(t => { const k = t.assigned_technician || "(sin asignar)"; (map[k] = map[k] || []).push(t); });
+      const keys = Object.keys(map).sort();
+      document.getElementById("techsView").innerHTML = keys.length ? keys.map(k =>
+        '<div class="card" style="padding:14px"><div class="spread"><div class="row"><span class="avatar">' + E(FSC.initials(k)) + '</span><strong>' + E(k) + '</strong></div><span class="tag">' + map[k].length + ' activos</span></div>' +
+        '<div class="row" style="margin-top:10px;gap:6px">' + map[k].map(t => statusBadge(t.status)).join("") + '</div></div>'
+      ).join("") : '<div class="empty"><div class="emoji">👷</div><h3>Nada en curso</h3></div>';
+    }
+    function render() { renderKpis(); renderAlerts();
+      document.getElementById("boardView").classList.toggle("hidden", view !== "board");
+      document.getElementById("tableView").classList.toggle("hidden", view !== "table");
+      document.getElementById("techsView").classList.toggle("hidden", view !== "techs");
+      if (view === "board") renderBoard(); else if (view === "table") renderTable(); else renderTechs();
+    }
+
+    // ---- Drawer ----
+    function actionPanel(t) {
+      const s = t.status;
+      if (s === "Intake") return '<h3>Acción</h3><label>Prioridad</label><select id="aPriority"><option value="low">Baja</option><option value="normal" selected>Normal</option><option value="high">Alta</option></select><label style="margin-top:10px">Nota</label><textarea id="aNote"></textarea><button class="btn btn-block" style="margin-top:12px" data-do="Triage">Pasar a revisión</button>';
+      if (s === "Triage") return '<h3>Asignar técnico</h3><label class="req">Técnico</label><input id="aTech" placeholder="carlos" /><label style="margin-top:10px">ETA provisional</label><input id="aEta" type="datetime-local" /><label style="margin-top:10px">Nota</label><textarea id="aNote"></textarea><button class="btn btn-block" style="margin-top:12px" data-do="Dispatch">Asignar</button>';
+      if (s === "Dispatch") return '<button class="btn btn-block" data-do="On the way" data-needeta="1">Marcar en camino</button><label style="margin-top:10px">ETA</label><input id="aEta" type="datetime-local" />';
+      if (s === "On the way") return '<button class="btn btn-block" data-do="On site">Marcar llegada</button>';
+      if (s === "On site") return '<label>Resolución</label><textarea id="aNote"></textarea><button class="btn btn-block" style="margin-top:10px" data-do="Close">Cerrar</button>';
+      if (s === "Close") return '<button class="btn btn-ghost btn-block" data-do="Triage">Reabrir ticket</button>';
+      return "";
+    }
+    function openDrawer(id) {
+      const t = all.find(x => x.ticket_id === id); if (!t) return; openId = id;
+      document.getElementById("dTitle").textContent = t.ticket_id;
+      const tl = (t.audit_log || []).slice().reverse().map(e =>
+        '<div class="tl-item ' + (["Intake","Triage","Dispatch","On the way","On site","Close"].includes(e.to_status) ? '' : 'muted-dot') + '">' +
+        '<span class="tl-dot"></span><div class="tl-title">' + E(FSC.STATUS_ES[e.to_status] || e.to_status) + '</div>' +
+        '<div class="tl-meta">' + E((e.actor || "").split(":").join(" · ")) + ' · ' + E(FSC.fmtDateTime(e.at)) + '</div>' +
+        (e.note ? '<div class="small" style="margin-top:2px">' + E(e.note) + '</div>' : '') + '</div>').join("");
+      document.getElementById("dBody").innerHTML =
+        '<div class="row" style="justify-content:space-between">' + statusBadge(t.status) + priBadge(t.priority) + '</div>' +
+        '<dl class="kv" style="margin-top:12px">' +
+        '<div><dt>Cliente</dt><dd>' + E(t.customer_name) + '</dd></div>' +
+        '<div><dt>Teléfono</dt><dd>' + E(t.customer_phone) + '</dd></div>' +
+        '<div><dt>Equipo</dt><dd>' + E(FSC.EQUIP_ES[t.equipment_type] || t.equipment_type) + '</dd></div>' +
+        (t.customer_address ? '<div><dt>Dirección</dt><dd>' + E(t.customer_address) + '</dd></div>' : '') +
+        '<div><dt>Técnico</dt><dd>' + E(t.assigned_technician || "—") + '</dd></div>' +
+        '<div><dt>ETA</dt><dd>' + (t.eta ? E(FSC.fmtDateTime(t.eta)) : "—") + '</dd></div></dl>' +
+        '<p class="small muted" style="margin:10px 0">' + E(t.symptom_description) + '</p>' +
+        '<div class="card" style="padding:14px;box-shadow:none;background:var(--c-surface-2);border:none">' + actionPanel(t) + '</div>' +
+        '<h3 style="margin:18px 0 12px">Historial</h3><div class="timeline">' + tl + '</div>';
+      document.querySelectorAll("#dBody [data-do]").forEach(b => b.addEventListener("click", () => doTransition(t, b.dataset.do, b.dataset.needeta)));
+      document.getElementById("drawerBackdrop").classList.remove("hidden");
+    }
+    function closeDrawer() { openId = null; document.getElementById("drawerBackdrop").classList.add("hidden"); }
+
+    async function doTransition(t, to, needEta) {
+      const body = { to_status: to, actor: "supervisor:" + supId };
+      const note = document.getElementById("aNote"); if (note && note.value.trim()) body.note = note.value.trim();
+      const pri = document.getElementById("aPriority"); if (pri) body.priority = pri.value;
+      const tech = document.getElementById("aTech"); if (tech) { if (!tech.value.trim()) { FSC.toast("Indica un técnico.", "err"); return; } body.assigned_technician = tech.value.trim(); }
+      const eta = document.getElementById("aEta"); if (eta && eta.value) body.eta = new Date(eta.value).toISOString();
+      if (needEta && !body.eta) { FSC.toast("Indica la ETA.", "err"); return; }
+      try { await FSC.transition(t.ticket_id, body, roleKey); FSC.toast("Ticket " + t.ticket_id + " → " + FSC.STATUS_ES[to], "ok"); closeDrawer(); await load(); }
+      catch (err) { FSC.toast(err.message || "No se pudo actualizar.", "err"); }
+    }
+
+    async function load() {
+      try { const data = await FSC.listTickets({}, roleKey); all = data.tickets || data || []; render(); }
+      catch (err) { FSC.toast(err.message || "No se pudo cargar.", "err"); if (err.code === "FORBIDDEN") { sessionStorage.clear(); location.reload(); } }
+    }
+
+    function setView(v) { view = v;
+      document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+      document.querySelectorAll(".sidenav a[data-nav]").forEach(a => a.classList.toggle("active", a.dataset.nav === v || (a.dataset.nav === "board" && v === "table")));
+      render();
+    }
+    function signIn() {
+      document.getElementById("authView").classList.add("hidden");
+      document.getElementById("appView").classList.remove("hidden");
+      document.getElementById("supAv").textContent = FSC.initials(supId);
+      ["search", "fPriority"].forEach(id => document.getElementById(id).addEventListener("input", render));
+      document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => setView(b.dataset.view)));
+      document.querySelectorAll(".sidenav a[data-nav]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); setView(a.dataset.nav); }));
+      load(); timer = setInterval(load, 30000);
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      supId = document.getElementById("supId").value.trim(); roleKey = document.getElementById("roleKey").value;
+      if (!supId || !roleKey) { FSC.toast("Indica nombre y clave.", "err"); return; }
+      sessionStorage.setItem("fsc_sup_id", supId); sessionStorage.setItem("fsc_sup_key", roleKey); signIn();
+    });
+    document.getElementById("dClose").addEventListener("click", closeDrawer);
+    document.getElementById("drawerBackdrop").addEventListener("click", e => { if (e.target.id === "drawerBackdrop") closeDrawer(); });
+    document.getElementById("logoutBtn").addEventListener("click", () => { sessionStorage.clear(); location.reload(); });
+    document.getElementById("navRefresh").addEventListener("click", e => { e.preventDefault(); load(); });
+
+    if (supId && roleKey) signIn();
+  })();
+  </script>
+</body>
+</html>

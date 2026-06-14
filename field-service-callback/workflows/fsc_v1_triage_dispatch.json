@@ -1,0 +1,31 @@
+{
+  "name": "FSC v1 — Triage & Dispatch (supervisor sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fsc-td-trigger",
+      "name": "When called by Status Update",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Canonical validator/enricher for the SUPERVISOR-owned edges (spec §3.3, §6):\n//   Intake -> Triage (set priority)\n//   Triage -> Dispatch (require assigned_technician, optional provisional eta)\n//   Close  -> Triage  (reopen; clear assignment + eta)\n// status_update embeds equivalent rules; teams that prefer a separate callable\n// unit can delegate the supervisor edges here. Input: { ticket, to_status,\n// actor, priority, assigned_technician, eta, note }. Output: { updated } or { __error }.\nconst i = $input.first().json;\nconst ticket = i.ticket;\nconst from = ticket.status;\nconst to = i.to_status;\nconst now = new Date().toISOString();\n\nconst SUP_EDGES = { 'Intake': 'Triage', 'Triage': 'Dispatch', 'Close': 'Triage' };\nif (SUP_EDGES[from] !== to)\n  return [{ json: { __error: { code: 'ILLEGAL_TRANSITION', message: `Edge no soportado por triage_dispatch: ${from} -> ${to}.` } } }];\nif ((i.actor || '').split(':')[0] !== 'supervisor')\n  return [{ json: { __error: { code: 'FORBIDDEN', message: 'Solo un supervisor puede ejecutar estas transiciones.' } } }];\n\nconst patch = { status: to, updated_at: now };\nif (to === 'Triage') {\n  patch.priority = ['low','normal','high'].includes(i.priority) ? i.priority : (ticket.priority || 'normal');\n  if (from === 'Close') { patch.assigned_technician = null; patch.eta = null; } // reopen reset\n}\nif (to === 'Dispatch') {\n  if (!i.assigned_technician)\n    return [{ json: { __error: { code: 'VALIDATION_FAILED', message: 'assigned_technician es obligatorio.', fields: { assigned_technician: 'Obligatorio.' } } } }];\n  patch.assigned_technician = i.assigned_technician;\n  if (i.eta) patch.eta = i.eta;\n}\n\nconst audit = (ticket.audit_log || []).concat([{ at: now, actor: i.actor, from_status: from, to_status: to, note: i.note || null }]);\nconst EVT = { 'Triage': 'fsc.v1.ticket.triaged', 'Dispatch': 'fsc.v1.ticket.dispatched' };\nconst TPL = { 'Dispatch': 'T2' }; // Triage does not notify the customer (§7.1)\nconst updated = Object.assign({}, ticket, patch, { audit_log: audit });\nreturn [{ json: { updated, event_name: EVT[to], notify_template: TPL[to] || null } }];\n"
+      },
+      "id": "fsc-td-logic",
+      "name": "Validate & enrich supervisor edge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "When called by Status Update": { "main": [[{ "node": "Validate & enrich supervisor edge", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "fsc_v1_triage_dispatch",
+  "tags": [{ "name": "fsc" }, { "name": "v1" }],
+  "meta": { "templateId": "fsc-v1-triage-dispatch" }
+}

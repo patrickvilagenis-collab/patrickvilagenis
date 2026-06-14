@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de técnico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css" />
+  <script>window.FSC_API_BASE = "";</script>
+</head>
+<body>
+  <div class="app">
+    <!-- ===== Login ===== -->
+    <main id="authView" class="container-sm">
+      <div class="card">
+        <div class="brand" style="margin-bottom:6px"><span class="logo">🧰</span> Técnico</div>
+        <h1 style="margin-bottom:16px">Acceder</h1>
+        <div class="field"><label class="req" for="techId">Tu nombre de técnico</label><input id="techId" placeholder="carlos" /></div>
+        <div class="field"><label class="req" for="roleKey">Clave de acceso</label><input id="roleKey" type="password" placeholder="••••••••" /></div>
+        <button id="loginBtn" class="btn btn-block" type="button">Entrar</button>
+      </div>
+    </main>
+
+    <!-- ===== App ===== -->
+    <div id="appView" class="hidden" style="display:flex;flex-direction:column;min-height:100%">
+      <header class="topbar">
+        <div class="brand"><span class="logo">🧰</span> <span id="whoami">Técnico</span></div>
+        <button class="icon-btn grow-0" id="refreshBtn" title="Actualizar" style="margin-left:auto">↻</button>
+      </header>
+
+      <main class="container-sm grow" style="padding-bottom:80px">
+        <div class="spread" style="margin-bottom:14px">
+          <h1>Hoy</h1>
+          <span id="countPill" class="tag">0 trabajos</span>
+        </div>
+        <div id="loadingList">
+          <div class="card"><div class="skeleton sk-line" style="width:40%"></div><div class="skeleton sk-line"></div><div class="skeleton sk-line" style="width:70%"></div></div>
+        </div>
+        <div id="list" class="col hidden" style="gap:14px"></div>
+        <div id="empty" class="empty hidden"><div class="emoji">🎉</div><h3>Sin trabajos activos</h3><p class="small">Cuando te asignen un aviso aparecerá aquí.</p></div>
+
+        <details id="recentWrap" class="card hidden" style="margin-top:16px">
+          <summary style="cursor:pointer;font-weight:600">Cerrados recientemente</summary>
+          <div id="recent" class="col" style="gap:10px;margin-top:12px"></div>
+        </details>
+      </main>
+
+      <nav class="tabbar">
+        <a class="active" href="#"><span class="ic">📋</span>Hoy</a>
+        <a href="#" id="tabAgenda"><span class="ic">📅</span>Agenda</a>
+        <a href="#" id="tabPerfil"><span class="ic">👤</span>Perfil</a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ===== Bottom sheet ===== -->
+  <div id="sheetBackdrop" class="sheet-backdrop hidden">
+    <div class="sheet">
+      <h2 id="sheetTitle">Acción</h2>
+      <div id="sheetBody" style="margin-top:14px"></div>
+      <div class="row" style="margin-top:18px">
+        <button id="sheetOk" class="btn grow" type="button">Confirmar</button>
+        <button id="sheetCancel" class="btn btn-ghost" type="button">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/api.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    const E = FSC.escapeHtml;
+    let techId = sessionStorage.getItem("fsc_tech_id") || "";
+    let roleKey = sessionStorage.getItem("fsc_tech_key") || "";
+    let timer = null, pending = null;
+
+    const ACTION = {
+      "Dispatch":   { to: "On the way", label: "Voy en camino", eta: true },
+      "On the way": { to: "On site",    label: "He llegado" },
+      "On site":    { to: "Close",      label: "Cerrar trabajo", note: true },
+    };
+
+    function mapsLink(addr) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr || ""); }
+
+    function card(t, compact) {
+      const a = ACTION[t.status];
+      const pri = t.priority === "high" ? '<span class="badge badge-pri" data-p="high">Alta</span>' :
+                  (t.priority === "critical" ? '<span class="badge badge-pri" data-p="critical">🔥 Crítica</span>' : '');
+      let actions = "";
+      if (!compact && a) {
+        actions = '<button class="btn btn-lg" style="margin-top:14px" data-act="' + E(t.ticket_id) + '">' + E(a.label) + '</button>';
+        const tools = [];
+        if (t.customer_address) tools.push('<a class="btn btn-ghost grow" target="_blank" href="' + mapsLink(t.customer_address) + '">📍 Mapa</a>');
+        if (t.customer_phone) tools.push('<a class="btn btn-ghost grow" href="tel:' + E(t.customer_phone) + '">📞 Llamar</a>');
+        if (tools.length) actions += '<div class="row" style="margin-top:10px;flex-wrap:nowrap">' + tools.join("") + '</div>';
+      }
+      return '<div class="card" style="padding:16px">' +
+        '<div class="spread"><span class="t-3 small">' + E(t.ticket_id) + '</span>' +
+        '<span class="badge" data-status="' + E(t.status) + '"><span class="dot"></span>' + E(FSC.STATUS_ES[t.status]) + '</span></div>' +
+        '<div class="row" style="margin:6px 0"><strong>' + E(t.customer_name) + '</strong>' + pri + '</div>' +
+        '<dl class="kv"><div><dt>Equipo</dt><dd>' + E(FSC.EQUIP_ES[t.equipment_type] || t.equipment_type) + '</dd></div>' +
+        (t.customer_address ? '<div><dt>Dirección</dt><dd>' + E(t.customer_address) + '</dd></div>' : '') +
+        (t.eta ? '<div><dt>Llegada</dt><dd>' + E(FSC.fmtDateTime(t.eta)) + '</dd></div>' : '') + '</dl>' +
+        '<p class="small muted" style="margin:8px 0 0">' + E(t.symptom_description) + '</p>' +
+        actions + '</div>';
+    }
+
+    function openSheet(ticket, status) {
+      const a = ACTION[status]; pending = { ticket, status };
+      document.getElementById("sheetTitle").textContent = a.label + " · " + ticket;
+      const body = document.getElementById("sheetBody");
+      if (a.eta) {
+        body.innerHTML = '<label>Hora estimada de llegada</label>' +
+          '<div class="row" style="margin:8px 0"><button class="btn btn-soft preset" data-min="15" type="button">+15 min</button>' +
+          '<button class="btn btn-soft preset" data-min="30" type="button">+30 min</button>' +
+          '<button class="btn btn-soft preset" data-min="60" type="button">+1 h</button></div>' +
+          '<input type="datetime-local" id="etaInput" />';
+        body.querySelectorAll(".preset").forEach(b => b.addEventListener("click", () => {
+          const d = new Date(Date.now() + parseInt(b.dataset.min, 10) * 60000);
+          d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+          document.getElementById("etaInput").value = d.toISOString().slice(0, 16);
+        }));
+      } else if (a.note) {
+        body.innerHTML = '<label>¿Qué has hecho?</label><textarea id="noteInput" placeholder="Resolución del trabajo…"></textarea>';
+      } else { body.innerHTML = '<p class="muted">Confirmar el cambio de estado.</p>'; }
+      document.getElementById("sheetBackdrop").classList.remove("hidden");
+    }
+    function closeSheet() { pending = null; document.getElementById("sheetBackdrop").classList.add("hidden"); }
+
+    async function confirmSheet() {
+      if (!pending) return;
+      const a = ACTION[pending.status];
+      const body = { to_status: a.to, actor: "technician:" + techId };
+      if (a.eta) { const v = (document.getElementById("etaInput") || {}).value; if (!v) { FSC.toast("Indica la hora de llegada.", "err"); return; } body.eta = new Date(v).toISOString(); }
+      if (a.note) { body.note = (document.getElementById("noteInput").value || "").trim(); }
+      try {
+        const res = await FSC.transition(pending.ticket, body, roleKey);
+        FSC.toast("Hecho → " + FSC.STATUS_ES[a.to] + (res.notification ? " · aviso " + res.notification : ""), "ok");
+        closeSheet(); load();
+      } catch (err) { FSC.toast(err.message || "No se pudo actualizar.", "err"); }
+    }
+
+    async function load() {
+      try {
+        const data = await FSC.listTickets({ assigned_technician: techId }, roleKey);
+        const all = data.tickets || data || [];
+        const active = all.filter(t => ["Dispatch", "On the way", "On site"].includes(t.status))
+          .sort((x, y) => (x.eta || "9").localeCompare(y.eta || "9"));
+        const recent = all.filter(t => t.status === "Close").slice(0, 8);
+        document.getElementById("loadingList").classList.add("hidden");
+        document.getElementById("countPill").textContent = active.length + (active.length === 1 ? " trabajo" : " trabajos");
+        const list = document.getElementById("list");
+        list.classList.toggle("hidden", active.length === 0);
+        document.getElementById("empty").classList.toggle("hidden", active.length > 0);
+        list.innerHTML = active.map(t => card(t, false)).join("");
+        list.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => {
+          const t = active.find(x => x.ticket_id === b.dataset.act); if (t) openSheet(t.ticket_id, t.status);
+        }));
+        document.getElementById("recentWrap").classList.toggle("hidden", recent.length === 0);
+        document.getElementById("recent").innerHTML = recent.map(t => card(t, true)).join("");
+      } catch (err) { FSC.toast(err.message || "No se pudo cargar.", "err"); if (err.code === "FORBIDDEN") signOut(); }
+    }
+
+    function signIn() {
+      document.getElementById("authView").classList.add("hidden");
+      document.getElementById("appView").classList.remove("hidden");
+      document.getElementById("whoami").textContent = techId;
+      load(); timer = setInterval(load, 30000);
+    }
+    function signOut() { clearInterval(timer); sessionStorage.removeItem("fsc_tech_id"); sessionStorage.removeItem("fsc_tech_key"); location.reload(); }
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      techId = document.getElementById("techId").value.trim(); roleKey = document.getElementById("roleKey").value;
+      if (!techId || !roleKey) { FSC.toast("Indica nombre y clave.", "err"); return; }
+      sessionStorage.setItem("fsc_tech_id", techId); sessionStorage.setItem("fsc_tech_key", roleKey); signIn();
+    });
+    document.getElementById("refreshBtn").addEventListener("click", load);
+    document.getElementById("sheetOk").addEventListener("click", confirmSheet);
+    document.getElementById("sheetCancel").addEventListener("click", closeSheet);
+    document.getElementById("sheetBackdrop").addEventListener("click", e => { if (e.target.id === "sheetBackdrop") closeSheet(); });
+    document.getElementById("tabAgenda").addEventListener("click", e => { e.preventDefault(); FSC.toast("Agenda: próximamente"); });
+    document.getElementById("tabPerfil").addEventListener("click", e => { e.preventDefault(); if (confirm("¿Cerrar sesión?")) signOut(); });
+
+    if (techId && roleKey) signIn();
+  })();
+  </script>
+</body>
+</html>

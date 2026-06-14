@@ -1,0 +1,187 @@
+{
+  "name": "FSC v1 — Status Update (transition engine)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fsc/v1/tickets/:id/transition",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fsc-tr-webhook",
+      "name": "POST /tickets/:id/transition",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 320],
+      "webhookId": "fsc-v1-transition"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Auth + parse + classify (spec §3.3 access control, §4.1).\nconst item = $input.first().json;\nconst headers = item.headers || {};\nconst body = item.body || {};\nconst ticket_id = (item.params && item.params.id) || body.ticket_id;\nconst roleKey = headers['x-fsc-role-key'];\nconst actor = body.actor || '';\nconst role = actor.split(':')[0]; // 'technician' | 'supervisor'\n\nconst KEYS = { technician: $env.FSC_ROLE_KEY_TECHNICIAN, supervisor: $env.FSC_ROLE_KEY_SUPERVISOR };\nif (!ticket_id) return [{ json: { __error: { code: 'VALIDATION_FAILED', message: 'Falta ticket_id.' }, __status: 422 } }];\nif (!role || !KEYS[role] || roleKey !== KEYS[role])\n  return [{ json: { __error: { code: 'FORBIDDEN', message: 'Clave de rol no válida.' }, __status: 403 } }];\n\nreturn [{ json: { ticket_id, role, actor, to_status: body.to_status, eta: body.eta || null, assigned_technician: body.assigned_technician || null, priority: body.priority || null, note: body.note || null } }];\n"
+      },
+      "id": "fsc-tr-auth",
+      "name": "Auth & Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "leftValue": "={{ $json.__error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fsc-tr-if-autherr",
+      "name": "Auth failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 320]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": $json.__error } }}",
+        "options": { "responseCode": "={{ $json.__status }}" }
+      },
+      "id": "fsc-tr-resp-autherr",
+      "name": "Respond auth error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [940, 180]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.FSC_DATASTORE_URL }}/tickets/{{ $json.ticket_id }}",
+        "options": {}
+      },
+      "id": "fsc-tr-load",
+      "name": "Load current ticket",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate legal edge (spec §6.2) + build atomic patch (§6.1) + pick notify template (§7).\nconst req = $('Auth & Parse').first().json;\nconst ticket = $input.first().json; // current ticket from datastore\n\nconst LEGAL = {\n  'Intake':      { 'Triage': ['supervisor'] },\n  'Triage':      { 'Dispatch': ['supervisor'] },\n  'Dispatch':    { 'On the way': ['technician','supervisor'] },\n  'On the way':  { 'On site': ['technician','supervisor'] },\n  'On site':     { 'Close': ['technician','supervisor'] },\n  'Close':       { 'Triage': ['supervisor'] } // reopen\n};\nconst from = ticket.status;\nconst to = req.to_status;\nconst allowedRoles = (LEGAL[from] || {})[to];\nif (!allowedRoles)\n  return [{ json: { __error: { code: 'ILLEGAL_TRANSITION', message: `No se permite ${from} → ${to}.` }, __status: 409 } }];\nif (!allowedRoles.includes(req.role))\n  return [{ json: { __error: { code: 'FORBIDDEN', message: `El rol ${req.role} no puede ${from} → ${to}.` }, __status: 403 } }];\n\n// Edge-specific required-field checks\nconst now = new Date().toISOString();\nconst patch = { status: to, updated_at: now };\nif (to === 'Triage') patch.priority = req.priority || ticket.priority || 'normal';\nif (to === 'Dispatch') {\n  if (!req.assigned_technician) return [{ json: { __error: { code: 'VALIDATION_FAILED', message: 'assigned_technician es obligatorio para Dispatch.', fields: { assigned_technician: 'Obligatorio.' } }, __status: 422 } }];\n  patch.assigned_technician = req.assigned_technician;\n  if (req.eta) patch.eta = req.eta;\n}\nif (to === 'On the way') {\n  const eta = req.eta || ticket.eta;\n  if (!eta || new Date(eta).getTime() < Date.now() - 60000)\n    return [{ json: { __error: { code: 'VALIDATION_FAILED', message: 'eta válida (>= ahora) es obligatoria para On the way.', fields: { eta: 'Obligatoria y futura.' } }, __status: 422 } }];\n  patch.eta = eta;\n}\nif (to === 'Triage' && from === 'Close') { patch.assigned_technician = null; patch.eta = null; } // reopen reset\n\n// Notify template map (only boundaries that notify — §7.1)\nconst TPL = { 'Dispatch': 'T2', 'On the way': 'T3', 'On site': 'T4', 'Close': 'T5' };\nconst EVT = { 'Triage': 'fsc.v1.ticket.triaged', 'Dispatch': 'fsc.v1.ticket.dispatched', 'On the way': 'fsc.v1.ticket.enroute', 'On site': 'fsc.v1.ticket.onsite', 'Close': 'fsc.v1.ticket.closed' };\n\nconst audit = (ticket.audit_log || []).concat([{ at: now, actor: req.actor, from_status: from, to_status: to, note: req.note || null }]);\nconst updated = Object.assign({}, ticket, patch, { audit_log: audit });\n\nreturn [{ json: { updated, event_name: EVT[to], notify_template: TPL[to] || null } }];\n"
+      },
+      "id": "fsc-tr-validate",
+      "name": "Validate edge & build patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 420]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "leftValue": "={{ $json.__error }}", "rightValue": "", "operator": { "type": "object", "operation": "exists", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fsc-tr-if-validerr",
+      "name": "Transition invalid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1410, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": $json.__error } }}",
+        "options": { "responseCode": "={{ $json.__status }}" }
+      },
+      "id": "fsc-tr-resp-validerr",
+      "name": "Respond transition error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1650, 280]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.FSC_DATASTORE_URL }}/tickets/{{ $json.updated.ticket_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.updated) }}",
+        "options": {}
+      },
+      "id": "fsc-tr-persist",
+      "name": "Persist transition (atomic)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1650, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Emit domain event (spec §4.2). Notification is decoupled & may fail without rollback (§7.5).\nconst v = $('Validate edge & build patch').first().json;\nreturn [{ json: {\n  event: v.event_name,\n  ticket_id: v.updated.ticket_id,\n  occurred_at: new Date().toISOString(),\n  actor: v.updated.audit_log[v.updated.audit_log.length - 1].actor,\n  data: v.updated,\n  notify_template: v.notify_template\n} }];\n"
+      },
+      "id": "fsc-tr-event",
+      "name": "Emit transition event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1880, 520]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "value": "fsc_v1_notify", "mode": "id" },
+        "options": { "waitForSubWorkflow": false }
+      },
+      "id": "fsc-tr-notify",
+      "name": "→ Notify (T2–T5)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2110, 520]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ticket_id\": $('Validate edge & build patch').first().json.updated.ticket_id, \"status\": $('Validate edge & build patch').first().json.updated.status, \"notification\": ($('Validate edge & build patch').first().json.notify_template ? \"pending\" : \"none\") } }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "fsc-tr-resp-ok",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1880, 700]
+    }
+  ],
+  "connections": {
+    "POST /tickets/:id/transition": { "main": [[{ "node": "Auth & Parse", "type": "main", "index": 0 }]] },
+    "Auth & Parse": { "main": [[{ "node": "Auth failed?", "type": "main", "index": 0 }]] },
+    "Auth failed?": {
+      "main": [
+        [{ "node": "Respond auth error", "type": "main", "index": 0 }],
+        [{ "node": "Load current ticket", "type": "main", "index": 0 }]
+      ]
+    },
+    "Load current ticket": { "main": [[{ "node": "Validate edge & build patch", "type": "main", "index": 0 }]] },
+    "Validate edge & build patch": { "main": [[{ "node": "Transition invalid?", "type": "main", "index": 0 }]] },
+    "Transition invalid?": {
+      "main": [
+        [{ "node": "Respond transition error", "type": "main", "index": 0 }],
+        [{ "node": "Persist transition (atomic)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Persist transition (atomic)": {
+      "main": [[
+        { "node": "Emit transition event", "type": "main", "index": 0 },
+        { "node": "Respond 200", "type": "main", "index": 0 }
+      ]]
+    },
+    "Emit transition event": { "main": [[{ "node": "→ Notify (T2–T5)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "fsc_v1_status_update",
+  "tags": [{ "name": "fsc" }, { "name": "v1" }],
+  "meta": { "templateId": "fsc-v1-status-update" }
+}
