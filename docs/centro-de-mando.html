@@ -106,6 +106,12 @@
   .appbtn{display:inline-flex; align-items:center; gap:7px; margin-top:10px; padding:9px 14px; border-radius:9px;
     font-size:13px; font-weight:600; text-decoration:none; color:#fff; background:linear-gradient(135deg,#7c3aed,#2563eb)}
   .appbtn:hover{filter:brightness(1.12)}
+  .delbtn{margin-left:auto; background:rgba(239,68,68,.12); color:#fda4af; border:1px solid rgba(239,68,68,.4);
+    border-radius:7px; padding:3px 8px; font-size:12px; cursor:pointer; transition:.15s}
+  .delbtn:hover{background:rgba(239,68,68,.28); color:#fff}
+  .delall{background:rgba(239,68,68,.14); color:#fda4af; border:1px solid rgba(239,68,68,.45); border-radius:8px;
+    padding:6px 11px; font-size:12.5px; cursor:pointer; width:100%; margin:4px 0 6px}
+  .delall:hover{background:rgba(239,68,68,.3); color:#fff}
   details > summary{list-style:none} details > summary::-webkit-details-marker{display:none}
   details > summary:before{content:"▸ "; color:var(--faint)} details[open] > summary:before{content:"▾ "}
   #toggleInactive.on{border-color:var(--ccagent); box-shadow:0 0 0 1px var(--ccagent) inset}
@@ -143,6 +149,7 @@
       <span class="zlevel" id="zlevel">100%</span>
       <button id="zoomIn" title="Acercar (+)">+</button>
       <button id="panR" title="Mover a la derecha (→)">▶</button>
+      <button id="fitView" title="Ajustar el árbol a la pantalla (F)">⤢</button>
       <button id="resetView" title="Centrar y restablecer zoom (0)">⟲</button>
     </div>
     <div class="navhint">🖱️ Arrastra para mover · rueda para zoom · ← → ↑ ↓ teclas</div>
@@ -213,6 +220,7 @@ const APPS = {
 /* ============ Estado ============ */
 const S = { token:'', owner:'', repos:[], byName:{}, selected:null, rate:'' };
 let showInactive = false;            // por defecto solo se ven las ramas activas (con PR)
+let firstFit = false;                // para ajustar a pantalla solo en la primera carga
 const view = { tx:0, ty:0, k:1 };    // pan (tx,ty en coords del viewBox) y zoom (k)
 const $ = s => document.querySelector(s);
 const svgEl=$('#svg'), viewport=$('#viewport');
@@ -293,6 +301,7 @@ async function loadAll(){
     setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
     $('#empty').style.display='none'; $('#logout').style.display='inline-flex';
     render(); renderFeed();
+    if(!firstFit){ firstFit=true; requestAnimationFrame(fitView); }   // ajustar a pantalla la 1ª vez
     if(S.selected && S.byName[S.selected]) renderDetail(S.selected);
   }catch(e){
     setStatus(e.message,'var(--fail)');
@@ -466,25 +475,34 @@ function renderDetail(name){
     : `<div class="hint">Arquitectura interna no mapeada — se muestra el stack real (lenguajes) arriba.</div>`;
   const activeAg = agents.filter(a=>a.pr), inactiveAg = agents.filter(a=>!a.pr);
   const agInfo = `<div class="hint" style="margin-bottom:7px">Cada agente es una <b>sesión de Claude Code</b> que trabajó en una <b>rama</b> de <u>este mismo proyecto</u> (no son apps distintas). <b style="color:var(--ok)">🟢 Activo</b> = tiene un PR abierto en revisión; el resto son <b>ramas de sesiones anteriores</b>.</div>`;
+  const isDefault = a => a.branch===r.default_branch;
   const agCard = a=>{
       const when = a.pr ? timeAgo(a.pr.updated_at) : (a.commit ? timeAgo(a.commit.date) : '');
       const tag = a.pr
         ? `<span class="chip" style="background:var(--ok)22;color:var(--ok);border:1px solid var(--ok)55">🟢 activo · <a href="${a.pr.html_url}" target="_blank" style="color:var(--ok)">PR #${a.pr.number}</a></span>`
         : '<span class="faint">rama de sesión anterior</span>';
+      // solo se pueden borrar ramas inactivas (sin PR) y que no sean la rama principal
+      const canDelete = !a.pr && !isDefault(a);
+      const right = canDelete
+        ? `<button class="delbtn" title="Borrar esta rama inactiva" onclick='event.stopPropagation();__cmDel(${JSON.stringify(name)},${JSON.stringify(a.branch)})'>🗑 Borrar</button>`
+        : (isDefault(a) ? '<span class="faint" title="Rama principal — protegida" style="margin-left:auto">🔒 principal</span>' : '');
       return `<div class="row" style="flex-direction:column; align-items:stretch; gap:4px">
         <div style="display:flex; align-items:center; gap:7px">
           <span class="ci" style="background:${ciColor(a.ci)}"></span>
           <a class="grw" href="https://github.com/${S.owner}/${name}/tree/${encodeURIComponent(a.branch)}" target="_blank">🤖 ${esc(a.branch.replace(/^claude\//,''))}</a>
-          ${tag}
+          ${tag}${right}
         </div>
         <div class="faint" style="padding-left:16px; white-space:normal; line-height:1.4">
           🎯 <b style="color:var(--muted)">${esc(agentTask(a)).slice(0,110)}</b>${when?` · <span style="color:var(--faint)">${when}</span>`:''}
         </div>
       </div>`; };
+  const delCount = inactiveAg.filter(a=>!isDefault(a)).length;
+  const bulkBtn = delCount>1
+    ? `<button class="delall" onclick='__cmDelAll(${JSON.stringify(name)})'>🗑 Borrar las ${delCount} ramas inactivas</button>` : '';
   const agHtml = agInfo
     + (activeAg.length ? activeAg.map(agCard).join('') : '<div class="hint">Ningún agente activo (con PR) ahora mismo.</div>')
     + (inactiveAg.length
-        ? `<details ${showInactive?'open':''} style="margin-top:6px"><summary style="cursor:pointer; color:var(--muted); font-size:12.5px; padding:6px 0">🌿 ${inactiveAg.length} ramas inactivas (sesiones anteriores)</summary>${inactiveAg.map(agCard).join('')}</details>`
+        ? `<details ${showInactive?'open':''} style="margin-top:6px"><summary style="cursor:pointer; color:var(--muted); font-size:12.5px; padding:6px 0">🌿 ${inactiveAg.length} ramas inactivas (sesiones anteriores)</summary>${bulkBtn}${inactiveAg.map(agCard).join('')}</details>`
         : '');
   const nTotal = agents.length, nActive = activeAg.length;
   const app = APPS[name];
@@ -569,6 +587,17 @@ function zoomAt(px, py, factor){
 }
 function zoomCenter(factor){ zoomAt(800,450,factor); }   // centro del viewBox
 function resetView(){ view.tx=0; view.ty=0; view.k=1; applyView(); }
+// ajusta el contenido (bounding box de los nodos) a la pantalla
+function fitView(){
+  let bb; try{ bb=elNodes.getBBox(); }catch(e){ return; }
+  if(!bb || !bb.width){ resetView(); return; }
+  const vbW=1600, vbH=900, pad=50;
+  const k=Math.max(K_MIN, Math.min(K_MAX, Math.min(vbW/(bb.width+pad*2), vbH/(bb.height+pad*2))));
+  view.k=k;
+  view.tx=(vbW-k*bb.width)/2 - k*bb.x;
+  view.ty=(vbH-k*bb.height)/2 - k*bb.y;
+  applyView();
+}
 
 // arrastrar para mover (en cualquier punto del lienzo)
 svgEl.addEventListener('mousedown', e=>{ pan.down=true; pan.moved=false; const p=vbPoint(e.clientX,e.clientY); pan.lx=p.x; pan.ly=p.y; svgEl.classList.add('grabbing'); });
@@ -589,12 +618,56 @@ window.addEventListener('keydown', e=>{
   else if(e.key==='+'||e.key==='='){ zoomCenter(1.15); }
   else if(e.key==='-'||e.key==='_'){ zoomCenter(1/1.15); }
   else if(e.key==='0'){ resetView(); }
+  else if(e.key==='f'||e.key==='F'){ fitView(); }
 });
 $('#zoomIn').addEventListener('click', ()=>zoomCenter(1.2));
 $('#zoomOut').addEventListener('click', ()=>zoomCenter(1/1.2));
 $('#resetView').addEventListener('click', resetView);
+$('#fitView').addEventListener('click', fitView);
 $('#panL').addEventListener('click', ()=>{ view.tx+=140; applyView(); });
 $('#panR').addEventListener('click', ()=>{ view.tx-=140; applyView(); });
+
+/* ============ Borrado de ramas inactivas ============ */
+async function delRef(repoName, branch){
+  const url=`https://api.github.com/repos/${S.owner}/${repoName}/git/refs/heads/${branch.split('/').map(encodeURIComponent).join('/')}`;
+  const res=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+S.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});
+  return res.status;
+}
+function dropBranchLocal(r, branch){
+  r._branches=(r._branches||[]).filter(b=>b.name!==branch);
+  if(r._branchCommit) delete r._branchCommit[branch];
+}
+async function deleteBranch(repoName, branch){
+  const r=S.byName[repoName]; if(!r) return;
+  if(branch===r.default_branch){ alert('La rama principal no se puede borrar.'); return; }
+  if(!confirm(`¿Borrar la rama inactiva?\n\n${branch}\n(repo: ${repoName})\n\nEsta acción NO se puede deshacer.`)) return;
+  try{
+    setStatus('Borrando '+branch+'…','var(--run)');
+    const st=await delRef(repoName, branch);
+    if(st===204){ dropBranchLocal(r,branch); setStatus('Rama borrada ✓ '+branch,'var(--ok)'); render(); renderDetail(repoName); renderFeed(); }
+    else { if(st===403) alert('Tu token no tiene permiso para borrar ramas.\nNecesita el scope "repo" (o "public_repo" en repos públicos) con escritura.');
+           else if(st===422) alert('No se pudo borrar: rama protegida o ya inexistente.');
+           else alert('No se pudo borrar (código '+st+').');
+           setStatus('No se borró ('+st+')','var(--fail)'); }
+  }catch(e){ alert('Error de red al borrar: '+e.message); setStatus('Error al borrar','var(--fail)'); }
+}
+async function deleteInactiveAll(repoName){
+  const r=S.byName[repoName]; if(!r) return;
+  const targets=ccAgents(r).filter(a=>!a.pr && a.branch!==r.default_branch).map(a=>a.branch);
+  if(!targets.length){ alert('No hay ramas inactivas que borrar.'); return; }
+  if(!confirm(`Vas a BORRAR ${targets.length} ramas inactivas de ${repoName}:\n\n`+targets.join('\n')+`\n\nEsta acción NO se puede deshacer. ¿Continuar?`)) return;
+  let ok=0, fail=0;
+  for(const b of targets){
+    setStatus(`Borrando ${ok+fail+1}/${targets.length}…`,'var(--run)');
+    let st=0; try{ st=await delRef(repoName,b); }catch(e){}
+    if(st===204){ ok++; dropBranchLocal(r,b); }
+    else { fail++; if(st===403){ alert('Token sin permiso de escritura (403). Se detiene el borrado.'); break; } }
+  }
+  setStatus(`Borradas ${ok}/${targets.length}`+(fail?` · ${fail} con error`:''), fail?'var(--fail)':'var(--ok)');
+  render(); renderDetail(repoName); renderFeed();
+}
+window.__cmDel = deleteBranch;        // usado por los botones inline de las tarjetas
+window.__cmDelAll = deleteInactiveAll;
 
 /* ============ Toggle ramas inactivas ============ */
 function syncInactiveBtn(){
@@ -625,7 +698,7 @@ $('#token').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#connect').c
 $('#logout').addEventListener('click', ()=>{
   // olvidar el token guardado y volver a la pantalla de conexión
   localStorage.removeItem('cm_token');
-  S.token=''; S.repos=[]; S.byName={}; S.selected=null; S.rate='';
+  S.token=''; S.repos=[]; S.byName={}; S.selected=null; S.rate=''; firstFit=false;
   $('#token').value='';
   if(autoTimer){ clearInterval(autoTimer); autoTimer=null; $('#autobtn').style.borderColor=''; $('#autobtn').textContent='⏱ Auto'; }
   elEdges.innerHTML=''; elNodes.innerHTML=''; elFlow.innerHTML=''; liveEdges=[]; particles=[];
