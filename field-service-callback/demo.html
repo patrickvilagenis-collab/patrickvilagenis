@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Field Service Callback — Demo (un solo archivo)</title>
+<!--
+  DEMO AUTÓNOMA — ábrela con doble clic. No necesita servidor, backend ni internet.
+  Simula en el navegador el ciclo completo de un ticket (Cliente → Supervisor → Técnico)
+  y muestra los avisos al cliente. Para el sistema REAL (con persistencia y WhatsApp/SMS),
+  usa field-service-callback/server + web/ como explica el README.
+-->
+<style>
+:root{--bg:#0f172a;--surface:#1e293b;--s2:#273449;--text:#e2e8f0;--muted:#94a3b8;--border:#334155;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--err:#dc2626;--radius:10px;}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+header h1{font-size:1.1rem;margin:0}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--text);cursor:pointer;font-weight:600;font-size:.9rem}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+main{max-width:1000px;margin:0 auto;padding:18px;display:grid;gap:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+h2{font-size:1.05rem;margin:0 0 12px}
+label{display:block;font-weight:600;margin:12px 0 6px}
+input,select,textarea{width:100%;min-height:42px;padding:9px 11px;font-size:1rem;color:var(--text);background:var(--s2);border:1px solid var(--border);border-radius:8px}
+textarea{min-height:90px;resize:vertical}
+button{min-height:42px;padding:9px 16px;font-weight:600;color:#fff;background:var(--accent);border:none;border-radius:8px;cursor:pointer;font-size:.95rem}
+button.sec{background:var(--s2);color:var(--text);border:1px solid var(--border)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.hint{color:var(--muted);font-size:.85rem}
+.hidden{display:none!important}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:9px;border-bottom:1px solid var(--border);font-size:.88rem}
+th{color:var(--muted)}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.74rem;font-weight:700;border:1px solid var(--border)}
+.badge[data-s="Intake"]{background:#1e3a8a}.badge[data-s="Triage"]{background:#5b21b6}
+.badge[data-s="Dispatch"]{background:#9a3412}.badge[data-s="On the way"]{background:#a16207}
+.badge[data-s="On site"]{background:#0f766e}.badge[data-s="Close"]{background:#334155;color:var(--muted)}
+.notif{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--s2)}
+.notif .ico{font-size:1.2rem}
+.notif small{color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kv div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--border)}
+.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);padding:11px 16px;border-radius:8px;background:var(--s2);border:1px solid var(--ok);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔧 Field Service Callback — Demo</h1>
+  <div class="tabs">
+    <button class="tab active" data-view="cliente">👤 Cliente</button>
+    <button class="tab" data-view="supervisor">🗂️ Supervisor</button>
+    <button class="tab" data-view="tecnico">🧰 Técnico</button>
+    <button class="tab" data-view="avisos">💬 Avisos</button>
+    <button class="tab sec" id="resetBtn" title="Reiniciar demo">↺</button>
+  </div>
+</header>
+
+<main>
+  <p class="hint">Demo autónoma en el navegador (sin servidor). Crea un ticket como <b>Cliente</b>, gestiónalo como <b>Supervisor</b> y resuélvelo como <b>Técnico</b>; mira los mensajes que recibe el cliente en <b>Avisos</b>.</p>
+
+  <!-- CLIENTE -->
+  <section class="card" data-panel="cliente">
+    <h2>👤 Cliente — solicitar servicio</h2>
+    <div id="cForm">
+      <label>Nombre</label><input id="c_name" value="María López"/>
+      <label>Teléfono</label><input id="c_phone" value="+34611223344"/>
+      <label>Tipo de equipo</label>
+      <select id="c_equip">
+        <option value="hvac">Climatización (HVAC)</option>
+        <option value="refrigeration" selected>Refrigeración</option>
+        <option value="electrical">Eléctrico</option>
+        <option value="plumbing">Fontanería</option>
+        <option value="appliance">Electrodoméstico</option>
+        <option value="other">Otro</option>
+      </select>
+      <label>Descripción del problema</label>
+      <textarea id="c_desc">La cámara frigorífica no enfría desde ayer.</textarea>
+      <div style="margin-top:14px"><button id="c_submit">Enviar solicitud</button></div>
+    </div>
+    <div id="cTracker" class="hidden"></div>
+  </section>
+
+  <!-- SUPERVISOR -->
+  <section class="card hidden" data-panel="supervisor">
+    <h2>🗂️ Supervisor — todos los tickets</h2>
+    <div id="supEmpty" class="hint">No hay tickets todavía. Crea uno desde la pestaña Cliente.</div>
+    <div style="overflow-x:auto"><table id="supTable" class="hidden">
+      <thead><tr><th>Ticket</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Prioridad</th><th>Técnico</th><th>Acción</th></tr></thead>
+      <tbody id="supRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- TECNICO -->
+  <section class="card hidden" data-panel="tecnico">
+    <h2>🧰 Técnico (carlos) — mis tickets</h2>
+    <div id="techEmpty" class="hint">Sin tickets asignados. El supervisor debe asignarte uno (Dispatch).</div>
+    <div id="techList" class="row" style="gap:14px;align-items:stretch"></div>
+  </section>
+
+  <!-- AVISOS -->
+  <section class="card hidden" data-panel="avisos">
+    <h2>💬 Avisos enviados al cliente (WhatsApp/SMS simulado)</h2>
+    <div id="notifEmpty" class="hint">Aún no se ha enviado ningún aviso.</div>
+    <div id="notifList"></div>
+  </section>
+</main>
+
+<script>
+// ---- Lógica del ciclo (misma máquina de estados y plantillas que el sistema real) ----
+const LEGAL = {
+  "Intake":{"Triage":["supervisor"]},
+  "Triage":{"Dispatch":["supervisor"]},
+  "Dispatch":{"On the way":["technician"]},
+  "On the way":{"On site":["technician"]},
+  "On site":{"Close":["technician"]},
+};
+const TPL = {Dispatch:"T2","On the way":"T3","On site":"T4",Close:"T5"};
+let tickets=[], seq=0, notifs=[];
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+function tplBody(t,code){
+  const link="(enlace de seguimiento)";
+  const M={
+    T1:`Hola ${t.name}, recibimos tu solicitud de servicio para ${t.equip}. Tu número de ticket es ${t.id}. Te avisaremos cuando asignemos un técnico. Seguimiento: ${link}`,
+    T2:`${t.name}, asignamos a ${t.tech} a tu ticket ${t.id}. Pronto te confirmaremos la hora estimada de llegada.`,
+    T3:`${t.tech} va en camino para tu ticket ${t.id}. Hora estimada de llegada: ${t.eta||"(por confirmar)"}.`,
+    T4:`${t.tech} ha llegado para atender tu ticket ${t.id}.`,
+    T5:`Tu servicio ${t.id} se ha completado. Gracias por confiar en nosotros. Si el problema persiste, responde a este mensaje.`,
+  };
+  return M[code];
+}
+function notify(t,code){
+  if(!code) return;
+  notifs.push({phone:t.phone,body:tplBody(t,code),at:new Date().toLocaleTimeString()});
+  renderNotifs();
+}
+function toast(m){const e=document.createElement("div");e.className="toast";e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.remove(),2500);}
+
+// ---- Acciones ----
+function createTicket(){
+  seq++;
+  const id="FSC-2026-"+String(seq).padStart(6,"0");
+  const t={id,name:document.getElementById("c_name").value.trim()||"Cliente",
+    phone:document.getElementById("c_phone").value.trim(),
+    equip:document.getElementById("c_equip").value,
+    desc:document.getElementById("c_desc").value.trim(),
+    status:"Intake",priority:"normal",tech:null,eta:null};
+  tickets.push(t);
+  notify(t,"T1");
+  renderAll();
+  document.getElementById("cForm").classList.add("hidden");
+  const tr=document.getElementById("cTracker");
+  tr.classList.remove("hidden");
+  tr.innerHTML=`<div class="card" style="background:var(--s2)"><h2>✅ Solicitud enviada</h2>
+    <p>Tu ticket es <b>${esc(id)}</b>. Sigue su estado aquí:</p>
+    <dl class="kv" id="cKV"></dl>
+    <div style="margin-top:12px"><button class="sec" onclick="newRequest()">Nueva solicitud</button></div></div>`;
+  trackerKV(t);
+}
+function newRequest(){document.getElementById("cForm").classList.remove("hidden");document.getElementById("cTracker").classList.add("hidden");}
+function trackerKV(t){
+  const kv=document.getElementById("cKV"); if(!kv)return;
+  kv.innerHTML=`<div><dt>Estado</dt><dd><span class="badge" data-s="${t.status}">${t.status}</span></dd></div>
+    <div><dt>Técnico</dt><dd>${esc(t.tech||"Por asignar")}</dd></div>
+    <div><dt>Llegada estimada</dt><dd>${esc(t.eta||"Por confirmar")}</dd></div>`;
+}
+function transition(id,to,extra={}){
+  const t=tickets.find(x=>x.id===id); if(!t)return;
+  Object.assign(t,extra,{status:to});
+  notify(t,TPL[to]);
+  renderAll();
+}
+
+// ---- Render ----
+function renderAll(){renderSup();renderTech();const ct=tickets.find(x=>!document.getElementById("cTracker").classList.contains("hidden"));if(ct)trackerKV(ct);else{const open=tickets[tickets.length-1];if(open)trackerKV(open);}}
+function renderSup(){
+  const has=tickets.length>0;
+  document.getElementById("supEmpty").classList.toggle("hidden",has);
+  document.getElementById("supTable").classList.toggle("hidden",!has);
+  document.getElementById("supRows").innerHTML=tickets.map(t=>{
+    let act="—";
+    if(t.status==="Intake") act=`<button class="sec" onclick="transition('${t.id}','Triage',{priority:'high'})">Triage</button>`;
+    else if(t.status==="Triage") act=`<button class="sec" onclick="transition('${t.id}','Dispatch',{tech:'carlos'})">Asignar a carlos</button>`;
+    return `<tr><td>${esc(t.id)}</td><td>${esc(t.name)}</td><td>${esc(t.equip)}</td>
+      <td><span class="badge" data-s="${t.status}">${t.status}</span></td>
+      <td>${esc(t.priority)}</td><td>${esc(t.tech||"—")}</td><td>${act}</td></tr>`;
+  }).join("");
+}
+function renderTech(){
+  const mine=tickets.filter(t=>t.tech==="carlos"&&["Dispatch","On the way","On site"].includes(t.status));
+  document.getElementById("techEmpty").classList.toggle("hidden",mine.length>0);
+  document.getElementById("techList").innerHTML=mine.map(t=>{
+    let btn="";
+    if(t.status==="Dispatch") btn=`<button onclick="transition('${t.id}','On the way',{eta:'13:30'})">Marcar en camino (ETA 13:30)</button>`;
+    else if(t.status==="On the way") btn=`<button onclick="transition('${t.id}','On site')">Marcar llegada</button>`;
+    else if(t.status==="On site") btn=`<button onclick="transition('${t.id}','Close')">Cerrar ticket</button>`;
+    return `<div class="card" style="background:var(--s2);min-width:260px;flex:1">
+      <div class="row" style="justify-content:space-between"><b>${esc(t.id)}</b><span class="badge" data-s="${t.status}">${t.status}</span></div>
+      <dl class="kv" style="margin-top:8px"><div><dt>Cliente</dt><dd>${esc(t.name)}</dd></div>
+      <div><dt>Equipo</dt><dd>${esc(t.equip)}</dd></div></dl>
+      <p class="hint">${esc(t.desc)}</p><div style="margin-top:8px">${btn}</div></div>`;
+  }).join("");
+}
+function renderNotifs(){
+  document.getElementById("notifEmpty").classList.toggle("hidden",notifs.length>0);
+  document.getElementById("notifList").innerHTML=notifs.slice().reverse().map(n=>
+    `<div class="notif"><span class="ico">💬</span><div><div>${esc(n.body)}</div>
+     <small>→ ${esc(n.phone)} · ${esc(n.at)}</small></div></div>`).join("");
+}
+
+// ---- Navegación ----
+document.querySelectorAll(".tab[data-view]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tab[data-view]").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active");
+  document.querySelectorAll("[data-panel]").forEach(p=>p.classList.toggle("hidden",p.dataset.panel!==b.dataset.view));
+}));
+document.getElementById("c_submit").addEventListener("click",()=>{
+  if(!document.getElementById("c_phone").value.trim()){toast("Pon un teléfono");return;}
+  createTicket();toast("Ticket creado");
+});
+document.getElementById("resetBtn").addEventListener("click",()=>{tickets=[];notifs=[];seq=0;newRequest();renderAll();renderNotifs();toast("Demo reiniciada");});
+renderAll();renderNotifs();
+</script>
+</body>
+</html>
