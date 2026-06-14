@@ -92,6 +92,23 @@
   #tip .td{color:var(--muted); line-height:1.4}
   .spin{width:14px;height:14px;border:2px solid #fff3;border-top-color:var(--owner);border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
+  /* pan / zoom */
+  svg{cursor:grab} svg.grabbing{cursor:grabbing}
+  .viewctl{position:absolute; left:14px; bottom:14px; display:flex; gap:5px; z-index:6;
+    background:rgba(8,13,28,.72); border:1px solid var(--panel-b); border-radius:11px; padding:6px; backdrop-filter:blur(6px)}
+  .viewctl button{width:33px; height:33px; padding:0; font-size:16px; border-radius:8px; background:var(--panel);
+    color:var(--text); border:1px solid var(--panel-b); cursor:pointer; transition:.15s; display:flex; align-items:center; justify-content:center}
+  .viewctl button:hover{border-color:#5b82ff; background:rgba(40,60,110,.85)}
+  .viewctl .zlevel{min-width:46px; display:flex; align-items:center; justify-content:center; font-size:11.5px; color:var(--muted)}
+  .navhint{position:absolute; right:14px; bottom:14px; z-index:6; font-size:11px; color:var(--faint);
+    background:rgba(8,13,28,.62); border:1px solid var(--panel-b); padding:5px 10px; border-radius:8px}
+  /* botón para abrir apps integradas (topología, etc.) */
+  .appbtn{display:inline-flex; align-items:center; gap:7px; margin-top:10px; padding:9px 14px; border-radius:9px;
+    font-size:13px; font-weight:600; text-decoration:none; color:#fff; background:linear-gradient(135deg,#7c3aed,#2563eb)}
+  .appbtn:hover{filter:brightness(1.12)}
+  details > summary{list-style:none} details > summary::-webkit-details-marker{display:none}
+  details > summary:before{content:"▸ "; color:var(--faint)} details[open] > summary:before{content:"▾ "}
+  #toggleInactive.on{border-color:var(--ccagent); box-shadow:0 0 0 1px var(--ccagent) inset}
   @media (max-width:900px){ main{flex-direction:column} .sidebar{width:auto; max-height:40vh; border-left:none; border-top:1px solid var(--panel-b)} }
 </style>
 </head>
@@ -108,6 +125,7 @@
   <button id="connect" class="f go">⚡ Conectar</button>
   <button id="refresh" class="f" title="Actualizar ahora">↻</button>
   <button id="autobtn" class="f" title="Auto-actualizar cada 60s">⏱ Auto</button>
+  <button id="toggleInactive" class="f" title="Mostrar u ocultar las ramas inactivas (sesiones anteriores)">🌿 Inactivas: ocultas</button>
   <button id="logout" class="f" title="Cerrar sesión y olvidar el token" style="display:none">🚪 Salir</button>
   <span id="status" class="pill"><span class="dotled" id="led"></span><span id="statusTxt">Sin conectar</span></span>
 </header>
@@ -115,8 +133,19 @@
 <main>
   <div class="stage">
     <svg id="svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
-      <g id="edges"></g><g id="flow"></g><g id="nodes"></g>
+      <g id="viewport">
+        <g id="edges"></g><g id="flow"></g><g id="nodes"></g>
+      </g>
     </svg>
+    <div class="viewctl">
+      <button id="panL" title="Mover a la izquierda (←)">◀</button>
+      <button id="zoomOut" title="Alejar (−)">−</button>
+      <span class="zlevel" id="zlevel">100%</span>
+      <button id="zoomIn" title="Acercar (+)">+</button>
+      <button id="panR" title="Mover a la derecha (→)">▶</button>
+      <button id="resetView" title="Centrar y restablecer zoom (0)">⟲</button>
+    </div>
+    <div class="navhint">🖱️ Arrastra para mover · rueda para zoom · ← → ↑ ↓ teclas</div>
     <div class="empty" id="empty">
       <h2>🔐 Conecta tu cuenta de GitHub</h2>
       <div class="hint" style="max-width:520px">
@@ -173,9 +202,20 @@ const INTERNAL = {
   ]},
 };
 
+/* ============ Apps integradas (visualizaciones/herramientas por repo) ============
+   Patrón reutilizable: para añadir una nueva app a un repo, registra aquí
+   { repo: { title, url, icon } }. La url es relativa a este archivo (misma carpeta
+   docs/) y se abre en una pestaña nueva, preservando el estado del Centro de Mando. */
+const APPS = {
+  'patrickvilagenis': { title:'Asistente Pro — Topología del sistema', url:'arquitectura.html', icon:'🧭' },
+};
+
 /* ============ Estado ============ */
 const S = { token:'', owner:'', repos:[], byName:{}, selected:null, rate:'' };
+let showInactive = false;            // por defecto solo se ven las ramas activas (con PR)
+const view = { tx:0, ty:0, k:1 };    // pan (tx,ty en coords del viewBox) y zoom (k)
 const $ = s => document.querySelector(s);
+const svgEl=$('#svg'), viewport=$('#viewport');
 const elEdges=$('#edges'), elFlow=$('#flow'), elNodes=$('#nodes'), SVGNS='http://www.w3.org/2000/svg';
 
 // restaurar de localStorage
@@ -317,7 +357,7 @@ function node(g,x,y,w,h,col,t1,t2,onClick,tip){
   grp.appendChild(box);
   const a=document.createElementNS(SVGNS,'text'); a.setAttribute('class','t1'); a.setAttribute('x',14); a.setAttribute('y',t2?h/2-3:h/2+5); a.textContent=t1; grp.appendChild(a);
   if(t2){ const b=document.createElementNS(SVGNS,'text'); b.setAttribute('class','t2'); b.setAttribute('x',14); b.setAttribute('y',h/2+13); b.textContent=t2; grp.appendChild(b); }
-  if(onClick) grp.addEventListener('click',onClick);
+  if(onClick) grp.addEventListener('click',e=>{ if(pan.moved) return; onClick(e); });  // no seleccionar si se arrastró
   if(tip){ grp.addEventListener('mousemove',e=>showTip(e,tip[0],tip[1])); grp.addEventListener('mouseleave',hideTip); }
   g.appendChild(grp); return grp;
 }
@@ -340,9 +380,12 @@ function render(){
   repos.forEach((repo,i)=>{
     const rx = n===1?ownerX : startX + i*(span/n);
     const ry = 300;
-    const agents=ccAgents(repo);
+    const allAgents=ccAgents(repo);
+    const activeAg=allAgents.filter(a=>a.pr), inactiveAg=allAgents.filter(a=>!a.pr);
+    // por defecto solo ramas activas; el desplegable/botón muestra también las inactivas
+    const agents = showInactive ? allAgents : activeAg;
     const recent = repo._commits[0] && (Date.now()-new Date(repo._commits[0].commit.author.date) < 36e5*48);
-    edge(ownerX, ownerY+30, rx, ry-26, recent || agents.length>0);
+    edge(ownerX, ownerY+30, rx, ry-26, recent || allAgents.length>0);
     const lang = repo.language||Object.keys(repo._langs||{})[0]||'—';
     const grp=node(elNodes, rx, ry, 230, 64, 'var(--repo)', '📦 '+repo.name, lang+' · '+(repo.open_issues_count||0)+' issues',
       ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+(repo._branches.length)+' ramas · '+repo._pulls.length+' PRs']);
@@ -366,12 +409,19 @@ function render(){
     });
     if(agents.length>show.length){
       const ax=rx, ay=620;
-      node(elNodes, ax, ay, 140, 40, 'var(--faint)', '+'+(agents.length-show.length)+' agentes', '', ()=>selectRepo(repo.name));
+      node(elNodes, ax, ay, 140, 40, 'var(--faint)', '+'+(agents.length-show.length)+' más', '', ()=>selectRepo(repo.name));
     }
-    if(agents.length===0){
+    // nodo desplegable: muestra cuántas ramas inactivas hay ocultas; clic = mostrarlas
+    if(!showInactive && inactiveAg.length){
+      const ax=rx, ay = activeAg.length? 620 : 470;
+      edge(rx, ry+26, ax, ay-20, false);
+      node(elNodes, ax, ay, 178, 44, 'var(--faint)', '🌿 +'+inactiveAg.length+' inactivas', 'clic para mostrar',
+        ()=>{ showInactive=true; syncInactiveBtn(); render(); if(S.selected)renderDetail(S.selected); });
+    }
+    if(allAgents.length===0){
       const ax=rx, ay=470;
       edge(rx, ry+26, ax, ay-20, false);
-      node(elNodes, ax, ay, 160, 44, 'var(--idle)', '· sin agente activo', '', ()=>selectRepo(repo.name));
+      node(elNodes, ax, ay, 160, 44, 'var(--idle)', '· sin agentes', '', ()=>selectRepo(repo.name));
     }
   });
   regenParticles();
@@ -414,9 +464,9 @@ function renderDetail(name){
     ? `<div class="faint" style="margin:2px 0 6px">App: <b style="color:var(--text)">${intern.app}</b></div>`+
       intern.nodes.map(x=>`<div class="agnode" style="border-left:3px solid var(--intagent)"><span class="ic">${x.ic}</span><span class="grw">${x.label}</span></div>`).join('')
     : `<div class="hint">Arquitectura interna no mapeada — se muestra el stack real (lenguajes) arriba.</div>`;
-  const nActive = agents.filter(a=>a.pr).length;
+  const activeAg = agents.filter(a=>a.pr), inactiveAg = agents.filter(a=>!a.pr);
   const agInfo = `<div class="hint" style="margin-bottom:7px">Cada agente es una <b>sesión de Claude Code</b> que trabajó en una <b>rama</b> de <u>este mismo proyecto</u> (no son apps distintas). <b style="color:var(--ok)">🟢 Activo</b> = tiene un PR abierto en revisión; el resto son <b>ramas de sesiones anteriores</b>.</div>`;
-  const agHtml = agInfo + (agents.length ? agents.map(a=>{
+  const agCard = a=>{
       const when = a.pr ? timeAgo(a.pr.updated_at) : (a.commit ? timeAgo(a.commit.date) : '');
       const tag = a.pr
         ? `<span class="chip" style="background:var(--ok)22;color:var(--ok);border:1px solid var(--ok)55">🟢 activo · <a href="${a.pr.html_url}" target="_blank" style="color:var(--ok)">PR #${a.pr.number}</a></span>`
@@ -430,8 +480,15 @@ function renderDetail(name){
         <div class="faint" style="padding-left:16px; white-space:normal; line-height:1.4">
           🎯 <b style="color:var(--muted)">${esc(agentTask(a)).slice(0,110)}</b>${when?` · <span style="color:var(--faint)">${when}</span>`:''}
         </div>
-      </div>`; }).join('')
-    : '<div class="hint">Sin ramas <code>claude/*</code> ni PRs abiertos ahora mismo.</div>');
+      </div>`; };
+  const agHtml = agInfo
+    + (activeAg.length ? activeAg.map(agCard).join('') : '<div class="hint">Ningún agente activo (con PR) ahora mismo.</div>')
+    + (inactiveAg.length
+        ? `<details ${showInactive?'open':''} style="margin-top:6px"><summary style="cursor:pointer; color:var(--muted); font-size:12.5px; padding:6px 0">🌿 ${inactiveAg.length} ramas inactivas (sesiones anteriores)</summary>${inactiveAg.map(agCard).join('')}</details>`
+        : '');
+  const nTotal = agents.length, nActive = activeAg.length;
+  const app = APPS[name];
+  const appBtn = app ? `<a class="appbtn" href="${app.url}" target="_blank" rel="noopener">${app.icon} Abrir ${esc(app.title)} ↗</a>` : '';
   const commitsHtml = (r._commits||[]).slice(0,5).map(c=>`
       <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${esc(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
       <span class="faint">${timeAgo(c.commit.author.date)}</span></div>`).join('') || '<div class="hint">Sin commits recientes.</div>';
@@ -452,6 +509,7 @@ function renderDetail(name){
       <span class="stat">⏱ ${timeAgo(r.updated_at)}</span>
     </div>
     <a class="faint" href="${r.html_url}" target="_blank">↗ abrir en GitHub</a>
+    ${appBtn?`<div>${appBtn}</div>`:''}
     ${r._readme?`<div class="hint" style="margin-top:10px; padding:9px 11px; background:rgba(255,255,255,.03); border-radius:8px; border-left:3px solid var(--repo)"><b style="color:var(--muted)">ℹ️ Sobre el proyecto:</b> ${esc(r._readme)}…</div>`:''}
 
     <h2 style="margin-top:14px">🧩 Stack en vivo</h2>
@@ -490,6 +548,66 @@ const tip=$('#tip');
 function showTip(e,t,d){ tip.querySelector('.tt').textContent=t; tip.querySelector('.td').textContent=d||'';
   tip.style.opacity=1; let x=e.clientX+14,y=e.clientY+14; if(x+270>innerWidth)x=e.clientX-272; tip.style.left=x+'px'; tip.style.top=y+'px'; }
 function hideTip(){ tip.style.opacity=0; }
+
+/* ============ Pan / Zoom / Navegación ============ */
+const pan = { down:false, moved:false, lx:0, ly:0 };
+const K_MIN=0.35, K_MAX=4;
+function applyView(){
+  viewport.setAttribute('transform', `translate(${view.tx.toFixed(2)},${view.ty.toFixed(2)}) scale(${view.k.toFixed(3)})`);
+  const zl=$('#zlevel'); if(zl) zl.textContent=Math.round(view.k*100)+'%';
+}
+// convierte un punto de pantalla a coordenadas del viewBox (independiente del zoom propio)
+function vbPoint(clientX, clientY){
+  const p=svgEl.createSVGPoint(); p.x=clientX; p.y=clientY;
+  const m=svgEl.getScreenCTM(); return m ? p.matrixTransform(m.inverse()) : {x:clientX,y:clientY};
+}
+// zoom manteniendo fijo el punto (px,py) en coords del viewBox
+function zoomAt(px, py, factor){
+  const k2=Math.max(K_MIN, Math.min(K_MAX, view.k*factor));
+  const wx=(px-view.tx)/view.k, wy=(py-view.ty)/view.k;   // punto en coords "mundo"
+  view.k=k2; view.tx=px-k2*wx; view.ty=py-k2*wy; applyView();
+}
+function zoomCenter(factor){ zoomAt(800,450,factor); }   // centro del viewBox
+function resetView(){ view.tx=0; view.ty=0; view.k=1; applyView(); }
+
+// arrastrar para mover (en cualquier punto del lienzo)
+svgEl.addEventListener('mousedown', e=>{ pan.down=true; pan.moved=false; const p=vbPoint(e.clientX,e.clientY); pan.lx=p.x; pan.ly=p.y; svgEl.classList.add('grabbing'); });
+window.addEventListener('mousemove', e=>{ if(!pan.down) return; const p=vbPoint(e.clientX,e.clientY);
+  const dx=p.x-pan.lx, dy=p.y-pan.ly; if(Math.abs(dx)+Math.abs(dy)>2) pan.moved=true;
+  view.tx+=dx; view.ty+=dy; pan.lx=p.x; pan.ly=p.y; applyView(); });
+window.addEventListener('mouseup', ()=>{ pan.down=false; svgEl.classList.remove('grabbing'); setTimeout(()=>pan.moved=false,0); });
+// zoom con rueda, centrado en el cursor
+svgEl.addEventListener('wheel', e=>{ e.preventDefault(); const p=vbPoint(e.clientX,e.clientY); zoomAt(p.x,p.y, e.deltaY<0?1.12:1/1.12); }, {passive:false});
+// teclas de cursor: desplazamiento horizontal/vertical y zoom (cuando no se escribe en un input)
+window.addEventListener('keydown', e=>{
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  const step=90;
+  if(e.key==='ArrowLeft'){ view.tx+=step; applyView(); e.preventDefault(); }
+  else if(e.key==='ArrowRight'){ view.tx-=step; applyView(); e.preventDefault(); }
+  else if(e.key==='ArrowUp'){ view.ty+=step; applyView(); e.preventDefault(); }
+  else if(e.key==='ArrowDown'){ view.ty-=step; applyView(); e.preventDefault(); }
+  else if(e.key==='+'||e.key==='='){ zoomCenter(1.15); }
+  else if(e.key==='-'||e.key==='_'){ zoomCenter(1/1.15); }
+  else if(e.key==='0'){ resetView(); }
+});
+$('#zoomIn').addEventListener('click', ()=>zoomCenter(1.2));
+$('#zoomOut').addEventListener('click', ()=>zoomCenter(1/1.2));
+$('#resetView').addEventListener('click', resetView);
+$('#panL').addEventListener('click', ()=>{ view.tx+=140; applyView(); });
+$('#panR').addEventListener('click', ()=>{ view.tx-=140; applyView(); });
+
+/* ============ Toggle ramas inactivas ============ */
+function syncInactiveBtn(){
+  const b=$('#toggleInactive');
+  b.textContent = '🌿 Inactivas: '+(showInactive?'visibles':'ocultas');
+  b.classList.toggle('on', showInactive);
+}
+$('#toggleInactive').addEventListener('click', ()=>{
+  showInactive=!showInactive; syncInactiveBtn();
+  if(S.repos.length){ render(); if(S.selected) renderDetail(S.selected); }
+});
+syncInactiveBtn();
+applyView();
 
 /* ============ Controles ============ */
 $('#connect').addEventListener('click', ()=>{
