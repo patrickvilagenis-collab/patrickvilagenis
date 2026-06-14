@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "levels": [
+    {
+      "level": 1,
+      "title": "Básico — ¿Qué es Claude?",
+      "units": [
+        {
+          "unit": "1.1",
+          "title": "¿Qué es un LLM y qué es Claude?",
+          "lessons": ["l1-u1-1", "l1-u1-2"],
+          "checkpoint": { "passScore": 80 }
+        }
+      ]
+    },
+    { "level": 2, "title": "Intermedio — Claude Code en acción", "units": [] },
+    { "level": 3, "title": "Avanzado — Ecosistemas con Claude Code", "units": [] }
+  ]
+}

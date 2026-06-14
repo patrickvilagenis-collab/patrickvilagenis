@@ -1,0 +1,29 @@
+:root {
+  --brand: #6b46c1;
+  --bg: #ffffff;
+  --fg: #1a1a2e;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14141f; --fg: #f0f0f5; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  /* Mobile-first: contenido centrado y legible en 360px */
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 1rem 1rem 5rem;
+}
+button {
+  width: 100%;
+  min-height: 48px; /* táctil */
+  border: none;
+  border-radius: 12px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}
