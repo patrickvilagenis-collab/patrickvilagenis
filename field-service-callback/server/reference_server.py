@@ -37,6 +37,13 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+# Make logs appear immediately in hosting platforms (Render/Railway buffer stdout).
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except Exception:
+    pass
+
 # ---------------------------------------------------------------------------
 # Config (env-first, matches build spec §3.4)
 # ---------------------------------------------------------------------------
