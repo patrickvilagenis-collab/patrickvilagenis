@@ -54,14 +54,16 @@
   </main>
 
   <!-- ===== Action modal (triage / dispatch / reopen) ===== -->
-  <section id="modal" class="fsc-card fsc-hidden" style="position:fixed;inset:auto 50% auto 50%;transform:translateX(50%);top:10%;max-width:480px;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.5)">
-    <h3 id="modalTitle">Acción</h3>
-    <div id="modalBody"></div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button id="modalOk" type="button">Confirmar</button>
-      <button id="modalCancel" class="fsc-btn-secondary" type="button">Cancelar</button>
-    </div>
-  </section>
+  <div id="modalBackdrop" class="fsc-modal-backdrop fsc-hidden">
+    <section id="modal" class="fsc-card fsc-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">Acción</h3>
+      <div id="modalBody"></div>
+      <div class="fsc-modal-actions">
+        <button id="modalOk" type="button">Confirmar</button>
+        <button id="modalCancel" class="fsc-btn-secondary" type="button">Cancelar</button>
+      </div>
+    </section>
+  </div>
 
   <script src="../shared/api.js"></script>
   <script>
@@ -158,7 +160,7 @@
         body.innerHTML = '<p>El ticket volverá a <strong>Triage</strong>.</p>' +
           '<label for="mNote">Motivo</label><textarea id="mNote"></textarea>';
       }
-      document.getElementById("modal").classList.remove("fsc-hidden");
+      document.getElementById("modalBackdrop").classList.remove("fsc-hidden");
     }
 
     async function confirmModal() {
@@ -188,7 +190,7 @@
         toast(err.message || "No se pudo actualizar.", "err");
       }
     }
-    function closeModal() { pending = null; document.getElementById("modal").classList.add("fsc-hidden"); }
+    function closeModal() { pending = null; document.getElementById("modalBackdrop").classList.add("fsc-hidden"); }
 
     async function load() {
       try {
@@ -222,6 +224,7 @@
     document.getElementById("refreshBtn").addEventListener("click", load);
     document.getElementById("modalOk").addEventListener("click", confirmModal);
     document.getElementById("modalCancel").addEventListener("click", closeModal);
+    document.getElementById("modalBackdrop").addEventListener("click", (e) => { if (e.target.id === "modalBackdrop") closeModal(); });
 
     if (supId && roleKey) signIn();
   })();

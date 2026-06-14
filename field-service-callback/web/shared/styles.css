@@ -142,6 +142,26 @@ table.fsc-table { width: 100%; border-collapse: collapse; }
 .fsc-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: var(--fsc-gap); }
 .fsc-toolbar input, .fsc-toolbar select { width: auto; min-width: 140px; flex: 0 1 auto; }
 
+/* Centered modal with dimmed backdrop */
+.fsc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 12px;
+  overflow: auto;
+  z-index: 100;
+}
+.fsc-modal {
+  width: min(480px, 94vw);
+  margin: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5);
+}
+.fsc-modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+.fsc-modal-actions button { flex: 1; }
+
 dl.fsc-kv { margin: 0; }
 dl.fsc-kv div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px dashed var(--fsc-border); }
 dl.fsc-kv dt { color: var(--fsc-muted); }
