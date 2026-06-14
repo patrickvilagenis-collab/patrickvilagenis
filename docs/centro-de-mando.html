@@ -108,6 +108,7 @@
   <button id="connect" class="f go">⚡ Conectar</button>
   <button id="refresh" class="f" title="Actualizar ahora">↻</button>
   <button id="autobtn" class="f" title="Auto-actualizar cada 60s">⏱ Auto</button>
+  <button id="logout" class="f" title="Cerrar sesión y olvidar el token" style="display:none">🚪 Salir</button>
   <span id="status" class="pill"><span class="dotled" id="led"></span><span id="statusTxt">Sin conectar</span></span>
 </header>
 
@@ -237,7 +238,7 @@ async function loadAll(){
     }));
     S.repos = repos; S.byName = Object.fromEntries(repos.map(r=>[r.name,r]));
     setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
-    $('#empty').style.display='none';
+    $('#empty').style.display='none'; $('#logout').style.display='inline-flex';
     render(); renderFeed();
     if(S.selected && S.byName[S.selected]) renderDetail(S.selected);
   }catch(e){
@@ -453,6 +454,19 @@ $('#autobtn').addEventListener('click', e=>{
   else { autoTimer=setInterval(loadAll,60000); e.target.style.borderColor='var(--ok)'; e.target.textContent='⏱ Auto ✓'; loadAll(); }
 });
 $('#token').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#connect').click(); });
+$('#logout').addEventListener('click', ()=>{
+  // olvidar el token guardado y volver a la pantalla de conexión
+  localStorage.removeItem('cm_token');
+  S.token=''; S.repos=[]; S.byName={}; S.selected=null; S.rate='';
+  $('#token').value='';
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; $('#autobtn').style.borderColor=''; $('#autobtn').textContent='⏱ Auto'; }
+  elEdges.innerHTML=''; elNodes.innerHTML=''; elFlow.innerHTML=''; liveEdges=[]; particles=[];
+  $('#detail').innerHTML='<h2>📦 Detalle</h2><div class="hint">Conecta para ver el detalle de un repo.</div>';
+  $('#feed').innerHTML='<h2>📡 Actividad reciente</h2><div class="hint">Conéctate para ver la actividad.</div>';
+  $('#empty').style.display='flex';
+  $('#logout').style.display='none';
+  setStatus('Sesión cerrada','var(--idle)');
+});
 
 // auto-conectar si ya hay token guardado
 if(S.token && S.owner) loadAll();
