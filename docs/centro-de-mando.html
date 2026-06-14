@@ -273,7 +273,9 @@ function ccAgents(repo){
   const map={};
   (repo._branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) map[b.name]={branch:b.name}; });
   (repo._pulls||[]).forEach(p=>{ const b=p.head&&p.head.ref; if(b){ map[b]=map[b]||{branch:b}; map[b].pr=p; } });
-  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch], commit:(repo._branchCommit||{})[a.branch]}));
+  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch], commit:(repo._branchCommit||{})[a.branch]}))
+    // primero los activos (con PR), luego por fecha de último commit
+    .sort((a,b)=> (b.pr?1:0)-(a.pr?1:0) || new Date((b.commit&&b.commit.date)||0)-new Date((a.commit&&a.commit.date)||0));
 }
 // "A qué se dedica" un agente: el título de su PR, o el asunto de su último commit
 function agentTask(a){
@@ -354,9 +356,10 @@ function render(){
       edge(rx, ry+26, ax, ay-22, true);
       const short = ag.branch.replace(/^claude\//,'').slice(0,16);
       const col='var(--ccagent)';
-      const grpA=node(elNodes, ax, ay, 168, 50, col, '🤖 '+short, ag.pr?('PR #'+ag.pr.number):'rama',
+      const subA = ag.pr ? ('🟢 PR #'+ag.pr.number) : (ag.commit ? timeAgo(ag.commit.date) : 'rama');
+      const grpA=node(elNodes, ax, ay, 168, 50, col, '🤖 '+short, subA,
         ()=>selectRepo(repo.name),
-        ['🤖 '+ag.branch, '🎯 '+agentTask(ag)]);
+        ['🤖 '+ag.branch+(ag.pr?'  (activo · PR #'+ag.pr.number+')':'  (rama de sesión anterior)'), '🎯 '+agentTask(ag)]);
       // dot CI
       const dc=document.createElementNS(SVGNS,'circle'); dc.setAttribute('cx',152); dc.setAttribute('cy',13); dc.setAttribute('r',5);
       dc.setAttribute('fill',ciColor(ag.ci)); dc.setAttribute('stroke','#0008'); grpA.appendChild(dc);
@@ -411,9 +414,13 @@ function renderDetail(name){
     ? `<div class="faint" style="margin:2px 0 6px">App: <b style="color:var(--text)">${intern.app}</b></div>`+
       intern.nodes.map(x=>`<div class="agnode" style="border-left:3px solid var(--intagent)"><span class="ic">${x.ic}</span><span class="grw">${x.label}</span></div>`).join('')
     : `<div class="hint">Arquitectura interna no mapeada — se muestra el stack real (lenguajes) arriba.</div>`;
-  const agHtml = agents.length ? agents.map(a=>{
+  const nActive = agents.filter(a=>a.pr).length;
+  const agInfo = `<div class="hint" style="margin-bottom:7px">Cada agente es una <b>sesión de Claude Code</b> que trabajó en una <b>rama</b> de <u>este mismo proyecto</u> (no son apps distintas). <b style="color:var(--ok)">🟢 Activo</b> = tiene un PR abierto en revisión; el resto son <b>ramas de sesiones anteriores</b>.</div>`;
+  const agHtml = agInfo + (agents.length ? agents.map(a=>{
       const when = a.pr ? timeAgo(a.pr.updated_at) : (a.commit ? timeAgo(a.commit.date) : '');
-      const tag = a.pr ? `<a class="faint" href="${a.pr.html_url}" target="_blank">PR #${a.pr.number}</a>` : '<span class="faint">rama</span>';
+      const tag = a.pr
+        ? `<span class="chip" style="background:var(--ok)22;color:var(--ok);border:1px solid var(--ok)55">🟢 activo · <a href="${a.pr.html_url}" target="_blank" style="color:var(--ok)">PR #${a.pr.number}</a></span>`
+        : '<span class="faint">rama de sesión anterior</span>';
       return `<div class="row" style="flex-direction:column; align-items:stretch; gap:4px">
         <div style="display:flex; align-items:center; gap:7px">
           <span class="ci" style="background:${ciColor(a.ci)}"></span>
@@ -424,7 +431,7 @@ function renderDetail(name){
           🎯 <b style="color:var(--muted)">${esc(agentTask(a)).slice(0,110)}</b>${when?` · <span style="color:var(--faint)">${when}</span>`:''}
         </div>
       </div>`; }).join('')
-    : '<div class="hint">Sin ramas <code>claude/*</code> ni PRs abiertos ahora mismo.</div>';
+    : '<div class="hint">Sin ramas <code>claude/*</code> ni PRs abiertos ahora mismo.</div>');
   const commitsHtml = (r._commits||[]).slice(0,5).map(c=>`
       <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${esc(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
       <span class="faint">${timeAgo(c.commit.author.date)}</span></div>`).join('') || '<div class="hint">Sin commits recientes.</div>';
@@ -453,7 +460,7 @@ function renderDetail(name){
     <h2 style="margin-top:14px">🛠 Agentes internos de la app</h2>
     ${internHtml}
 
-    <h2 style="margin-top:14px">🤖 Agentes Claude Code (${agents.length})</h2>
+    <h2 style="margin-top:14px">🤖 Agentes Claude Code · ${nActive} activos / ${agents.length} ramas</h2>
     ${agHtml}
 
     <h2 style="margin-top:14px">📝 Últimos commits</h2>
