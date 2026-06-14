@@ -1,0 +1,166 @@
+{
+  "name": "FSC v1 — Notify (WhatsApp/SMS sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "fsc-nt-trigger",
+      "name": "When called after a transition",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the customer message (spec §7). Input is the event envelope:\n// { event, ticket_id, data: <ticket>, notify_template }.\n// Enforces exactly-once per (ticket_id, event) via the ticket's notified_events (§7.5).\nconst env = $input.first().json;\nconst ticket = env.data || {};\nconst tpl = env.notify_template;\nconst eventName = env.event;\n\n// No template for this boundary (e.g. Triage) → nothing to send (§7.1).\nif (!tpl) return [{ json: { __skip: true, reason: 'no-template' } }];\n// Idempotency guard: already notified for this event → skip (§7.5).\nif ((ticket.notified_events || []).includes(eventName))\n  return [{ json: { __skip: true, reason: 'already-notified' } }];\n\nconst locale = $env.FSC_LOCALE || 'es';\nconst base = $env.FSC_BASE_URL || '';\nconst statusLink = `${base}/intake/index.html?id=${encodeURIComponent(ticket.ticket_id)}&t=${encodeURIComponent(ticket.access_token)}`;\nconst etaLocal = ticket.eta ? new Date(ticket.eta).toLocaleString(locale === 'es' ? 'es-ES' : 'en-GB') : '';\n\nconst T = {\n  es: {\n    T1: `Hola ${ticket.customer_name}, recibimos tu solicitud de servicio para ${ticket.equipment_type}. Tu número de ticket es ${ticket.ticket_id}. Te avisaremos cuando asignemos un técnico. Seguimiento: ${statusLink}`,\n    T2: `${ticket.customer_name}, asignamos a ${ticket.assigned_technician} a tu ticket ${ticket.ticket_id}. Pronto te confirmaremos la hora estimada de llegada.`,\n    T3: `${ticket.assigned_technician} va en camino para tu ticket ${ticket.ticket_id}. Hora estimada de llegada: ${etaLocal}.`,\n    T4: `${ticket.assigned_technician} ha llegado para atender tu ticket ${ticket.ticket_id}.`,\n    T5: `Tu servicio ${ticket.ticket_id} se ha completado. Gracias por confiar en nosotros. Si el problema persiste, responde a este mensaje.`\n  },\n  en: {\n    T1: `Hi ${ticket.customer_name}, we received your service request for ${ticket.equipment_type}. Your ticket is ${ticket.ticket_id}. We'll let you know when a technician is assigned. Track it: ${statusLink}`,\n    T2: `${ticket.customer_name}, we assigned ${ticket.assigned_technician} to your ticket ${ticket.ticket_id}. We'll confirm the ETA shortly.`,\n    T3: `${ticket.assigned_technician} is on the way for your ticket ${ticket.ticket_id}. ETA: ${etaLocal}.`,\n    T4: `${ticket.assigned_technician} has arrived to handle your ticket ${ticket.ticket_id}.`,\n    T5: `Your service ${ticket.ticket_id} is complete. Thank you. If the issue persists, reply to this message.`\n  }\n};\nconst body = (T[locale] || T.es)[tpl];\nreturn [{ json: { __skip: false, ticket_id: ticket.ticket_id, event: eventName, to: ticket.customer_phone, body, provider: $env.FSC_NOTIFY_PROVIDER || 'whatsapp_cloud', from: $env.FSC_NOTIFY_FROM } }];\n"
+      },
+      "id": "fsc-nt-build",
+      "name": "Build message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "leftValue": "={{ $json.__skip }}", "rightValue": true, "operator": { "type": "boolean", "operation": "true", "singleValue": true } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fsc-nt-if-skip",
+      "name": "Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 320]
+    },
+    {
+      "parameters": {},
+      "id": "fsc-nt-noop",
+      "name": "No notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [940, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FSC_NOTIFY_PROVIDER === 'twilio' ? 'https://api.twilio.com/2010-04-01/send' : 'https://graph.facebook.com/v19.0/' + ($env.FSC_NOTIFY_FROM || '') + '/messages' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.FSC_NOTIFY_API_KEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', to: $json.to, type: 'text', text: { body: $json.body } }) }}",
+        "options": {
+          "retry": { "retry": { "maxTries": 3, "waitBetweenTries": 5000 } },
+          "response": { "response": { "neverError": true, "fullResponse": true } }
+        }
+      },
+      "id": "fsc-nt-send-wa",
+      "name": "Send WhatsApp (retry 3x)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [940, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            { "leftValue": "={{ $json.statusCode }}", "rightValue": 300, "operator": { "type": "number", "operation": "lt" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fsc-nt-if-ok",
+      "name": "WhatsApp sent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1180, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/send",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [ { "name": "Authorization", "value": "=Bearer {{ $env.FSC_NOTIFY_API_KEY }}" } ] },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ to: $('Build message').first().json.to, from: $env.FSC_NOTIFY_FROM, body: $('Build message').first().json.body }) }}",
+        "options": { "response": { "response": { "neverError": true, "fullResponse": true } } }
+      },
+      "id": "fsc-nt-send-sms",
+      "name": "Fallback SMS (once)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1420, 520]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Record outcome on the ticket: append event to notified_events + set notification_status.\n// 'failed' is surfaced in the supervisor view as a dead-letter flag (§7.5, §8.4).\nconst msg = $('Build message').first().json;\nlet sent = false;\ntry {\n  const node = $('WhatsApp sent?');\n  sent = true; // reached the success branch\n} catch (e) { sent = false; }\nreturn [{ json: {\n  ticket_id: msg.ticket_id,\n  event: msg.event,\n  notification_status: sent ? 'sent' : 'failed'\n} }];\n"
+      },
+      "id": "fsc-nt-record-ok",
+      "name": "Mark sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $('Build message').first().json;\nreturn [{ json: { ticket_id: msg.ticket_id, event: msg.event, notification_status: 'failed' } }];\n"
+      },
+      "id": "fsc-nt-record-fail",
+      "name": "Mark failed (dead-letter)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1660, 640]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.FSC_DATASTORE_URL }}/tickets/{{ $json.ticket_id }}/notification",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ append_notified_event: $json.event, notification_status: $json.notification_status }) }}",
+        "options": {}
+      },
+      "id": "fsc-nt-persist",
+      "name": "Persist notification result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 460]
+    }
+  ],
+  "connections": {
+    "When called after a transition": { "main": [[{ "node": "Build message", "type": "main", "index": 0 }]] },
+    "Build message": { "main": [[{ "node": "Skip?", "type": "main", "index": 0 }]] },
+    "Skip?": {
+      "main": [
+        [{ "node": "No notification", "type": "main", "index": 0 }],
+        [{ "node": "Send WhatsApp (retry 3x)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp (retry 3x)": { "main": [[{ "node": "WhatsApp sent?", "type": "main", "index": 0 }]] },
+    "WhatsApp sent?": {
+      "main": [
+        [{ "node": "Mark sent", "type": "main", "index": 0 }],
+        [{ "node": "Fallback SMS (once)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fallback SMS (once)": { "main": [[{ "node": "Mark failed (dead-letter)", "type": "main", "index": 0 }]] },
+    "Mark sent": { "main": [[{ "node": "Persist notification result", "type": "main", "index": 0 }]] },
+    "Mark failed (dead-letter)": { "main": [[{ "node": "Persist notification result", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "fsc_v1_notify",
+  "tags": [{ "name": "fsc" }, { "name": "v1" }],
+  "meta": { "templateId": "fsc-v1-notify" }
+}

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supervisión · FSC</title>
+  <link rel="stylesheet" href="../shared/styles.css" />
+  <script>window.FSC_API_BASE = "";</script>
+</head>
+<body>
+  <header class="fsc-header">
+    <div>
+      <h1>Supervisión de tickets</h1>
+      <div class="fsc-sub" id="whoami">Sin sesión</div>
+    </div>
+    <button class="fsc-btn-secondary" id="refreshBtn" type="button">Actualizar</button>
+  </header>
+
+  <main class="fsc-wrap">
+    <!-- ===== Sign-in (supervisor role key, spec §3.3) ===== -->
+    <section id="authCard" class="fsc-card">
+      <label class="fsc-req" for="supId">Tu identificador</label>
+      <input id="supId" placeholder="ana" />
+      <label class="fsc-req" for="roleKey">Clave de rol (X-FSC-Role-Key)</label>
+      <input id="roleKey" type="password" placeholder="••••••••" />
+      <div style="margin-top:14px"><button id="loginBtn" type="button">Entrar</button></div>
+    </section>
+
+    <!-- ===== Dashboard (spec §8.4) ===== -->
+    <section id="boardCard" class="fsc-card fsc-hidden">
+      <div class="fsc-toolbar">
+        <input id="search" placeholder="Buscar nombre o ticket…" />
+        <select id="fStatus">
+          <option value="">Estado: todos</option>
+          <option>Intake</option><option>Triage</option><option>Dispatch</option>
+          <option>On the way</option><option>On site</option><option>Close</option>
+        </select>
+        <select id="fPriority">
+          <option value="">Prioridad: todas</option>
+          <option value="low">low</option><option value="normal">normal</option><option value="high">high</option>
+        </select>
+        <input id="fTech" placeholder="Técnico…" />
+      </div>
+      <div style="overflow-x:auto">
+        <table class="fsc-table">
+          <thead>
+            <tr><th>Ticket</th><th>Cliente</th><th>Equipo</th><th>Estado</th><th>Prioridad</th><th>Técnico</th><th>ETA</th><th>Aviso</th><th>Acción</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p id="empty" class="fsc-hint fsc-hidden">No hay tickets que coincidan.</p>
+    </section>
+  </main>
+
+  <!-- ===== Action modal (triage / dispatch / reopen) ===== -->
+  <section id="modal" class="fsc-card fsc-hidden" style="position:fixed;inset:auto 50% auto 50%;transform:translateX(50%);top:10%;max-width:480px;z-index:50;box-shadow:0 12px 40px rgba(0,0,0,.5)">
+    <h3 id="modalTitle">Acción</h3>
+    <div id="modalBody"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button id="modalOk" type="button">Confirmar</button>
+      <button id="modalCancel" class="fsc-btn-secondary" type="button">Cancelar</button>
+    </div>
+  </section>
+
+  <script src="../shared/api.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    const E = FSC.escapeHtml;
+    let supId = sessionStorage.getItem("fsc_sup_id") || "";
+    let roleKey = sessionStorage.getItem("fsc_sup_key") || "";
+    let all = [];
+    let pollTimer = null;
+    let pending = null; // { ticket, kind }
+
+    function toast(msg, kind) {
+      const el = document.createElement("div");
+      el.className = "fsc-toast"; el.dataset.kind = kind || "ok"; el.textContent = msg;
+      document.body.appendChild(el); setTimeout(() => el.remove(), 4000);
+    }
+
+    // Supervisor-only transitions (spec §3.3, §6.2).
+    function actionFor(t) {
+      if (t.status === "Intake") return { kind: "triage", label: "Triage", to: "Triage" };
+      if (t.status === "Triage") return { kind: "dispatch", label: "Asignar", to: "Dispatch" };
+      if (t.status === "Close")  return { kind: "reopen", label: "Reabrir", to: "Triage" };
+      return null; // on-the-way / on-site / dispatch belong to the technician
+    }
+
+    function stuck(t) {
+      // Flag Intake/Triage older than 2h (spec §8.4 default threshold).
+      if (!["Intake", "Triage"].includes(t.status)) return false;
+      return (Date.now() - new Date(t.created_at).getTime()) > 2 * 3600 * 1000;
+    }
+
+    function render() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const fs = document.getElementById("fStatus").value;
+      const fp = document.getElementById("fPriority").value;
+      const ft = document.getElementById("fTech").value.trim().toLowerCase();
+
+      const rows = all.filter(t => {
+        if (fs && t.status !== fs) return false;
+        if (fp && t.priority !== fp) return false;
+        if (ft && !(t.assigned_technician || "").toLowerCase().includes(ft)) return false;
+        if (q && !((t.customer_name || "").toLowerCase().includes(q) || t.ticket_id.toLowerCase().includes(q))) return false;
+        return true;
+      });
+
+      document.getElementById("rows").innerHTML = rows.map(t => {
+        const act = actionFor(t);
+        const notifyFlag = t.notification_status === "failed"
+          ? '<span class="fsc-flag" title="Aviso fallido">⚠ fallo</span>'
+          : (t.notification_status || "—");
+        const stuckFlag = stuck(t) ? ' <span class="fsc-flag-warn" title="Lleva >2h sin avanzar">⏱</span>' : "";
+        const eta = t.eta ? new Date(t.eta).toLocaleString() : "—";
+        const actBtn = act
+          ? '<button data-id="' + E(t.ticket_id) + '" data-kind="' + act.kind + '" type="button" class="fsc-btn-secondary" style="padding:6px 12px;min-height:36px">' + E(act.label) + '</button>'
+          : "—";
+        return '<tr>' +
+          '<td>' + E(t.ticket_id) + stuckFlag + '</td>' +
+          '<td>' + E(t.customer_name) + '</td>' +
+          '<td>' + E(t.equipment_type) + '</td>' +
+          '<td><span class="fsc-badge" data-status="' + E(t.status) + '">' + E(t.status) + '</span></td>' +
+          '<td>' + E(t.priority || "normal") + '</td>' +
+          '<td>' + E(t.assigned_technician || "—") + '</td>' +
+          '<td>' + E(eta) + '</td>' +
+          '<td>' + notifyFlag + '</td>' +
+          '<td>' + actBtn + '</td>' +
+        '</tr>';
+      }).join("");
+
+      document.getElementById("empty").classList.toggle("fsc-hidden", rows.length > 0);
+
+      document.querySelectorAll("[data-id][data-kind]").forEach(btn => {
+        btn.addEventListener("click", () => openModal(btn.getAttribute("data-id"), btn.getAttribute("data-kind")));
+      });
+    }
+
+    function openModal(id, kind) {
+      const t = all.find(x => x.ticket_id === id);
+      pending = { ticket: t, kind };
+      const body = document.getElementById("modalBody");
+      const title = document.getElementById("modalTitle");
+      if (kind === "triage") {
+        title.textContent = "Triage de " + id;
+        body.innerHTML = '<label for="mPriority">Prioridad</label>' +
+          '<select id="mPriority"><option value="low">low</option><option value="normal" selected>normal</option><option value="high">high</option></select>' +
+          '<label for="mNote">Nota (opcional)</label><textarea id="mNote"></textarea>';
+      } else if (kind === "dispatch") {
+        title.textContent = "Asignar técnico a " + id;
+        body.innerHTML = '<label class="fsc-req" for="mTech">Técnico</label><input id="mTech" placeholder="carlos" />' +
+          '<label for="mEta">ETA provisional (opcional)</label><input id="mEta" type="datetime-local" />' +
+          '<label for="mNote">Nota (opcional)</label><textarea id="mNote"></textarea>';
+      } else { // reopen
+        title.textContent = "Reabrir " + id;
+        body.innerHTML = '<p>El ticket volverá a <strong>Triage</strong>.</p>' +
+          '<label for="mNote">Motivo</label><textarea id="mNote"></textarea>';
+      }
+      document.getElementById("modal").classList.remove("fsc-hidden");
+    }
+
+    async function confirmModal() {
+      if (!pending) return;
+      const { ticket, kind } = pending;
+      const note = (document.getElementById("mNote") || {}).value || null;
+      let body = { actor: "supervisor:" + supId, note };
+      if (kind === "triage") {
+        body.to_status = "Triage";
+        body.priority = document.getElementById("mPriority").value;
+      } else if (kind === "dispatch") {
+        const tech = (document.getElementById("mTech").value || "").trim();
+        if (!tech) { toast("Indica un técnico.", "err"); return; }
+        body.to_status = "Dispatch";
+        body.assigned_technician = tech;
+        const eta = document.getElementById("mEta").value;
+        if (eta) body.eta = new Date(eta).toISOString();
+      } else {
+        body.to_status = "Triage"; // reopen
+      }
+      try {
+        await FSC.transition(ticket.ticket_id, body, roleKey);
+        toast("Ticket " + ticket.ticket_id + " → " + body.to_status, "ok");
+        closeModal();
+        load();
+      } catch (err) {
+        toast(err.message || "No se pudo actualizar.", "err");
+      }
+    }
+    function closeModal() { pending = null; document.getElementById("modal").classList.add("fsc-hidden"); }
+
+    async function load() {
+      try {
+        const data = await FSC.listTickets({}, roleKey);
+        all = (data.tickets || data || []);
+        render();
+      } catch (err) {
+        toast(err.message || "No se pudo cargar.", "err");
+        if (err.code === "FORBIDDEN") { sessionStorage.clear(); location.reload(); }
+      }
+    }
+
+    function signIn() {
+      document.getElementById("authCard").classList.add("fsc-hidden");
+      document.getElementById("boardCard").classList.remove("fsc-hidden");
+      document.getElementById("whoami").textContent = "Supervisor: " + supId;
+      ["search", "fStatus", "fPriority", "fTech"].forEach(id =>
+        document.getElementById(id).addEventListener("input", render));
+      load();
+      pollTimer = setInterval(load, 30000); // reflect technician changes within <= 30s (§8.4)
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      supId = document.getElementById("supId").value.trim();
+      roleKey = document.getElementById("roleKey").value;
+      if (!supId || !roleKey) { toast("Indica identificador y clave.", "err"); return; }
+      sessionStorage.setItem("fsc_sup_id", supId);
+      sessionStorage.setItem("fsc_sup_key", roleKey);
+      signIn();
+    });
+    document.getElementById("refreshBtn").addEventListener("click", load);
+    document.getElementById("modalOk").addEventListener("click", confirmModal);
+    document.getElementById("modalCancel").addEventListener("click", closeModal);
+
+    if (supId && roleKey) signIn();
+  })();
+  </script>
+</body>
+</html>

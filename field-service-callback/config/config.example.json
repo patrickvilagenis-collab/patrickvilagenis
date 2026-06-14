@@ -1,0 +1,11 @@
+{
+  "fsc.datastore.url": "http://localhost:8080/fsc",
+  "fsc.notify.provider": "whatsapp_cloud",
+  "fsc.notify.from": "+10000000000",
+  "fsc.notify.api_key": "REPLACE_WITH_PROVIDER_API_KEY",
+  "fsc.role_key.technician": "REPLACE_WITH_TECHNICIAN_ROLE_KEY",
+  "fsc.role_key.supervisor": "REPLACE_WITH_SUPERVISOR_ROLE_KEY",
+  "fsc.base_url": "https://fsc.example.com",
+  "fsc.locale": "es",
+  "fsc.event_webhook_url": ""
+}

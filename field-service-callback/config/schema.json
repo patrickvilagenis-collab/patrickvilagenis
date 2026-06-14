@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fsc.v1/ticket.schema.json",
+  "title": "FSC Ticket",
+  "description": "Single domain entity of the Field Service Callback agent (spec §5). Authoritative machine-readable schema; workflows validate against this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ticket_id",
+    "customer_name",
+    "customer_phone",
+    "equipment_type",
+    "symptom_description",
+    "status",
+    "access_token",
+    "created_at",
+    "updated_at",
+    "audit_log"
+  ],
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "pattern": "^FSC-[0-9]{4}-[0-9]{6}$",
+      "description": "Format FSC-YYYY-NNNNNN. Immutable. Primary key."
+    },
+    "customer_name": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 80,
+      "description": "2-80 chars after trim. Letters (incl. accents), spaces, . ' - ; enforced by length server-side."
+    },
+    "customer_phone": {
+      "type": "string",
+      "pattern": "^\\+[1-9][0-9]{7,14}$",
+      "description": "E.164. Notification destination."
+    },
+    "equipment_type": {
+      "type": "string",
+      "enum": ["hvac", "refrigeration", "electrical", "plumbing", "appliance", "other"]
+    },
+    "symptom_description": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 1000,
+      "description": "Plain text; HTML escaped on input."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Intake", "Triage", "Dispatch", "On the way", "On site", "Close"],
+      "description": "Case-sensitive lifecycle state. Changed only via transition endpoint."
+    },
+    "assigned_technician": {
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "default": null,
+      "description": "Non-null required before leaving Dispatch."
+    },
+    "eta": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "default": null,
+      "description": "ISO 8601 with timezone. >= now when set. Required by On the way."
+    },
+    "customer_address": {
+      "type": ["string", "null"],
+      "maxLength": 200,
+      "default": null
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "normal", "high"],
+      "default": "normal",
+      "description": "Set during Triage."
+    },
+    "access_token": {
+      "type": "string",
+      "minLength": 22,
+      "description": "Opaque, unguessable (>=128-bit). Customer self-view only. Never shown to other roles."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Immutable."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set on every write."
+    },
+    "notified_events": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "fsc.v1.ticket.created",
+          "fsc.v1.ticket.dispatched",
+          "fsc.v1.ticket.enroute",
+          "fsc.v1.ticket.onsite",
+          "fsc.v1.ticket.closed"
+        ]
+      },
+      "default": [],
+      "description": "Exactly-once notification guard (spec §7.5)."
+    },
+    "notification_status": {
+      "type": ["string", "null"],
+      "enum": ["sent", "pending", "failed", null],
+      "default": null,
+      "description": "Latest notification outcome; 'failed' is flagged in supervisor view."
+    },
+    "audit_log": {
+      "type": "array",
+      "description": "Append-only transition history (spec §5.1).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "actor", "to_status"],
+        "properties": {
+          "at": { "type": "string", "format": "date-time" },
+          "actor": {
+            "type": "string",
+            "description": "role:identifier, e.g. technician:carlos, supervisor:ana, system."
+          },
+          "from_status": {
+            "type": ["string", "null"],
+            "enum": ["Intake", "Triage", "Dispatch", "On the way", "On site", "Close", null]
+          },
+          "to_status": {
+            "type": "string",
+            "enum": ["Intake", "Triage", "Dispatch", "On the way", "On site", "Close"]
+          },
+          "note": { "type": ["string", "null"], "maxLength": 1000 }
+        }
+      }
+    }
+  }
+}

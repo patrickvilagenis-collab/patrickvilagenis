@@ -1,0 +1,132 @@
+{
+  "name": "FSC v1 — Intake & Reads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fsc/v1/tickets",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fsc-intake-webhook",
+      "name": "POST /fsc/v1/tickets",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "fsc-v1-tickets-create"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate + build a new ticket (spec §5.2, §6.1 phase 1 Intake).\n// Server is authoritative — never trust the client (§8.2.2).\nconst body = $input.first().json.body || {};\n\nconst trim = (v) => (typeof v === 'string' ? v.trim() : v);\nconst esc = (v) => String(v == null ? '' : v)\n  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')\n  .replace(/\"/g,'&quot;').replace(/'/g,'&#39;');\n\nconst EQUIP = ['hvac','refrigeration','electrical','plumbing','appliance','other'];\nconst data = {\n  customer_name: trim(body.customer_name),\n  customer_phone: trim(body.customer_phone),\n  equipment_type: trim(body.equipment_type),\n  symptom_description: trim(body.symptom_description),\n  customer_address: trim(body.customer_address) || null,\n};\n\nconst fields = {};\nif (!data.customer_name || data.customer_name.length < 2 || data.customer_name.length > 80)\n  fields.customer_name = 'Nombre de 2 a 80 caracteres.';\nif (!/^\\+[1-9][0-9]{7,14}$/.test(data.customer_phone || ''))\n  fields.customer_phone = 'Teléfono en formato E.164 (+34600111222).';\nif (!EQUIP.includes(data.equipment_type))\n  fields.equipment_type = 'Tipo de equipo no válido.';\nif (!data.symptom_description || data.symptom_description.length < 5 || data.symptom_description.length > 1000)\n  fields.symptom_description = 'Descripción de 5 a 1000 caracteres.';\nif (data.customer_address && data.customer_address.length > 200)\n  fields.customer_address = 'Dirección máx. 200 caracteres.';\n\nif (Object.keys(fields).length) {\n  return [{ json: { __error: { code: 'VALIDATION_FAILED', message: 'Datos no válidos.', fields }, __status: 422 } }];\n}\n\n// Build the ticket\nconst now = new Date().toISOString();\nconst year = new Date().getFullYear();\nconst seq = String(Date.now()).slice(-6); // datastore should replace with a real sequence\nconst ticket_id = `FSC-${year}-${seq}`;\nconst access_token = (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() : (Date.now()+''+Math.random())).replace(/-/g,'') + Math.random().toString(36).slice(2,10);\n\nconst ticket = {\n  ticket_id,\n  customer_name: esc(data.customer_name),\n  customer_phone: data.customer_phone,\n  equipment_type: data.equipment_type,\n  symptom_description: esc(data.symptom_description),\n  status: 'Intake',\n  assigned_technician: null,\n  eta: null,\n  customer_address: data.customer_address ? esc(data.customer_address) : null,\n  priority: 'normal',\n  access_token,\n  created_at: now,\n  updated_at: now,\n  notified_events: [],\n  notification_status: null,\n  audit_log: [{ at: now, actor: 'system', from_status: null, to_status: 'Intake', note: 'created via intake form' }],\n  idempotency_key: body.idempotency_key || ticket_id\n};\nreturn [{ json: { ticket } }];\n"
+      },
+      "id": "fsc-intake-validate",
+      "name": "Validate & Build Ticket",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.__error }}",
+              "rightValue": "",
+              "operator": { "type": "object", "operation": "exists", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fsc-intake-iferror",
+      "name": "Validation failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": $json.__error } }}",
+        "options": { "responseCode": 422 }
+      },
+      "id": "fsc-intake-resp-error",
+      "name": "Respond 422",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FSC_DATASTORE_URL }}/tickets",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ticket) }}",
+        "options": {}
+      },
+      "id": "fsc-intake-persist",
+      "name": "Persist ticket (atomic)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Emit fsc.v1.ticket.created (spec §4.2) and hand off to Notify (T1, §7).\nconst ticket = $('Validate & Build Ticket').first().json.ticket;\nreturn [{ json: {\n  event: 'fsc.v1.ticket.created',\n  ticket_id: ticket.ticket_id,\n  occurred_at: new Date().toISOString(),\n  actor: 'system',\n  data: ticket,\n  notify_template: 'T1'\n} }];\n"
+      },
+      "id": "fsc-intake-event",
+      "name": "Emit ticket.created",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 380]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "value": "fsc_v1_notify", "mode": "id" },
+        "options": { "waitForSubWorkflow": false }
+      },
+      "id": "fsc-intake-notify",
+      "name": "→ Notify (T1)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1440, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ticket_id\": $('Validate & Build Ticket').first().json.ticket.ticket_id, \"access_token\": $('Validate & Build Ticket').first().json.ticket.access_token, \"status\": \"Intake\" } }}",
+        "options": { "responseCode": 201 }
+      },
+      "id": "fsc-intake-resp-ok",
+      "name": "Respond 201",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1200, 540]
+    }
+  ],
+  "connections": {
+    "POST /fsc/v1/tickets": { "main": [[{ "node": "Validate & Build Ticket", "type": "main", "index": 0 }]] },
+    "Validate & Build Ticket": { "main": [[{ "node": "Validation failed?", "type": "main", "index": 0 }]] },
+    "Validation failed?": {
+      "main": [
+        [{ "node": "Respond 422", "type": "main", "index": 0 }],
+        [{ "node": "Persist ticket (atomic)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Persist ticket (atomic)": {
+      "main": [[
+        { "node": "Emit ticket.created", "type": "main", "index": 0 },
+        { "node": "Respond 201", "type": "main", "index": 0 }
+      ]]
+    },
+    "Emit ticket.created": { "main": [[{ "node": "→ Notify (T1)", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "fsc_v1_intake",
+  "tags": [{ "name": "fsc" }, { "name": "v1" }],
+  "meta": { "templateId": "fsc-v1-intake" }
+}

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de técnico · FSC</title>
+  <link rel="stylesheet" href="../shared/styles.css" />
+  <script>window.FSC_API_BASE = "";</script>
+</head>
+<body>
+  <header class="fsc-header">
+    <div>
+      <h1>Panel de técnico</h1>
+      <div class="fsc-sub" id="whoami">Sin sesión</div>
+    </div>
+    <button class="fsc-btn-secondary" id="refreshBtn" type="button">Actualizar</button>
+  </header>
+
+  <main class="fsc-wrap">
+    <!-- ===== Sign-in (role key + technician id, spec §3.3) ===== -->
+    <section id="authCard" class="fsc-card">
+      <label class="fsc-req" for="techId">Tu identificador de técnico</label>
+      <input id="techId" placeholder="carlos" />
+      <label class="fsc-req" for="roleKey">Clave de rol (X-FSC-Role-Key)</label>
+      <input id="roleKey" type="password" placeholder="••••••••" />
+      <div style="margin-top:14px"><button id="loginBtn" type="button">Entrar</button></div>
+      <p class="fsc-hint">La clave se guarda solo en esta sesión del navegador.</p>
+    </section>
+
+    <!-- ===== Active assignments ===== -->
+    <section id="boardCard" class="fsc-card fsc-hidden">
+      <h2>Tickets asignados</h2>
+      <div id="activeList" class="fsc-grid fsc-grid-2"></div>
+      <p id="emptyActive" class="fsc-hint fsc-hidden">No tienes tickets activos.</p>
+    </section>
+
+    <section id="recentCard" class="fsc-card fsc-hidden">
+      <details>
+        <summary>Cerrados recientemente</summary>
+        <div id="recentList" class="fsc-grid fsc-grid-2" style="margin-top:12px"></div>
+      </details>
+    </section>
+  </main>
+
+  <script src="../shared/api.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    const E = FSC.escapeHtml;
+    let techId = sessionStorage.getItem("fsc_tech_id") || "";
+    let roleKey = sessionStorage.getItem("fsc_tech_key") || "";
+    let pollTimer = null;
+
+    function toast(msg, kind) {
+      const el = document.createElement("div");
+      el.className = "fsc-toast"; el.dataset.kind = kind || "ok"; el.textContent = msg;
+      document.body.appendChild(el); setTimeout(() => el.remove(), 4000);
+    }
+
+    // Only legal next transition is offered (spec §6.2, §8.3).
+    const ACTION = {
+      "Dispatch":   { to: "On the way", label: "Marcar en camino", needsEta: true },
+      "On the way": { to: "On site",    label: "Marcar llegada",   needsEta: false },
+      "On site":    { to: "Close",      label: "Cerrar ticket",    needsNote: true },
+    };
+
+    function card(t) {
+      const a = ACTION[t.status];
+      const etaTxt = t.eta ? new Date(t.eta).toLocaleString() : "—";
+      let action = "";
+      if (a) {
+        action = '<div style="margin-top:12px">';
+        if (a.needsEta) {
+          action += '<label for="eta-' + E(t.ticket_id) + '">Hora estimada de llegada</label>' +
+            '<input type="datetime-local" id="eta-' + E(t.ticket_id) + '" />';
+        }
+        if (a.needsNote) {
+          action += '<label for="note-' + E(t.ticket_id) + '">Resolución</label>' +
+            '<textarea id="note-' + E(t.ticket_id) + '" placeholder="Qué se hizo…"></textarea>';
+        }
+        action += '<button data-act="' + E(t.ticket_id) + '" type="button" style="margin-top:10px">' +
+          E(a.label) + '</button></div>';
+      }
+      return '<div class="fsc-card" style="margin:0">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">' +
+          '<strong>' + E(t.ticket_id) + '</strong>' +
+          '<span class="fsc-badge" data-status="' + E(t.status) + '">' + E(t.status) + '</span>' +
+        '</div>' +
+        '<dl class="fsc-kv" style="margin-top:8px">' +
+          '<div><dt>Cliente</dt><dd>' + E(t.customer_name) + '</dd></div>' +
+          '<div><dt>Equipo</dt><dd>' + E(t.equipment_type) + '</dd></div>' +
+          '<div><dt>Dirección</dt><dd>' + E(t.customer_address || "—") + '</dd></div>' +
+          '<div><dt>ETA</dt><dd>' + E(etaTxt) + '</dd></div>' +
+        '</dl>' +
+        '<p style="margin:8px 0;color:var(--fsc-muted)">' + E(t.symptom_description) + '</p>' +
+        action +
+      '</div>';
+    }
+
+    async function doTransition(ticket, status) {
+      const a = ACTION[status];
+      const body = { to_status: a.to, actor: "technician:" + techId };
+      if (a.needsEta) {
+        const v = document.getElementById("eta-" + ticket).value;
+        if (!v) { toast("Indica la hora estimada de llegada.", "err"); return; }
+        body.eta = new Date(v).toISOString();
+      }
+      if (a.needsNote) {
+        body.note = (document.getElementById("note-" + ticket).value || "").trim();
+      }
+      try {
+        const res = await FSC.transition(ticket, body, roleKey);
+        const n = res && res.notification ? " (aviso: " + res.notification + ")" : "";
+        toast("Ticket " + ticket + " → " + a.to + n, "ok");
+        load();
+      } catch (err) {
+        toast(err.message || "No se pudo actualizar.", "err");
+      }
+    }
+
+    async function load() {
+      try {
+        const data = await FSC.listTickets({ assigned_technician: techId }, roleKey);
+        const tickets = (data.tickets || data || []);
+        const active = tickets.filter(t => ["Dispatch", "On the way", "On site"].includes(t.status));
+        const recent = tickets.filter(t => t.status === "Close").slice(0, 10);
+
+        document.getElementById("activeList").innerHTML = active.map(card).join("");
+        document.getElementById("emptyActive").classList.toggle("fsc-hidden", active.length > 0);
+        document.getElementById("recentList").innerHTML = recent.map(card).join("");
+        document.getElementById("recentCard").classList.toggle("fsc-hidden", recent.length === 0);
+
+        document.querySelectorAll("[data-act]").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const t = active.find(x => x.ticket_id === btn.getAttribute("data-act"));
+            if (t) doTransition(t.ticket_id, t.status);
+          });
+        });
+      } catch (err) {
+        toast(err.message || "No se pudo cargar la lista.", "err");
+        if (err.code === "FORBIDDEN") signOut();
+      }
+    }
+
+    function signIn() {
+      document.getElementById("authCard").classList.add("fsc-hidden");
+      document.getElementById("boardCard").classList.remove("fsc-hidden");
+      document.getElementById("whoami").textContent = "Técnico: " + techId;
+      load();
+      pollTimer = setInterval(load, 30000); // reflect changes within <= 30s (§8.3)
+    }
+    function signOut() {
+      clearInterval(pollTimer);
+      sessionStorage.removeItem("fsc_tech_id");
+      sessionStorage.removeItem("fsc_tech_key");
+      location.reload();
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      techId = document.getElementById("techId").value.trim();
+      roleKey = document.getElementById("roleKey").value;
+      if (!techId || !roleKey) { toast("Indica técnico y clave.", "err"); return; }
+      sessionStorage.setItem("fsc_tech_id", techId);
+      sessionStorage.setItem("fsc_tech_key", roleKey);
+      signIn();
+    });
+    document.getElementById("refreshBtn").addEventListener("click", load);
+
+    if (techId && roleKey) signIn();
+  })();
+  </script>
+</body>
+</html>
