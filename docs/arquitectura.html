@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asistente Pro · Arquitectura en tiempo real</title>
+<style>
+  :root{
+    --bg:#0b1020; --bg2:#0f1730; --panel:rgba(20,28,52,.72); --panel-b:rgba(120,150,220,.18);
+    --text:#e6ecff; --muted:#9fb0d6; --faint:#6c7ba6;
+    --externo:#fb7185; --agente:#a78bfa; --nucleo:#38bdf8; --interfaz:#34d399; --repositorio:#fbbf24;
+    --s-activo:#22c55e; --s-proc:#3b82f6; --s-trans:#eab308; --s-idle:#64748b; --s-error:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    background:radial-gradient(1200px 800px at 20% -10%,#16224a 0%,transparent 60%),
+               radial-gradient(1000px 700px at 110% 110%,#1a2340 0%,transparent 55%),
+               var(--bg);
+    color:var(--text); height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; gap:16px; padding:12px 20px;
+    border-bottom:1px solid var(--panel-b); backdrop-filter:blur(8px);
+    background:linear-gradient(180deg,rgba(15,23,48,.85),rgba(15,23,48,.35));
+  }
+  header .logo{font-size:26px}
+  header h1{font-size:17px; margin:0; letter-spacing:.3px}
+  header .sub{font-size:12px; color:var(--muted); margin-top:2px}
+  .grow{flex:1}
+  .controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  button.ctl{
+    background:var(--panel); color:var(--text); border:1px solid var(--panel-b);
+    padding:7px 13px; border-radius:9px; font-size:13px; cursor:pointer; transition:.15s;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  button.ctl:hover{border-color:#5b82ff; background:rgba(40,60,110,.8); transform:translateY(-1px)}
+  button.ctl.active{border-color:var(--nucleo); box-shadow:0 0 0 1px var(--nucleo) inset}
+  select.ctl{
+    background:var(--panel); color:var(--text); border:1px solid var(--panel-b);
+    padding:7px 10px; border-radius:9px; font-size:13px; cursor:pointer;
+  }
+  .speed{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted)}
+  input[type=range]{accent-color:var(--nucleo); cursor:pointer}
+
+  main{flex:1; display:flex; min-height:0}
+  .stage{flex:1; position:relative; min-width:0}
+  svg{width:100%; height:100%; display:block}
+
+  /* sidebar */
+  .sidebar{
+    width:340px; flex-shrink:0; border-left:1px solid var(--panel-b);
+    background:linear-gradient(180deg,rgba(13,19,40,.6),rgba(13,19,40,.85));
+    display:flex; flex-direction:column; min-height:0;
+  }
+  .panel{padding:14px 16px; border-bottom:1px solid var(--panel-b)}
+  .panel h2{font-size:12px; text-transform:uppercase; letter-spacing:1.2px; color:var(--faint); margin:0 0 10px}
+  #detail .dtitle{font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px}
+  #detail .dtype{display:inline-block; font-size:11px; padding:2px 9px; border-radius:20px; margin:8px 0; font-weight:600}
+  #detail .ddesc{font-size:13px; color:var(--muted); line-height:1.5}
+  #detail .dstate{margin-top:10px; font-size:12.5px; display:flex; align-items:center; gap:7px; color:var(--text)}
+  #detail .conns{margin-top:12px; font-size:12px; color:var(--muted)}
+  #detail .conns b{color:var(--text)}
+  #detail .conns li{margin:3px 0; list-style:none; padding-left:14px; position:relative}
+  #detail .conns li:before{content:"→"; position:absolute; left:0; color:var(--faint)}
+  .hint{font-size:12px; color:var(--faint); line-height:1.5}
+
+  /* live log */
+  .logwrap{flex:1; display:flex; flex-direction:column; min-height:0}
+  #log{flex:1; overflow-y:auto; padding:6px 14px 14px; font-size:12px}
+  #log .entry{
+    display:flex; gap:8px; padding:7px 9px; margin:5px 0; border-radius:8px;
+    background:rgba(255,255,255,.025); border-left:3px solid var(--faint);
+    animation:slideIn .3s ease;
+  }
+  @keyframes slideIn{from{opacity:0; transform:translateX(10px)}to{opacity:1}}
+  #log .entry .t{color:var(--faint); font-variant-numeric:tabular-nums; flex-shrink:0}
+  #log .entry .msg b{color:var(--text)}
+  #log .entry.err{border-left-color:var(--s-error); background:rgba(239,68,68,.08)}
+  #log::-webkit-scrollbar{width:8px}
+  #log::-webkit-scrollbar-thumb{background:rgba(120,150,220,.25); border-radius:8px}
+
+  /* legend bar */
+  footer{
+    display:flex; gap:22px; flex-wrap:wrap; padding:10px 20px; font-size:12px;
+    border-top:1px solid var(--panel-b); background:rgba(11,16,32,.7); color:var(--muted);
+  }
+  footer .group{display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+  footer .group .ttl{color:var(--faint); text-transform:uppercase; letter-spacing:1px; font-size:10.5px}
+  .key{display:inline-flex; align-items:center; gap:6px}
+  .swatch{width:13px; height:13px; border-radius:4px; border:1.5px solid #fff3}
+  .dot{width:11px; height:11px; border-radius:50%}
+  .lineKey{width:22px; height:0; border-top:2px solid var(--muted)}
+
+  /* node visuals */
+  .node{cursor:pointer}
+  .node .box{transition:filter .25s, stroke-width .2s; rx:14}
+  .node:hover .box{filter:drop-shadow(0 0 9px currentColor)}
+  .node.sel .box{stroke-width:3px}
+  .node.is-trans .box{filter:drop-shadow(0 0 11px currentColor); stroke-width:2.6px}
+  .node.is-proc .box{filter:drop-shadow(0 0 14px currentColor)}
+  .node .lbl{fill:var(--text); font-size:15px; font-weight:600; pointer-events:none}
+  .node .sub{fill:var(--muted); font-size:11px; pointer-events:none}
+  .node .stdot{stroke:#0008; stroke-width:1}
+  .edge{fill:none; stroke:rgba(140,165,220,.22); stroke-width:1.6; transition:stroke .2s, stroke-width .2s}
+  .edge.is-live{stroke-width:2.6}
+  .arrow{fill:rgba(140,165,220,.35)}
+  .pkt{filter:drop-shadow(0 0 6px currentColor)}
+  .pktLbl rect{rx:6; opacity:.94}
+  .pktLbl text{font-size:11px; font-weight:600; fill:#06101f}
+
+  /* tooltip */
+  #tip{
+    position:fixed; pointer-events:none; z-index:50; max-width:240px;
+    background:rgba(8,13,28,.96); border:1px solid var(--panel-b); border-radius:9px;
+    padding:8px 11px; font-size:12px; color:var(--text); opacity:0; transition:opacity .12s;
+    box-shadow:0 8px 30px #0009;
+  }
+  #tip .tt{font-weight:600; margin-bottom:3px}
+  #tip .td{color:var(--muted); line-height:1.4}
+
+  @media (max-width:880px){
+    main{flex-direction:column}
+    .sidebar{width:auto; max-height:38vh; border-left:none; border-top:1px solid var(--panel-b)}
+    header h1{font-size:15px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🧭</div>
+  <div>
+    <h1>Asistente Pro — Topología del sistema</h1>
+    <div class="sub">Agentes · Repositorios · Interfaz · Flujos de datos en tiempo real</div>
+  </div>
+  <div class="grow"></div>
+  <div class="controls">
+    <select id="trigger" class="ctl" title="Disparar un flujo concreto"></select>
+    <button id="pause" class="ctl">⏸ Pausar</button>
+    <button id="auto" class="ctl active">🔄 Auto</button>
+    <button id="err" class="ctl" title="Simular un fallo de red/sesión">⚠ Fallo</button>
+    <div class="speed">Velocidad
+      <input id="speed" type="range" min="0.3" max="2.5" step="0.1" value="1">
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 1560 960" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path class="arrow" d="M0,0 L9,4.5 L0,9 Z"/>
+        </marker>
+      </defs>
+      <g id="edges"></g>
+      <g id="packets"></g>
+      <g id="nodes"></g>
+    </svg>
+  </div>
+
+  <aside class="sidebar">
+    <div class="panel" id="detail">
+      <h2>Detalle del componente</h2>
+      <div class="ddesc" id="detailBody">
+        <span class="hint">Pasa el cursor o haz clic en cualquier nodo para ver su rol, estado y conexiones. El sistema simula los flujos reales de la app.</span>
+      </div>
+    </div>
+    <div class="panel logwrap">
+      <h2>Actividad en tiempo real</h2>
+      <div id="log"></div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <div class="group">
+    <span class="ttl">Tipos</span>
+    <span class="key"><span class="swatch" style="background:var(--externo)"></span>Servicio externo</span>
+    <span class="key"><span class="swatch" style="background:var(--agente)"></span>Agente / cliente</span>
+    <span class="key"><span class="swatch" style="background:var(--nucleo)"></span>Núcleo</span>
+    <span class="key"><span class="swatch" style="background:var(--interfaz)"></span>Interfaz</span>
+    <span class="key"><span class="swatch" style="background:var(--repositorio)"></span>Repositorio</span>
+  </div>
+  <div class="group">
+    <span class="ttl">Estado</span>
+    <span class="key"><span class="dot" style="background:var(--s-activo)"></span>Activo / en línea</span>
+    <span class="key"><span class="dot" style="background:var(--s-proc)"></span>Procesando</span>
+    <span class="key"><span class="dot" style="background:var(--s-trans)"></span>Transmitiendo</span>
+    <span class="key"><span class="dot" style="background:var(--s-idle)"></span>Inactivo / reposo</span>
+    <span class="key"><span class="dot" style="background:var(--s-error)"></span>Error</span>
+  </div>
+  <div class="group">
+    <span class="ttl">Enlaces</span>
+    <span class="key"><span class="lineKey"></span>Relación / dependencia</span>
+    <span class="key"><span class="lineKey" style="border-top-style:dashed; width:18px"></span>+ flecha = sentido del dato</span>
+  </div>
+</footer>
+
+<div id="tip"><div class="tt"></div><div class="td"></div></div>
+
+<script>
+/* ===================== Modelo de la arquitectura ===================== */
+const TYPE_COLOR = {externo:'#fb7185', agente:'#a78bfa', nucleo:'#38bdf8', interfaz:'#34d399', repositorio:'#fbbf24'};
+const TYPE_LABEL = {externo:'Servicio externo', agente:'Agente / cliente', nucleo:'Núcleo', interfaz:'Interfaz', repositorio:'Repositorio'};
+const ST = {activo:'#22c55e', proc:'#3b82f6', trans:'#eab308', idle:'#64748b', error:'#ef4444'};
+const ST_LABEL = {activo:'Activo / en línea', proc:'Procesando', trans:'Transmitiendo', idle:'Inactivo / en reposo', error:'Error'};
+
+// cx,cy = centro; w,h = tamaño. base = estado de reposo.
+const NODES = {
+  azure:        {cx:155, cy:150, w:196, h:80, type:'externo', icon:'🔐', label:'Azure AD', sub:'Entra ID · OAuth2', base:'activo',
+                 desc:'Identidad de Microsoft. Autentica al usuario mediante el flujo "device code" (MSAL, cliente público) y emite el access_token con los permisos delegados User.Read, Mail.Read y Calendars.Read.'},
+  graph_api:    {cx:155, cy:470, w:196, h:80, type:'externo', icon:'☁️', label:'Microsoft Graph', sub:'API correo + calendario', base:'activo',
+                 desc:'API REST de Microsoft 365 (solo lectura). Devuelve correos (/me/messages), el cuerpo de cada mensaje y los eventos del calendario (/me/calendarView).'},
+  claude_api:   {cx:155, cy:790, w:196, h:80, type:'externo', icon:'🧠', label:'Claude API', sub:'Anthropic · streaming', base:'activo',
+                 desc:'Modelo de IA (claude-opus-4-8 por defecto). Recibe los prompts y responde por streaming. Usa "adaptive thinking" en actas y planificación.'},
+
+  graph_client: {cx:480, cy:300, w:214, h:86, type:'agente', icon:'🔌', label:'GraphClient', sub:'MSAL device-code + REST', base:'idle',
+                 desc:'Agente que encapsula la autenticación (MSAL) y las llamadas REST a Microsoft Graph. Refresca el token en silencio y persiste la caché de sesión.'},
+  ai_client:    {cx:480, cy:760, w:214, h:86, type:'agente', icon:'🤖', label:'AIClient', sub:'resumir · tareas · MoM · plan', base:'idle',
+                 desc:'Agente que habla con la Claude API: resume correos, extrae tareas en JSON, redacta actas (MoM) y planifica el día/semana. Emite deltas de texto en tiempo real.'},
+
+  app:          {cx:810, cy:480, w:224, h:104, type:'nucleo', icon:'🧭', label:'App · Orquestador', sub:'customtkinter · estado', base:'activo',
+                 desc:'Ventana principal. Mantiene el estado compartido (config, token, storage) y provee a las pestañas los clientes graph()/ai() bajo demanda. Coordina todos los flujos.'},
+
+  inbox:        {cx:1135, cy:115, w:188, h:66, type:'interfaz', icon:'📥', label:'Bandeja', sub:'correos + resumen IA', base:'idle',
+                 desc:'Lista los correos, permite resumirlos con IA y extraer tareas de su contenido hacia el gestor.'},
+  calendar:     {cx:1135, cy:245, w:188, h:66, type:'interfaz', icon:'📅', label:'Calendario', sub:'próximos eventos', base:'idle',
+                 desc:'Muestra los eventos próximos del calendario y permite crear tareas de preparación.'},
+  mom:          {cx:1135, cy:375, w:188, h:66, type:'interfaz', icon:'📝', label:'Actas (MoM)', sub:'genera acta + tareas', base:'idle',
+                 desc:'Convierte notas de reunión en un acta Markdown con IA, la guarda y extrae sus acciones como tareas.'},
+  planner:      {cx:1135, cy:505, w:188, h:66, type:'interfaz', icon:'🗓', label:'Planificador', sub:'calendario + tareas → plan', base:'idle',
+                 desc:'Combina los eventos del calendario con las tareas pendientes y pide a la IA un plan por bloques horarios.'},
+  tasks:        {cx:1135, cy:635, w:188, h:66, type:'interfaz', icon:'✅', label:'Tareas', sub:'gestor local', base:'idle',
+                 desc:'Gestor de tareas con prioridad, fecha y estado. Lee y escribe directamente en SQLite.'},
+  settings:     {cx:1135, cy:765, w:188, h:66, type:'interfaz', icon:'⚙️', label:'Ajustes', sub:'claves + login', base:'idle',
+                 desc:'Configura Client ID de Azure y API key de Anthropic, e inicia/cierra sesión de Microsoft 365.'},
+
+  config:       {cx:1440, cy:255, w:196, h:80, type:'repositorio', icon:'🗂', label:'config.json', sub:'data/ · claves + ajustes', base:'idle',
+                 desc:'Repositorio de configuración local (data/config.json): credenciales, modelo, idioma y preferencias. Las variables de entorno tienen prioridad.'},
+  db:           {cx:1440, cy:480, w:196, h:80, type:'repositorio', icon:'🗃', label:'SQLite', sub:'asistente.db · tareas/actas', base:'idle',
+                 desc:'Base de datos local (data/asistente.db) con dos tablas: tasks (tareas) y minutes (actas). Todo el almacenamiento es portable y local.'},
+  tokens:       {cx:1440, cy:740, w:196, h:80, type:'repositorio', icon:'🔑', label:'token_cache.bin', sub:'data/ · sesión MSAL', base:'idle',
+                 desc:'Caché de token de MSAL (data/token_cache.bin). La gestiona GraphClient para mantener la sesión sin volver a iniciar cada vez.'},
+};
+
+// Topología (relaciones / dependencias)
+const EDGES = [
+  ['azure','graph_client'], ['graph_api','graph_client'], ['claude_api','ai_client'],
+  ['graph_client','app'], ['ai_client','app'],
+  ['app','inbox'], ['app','calendar'], ['app','mom'], ['app','planner'], ['app','tasks'], ['app','settings'],
+  ['app','config'], ['app','db'], ['app','tokens'],
+];
+
+// Escenarios = flujos reales de la app. Cada paso: [origen, destino, "qué se transmite"]
+const SCENARIOS = [
+  {name:'Iniciar sesión (device code)', color:'#60a5fa', steps:[
+    ['settings','app','credenciales'], ['app','graph_client','sign_in()'],
+    ['graph_client','azure','device flow'], ['azure','graph_client','access_token'],
+    ['graph_client','app','token'], ['app','tokens','persistir caché'],
+    ['app','settings','✓ conectado'],
+  ]},
+  {name:'Cargar bandeja', color:'#2dd4bf', steps:[
+    ['inbox','app','actualizar'], ['app','graph_client','get_messages'],
+    ['graph_client','graph_api','GET /me/messages'], ['graph_api','graph_client','25 correos'],
+    ['graph_client','app','MailMessage[]'], ['app','inbox','lista de correos'],
+  ]},
+  {name:'Resumir correo (IA)', color:'#c084fc', steps:[
+    ['inbox','app','cuerpo del correo'], ['app','ai_client','summarize_email'],
+    ['ai_client','claude_api','prompt + stream'], ['claude_api','ai_client','deltas…'],
+    ['ai_client','app','resumen'], ['app','inbox','✦ resumen en vivo'],
+  ]},
+  {name:'Extraer tareas → guardar', color:'#fbbf24', steps:[
+    ['inbox','app','texto del correo'], ['app','ai_client','extract_tasks'],
+    ['ai_client','claude_api','prompt'], ['claude_api','ai_client','JSON tareas'],
+    ['ai_client','app','tareas[]'], ['app','db','INSERT tasks'],
+  ]},
+  {name:'Generar acta (MoM)', color:'#f472b6', steps:[
+    ['mom','app','notas de reunión'], ['app','ai_client','generate_mom · thinking'],
+    ['ai_client','claude_api','prompt + stream'], ['claude_api','ai_client','acta Markdown'],
+    ['ai_client','app','acta'], ['app','db','INSERT minutes'],
+  ]},
+  {name:'Cargar calendario', color:'#34d399', steps:[
+    ['calendar','app','próximos 7 días'], ['app','graph_client','get_calendar_events'],
+    ['graph_client','graph_api','GET /calendarView'], ['graph_api','graph_client','eventos'],
+    ['graph_client','app','CalendarEvent[]'], ['app','calendar','agenda'],
+  ]},
+  {name:'Planificar día/semana', color:'#a3e635', steps:[
+    ['planner','app','horizonte'], ['app','graph_client','eventos'],
+    ['graph_client','graph_api','GET /calendarView'], ['graph_api','graph_client','reuniones'],
+    ['graph_client','app','eventos'], ['app','db','SELECT tasks'], ['db','app','pendientes'],
+    ['app','ai_client','plan_schedule · thinking'], ['ai_client','claude_api','prompt + stream'],
+    ['claude_api','ai_client','plan por bloques'], ['ai_client','app','plan'], ['app','planner','✦ plan del día'],
+  ]},
+  {name:'Gestionar tareas', color:'#f59e0b', steps:[
+    ['tasks','app','update_status'], ['app','db','UPDATE tasks'],
+    ['db','app','ok'], ['app','tasks','lista refrescada'],
+  ]},
+  {name:'Guardar ajustes', color:'#38bdf8', steps:[
+    ['settings','app','save'], ['app','config','save_config()'],
+    ['config','app','ok'], ['app','settings','reset_clients'],
+  ]},
+];
+
+/* ===================== Construcción del SVG ===================== */
+const SVGNS='http://www.w3.org/2000/svg';
+const elEdges=document.getElementById('edges');
+const elPackets=document.getElementById('packets');
+const elNodes=document.getElementById('nodes');
+const edgeMap={}; // "a|b" -> {el, from, to, len}
+
+function keyOf(a,b){return [a,b].sort().join('|');}
+
+// Borde del rectángulo en dirección a (tx,ty)
+function border(n, tx, ty){
+  const dx=tx-n.cx, dy=ty-n.cy, hw=n.w/2+4, hh=n.h/2+4;
+  if(dx===0&&dy===0) return {x:n.cx,y:n.cy};
+  const sx = dx!==0 ? hw/Math.abs(dx) : Infinity;
+  const sy = dy!==0 ? hh/Math.abs(dy) : Infinity;
+  const s=Math.min(sx,sy);
+  return {x:n.cx+dx*s, y:n.cy+dy*s};
+}
+
+EDGES.forEach(([a,b])=>{
+  const na=NODES[a], nb=NODES[b];
+  const p0=border(na, nb.cx, nb.cy), p1=border(nb, na.cx, na.cy);
+  const mx=(p0.x+p1.x)/2;
+  const d=`M ${p0.x} ${p0.y} C ${mx} ${p0.y}, ${mx} ${p1.y}, ${p1.x} ${p1.y}`;
+  const path=document.createElementNS(SVGNS,'path');
+  path.setAttribute('d',d); path.setAttribute('class','edge');
+  elEdges.appendChild(path);
+  edgeMap[keyOf(a,b)]={el:path, from:a, to:b, len:path.getTotalLength()};
+});
+
+const nodeEls={};
+for(const id in NODES){
+  const n=NODES[id], col=TYPE_COLOR[n.type];
+  const g=document.createElementNS(SVGNS,'g');
+  g.setAttribute('class','node'); g.style.color=col;
+  g.setAttribute('transform',`translate(${n.cx-n.w/2},${n.cy-n.h/2})`);
+
+  const box=document.createElementNS(SVGNS,'rect');
+  box.setAttribute('class','box'); box.setAttribute('width',n.w); box.setAttribute('height',n.h);
+  box.setAttribute('rx',14); box.setAttribute('fill','rgba(16,24,46,.92)');
+  box.setAttribute('stroke',col); box.setAttribute('stroke-width',1.8);
+  g.appendChild(box);
+
+  const ic=document.createElementNS(SVGNS,'text');
+  ic.setAttribute('x',18); ic.setAttribute('y',n.h/2 - (n.sub?6:-4)); ic.setAttribute('font-size',22);
+  ic.textContent=n.icon; ic.style.pointerEvents='none';
+  g.appendChild(ic);
+
+  const lbl=document.createElementNS(SVGNS,'text');
+  lbl.setAttribute('class','lbl'); lbl.setAttribute('x',48); lbl.setAttribute('y', n.sub? n.h/2-4 : n.h/2+5);
+  lbl.textContent=n.label; g.appendChild(lbl);
+
+  if(n.sub){
+    const sub=document.createElementNS(SVGNS,'text');
+    sub.setAttribute('class','sub'); sub.setAttribute('x',48); sub.setAttribute('y',n.h/2+13);
+    sub.textContent=n.sub; g.appendChild(sub);
+  }
+
+  const dot=document.createElementNS(SVGNS,'circle');
+  dot.setAttribute('class','stdot'); dot.setAttribute('cx',n.w-16); dot.setAttribute('cy',16); dot.setAttribute('r',6);
+  dot.setAttribute('fill',ST[n.base]); g.appendChild(dot);
+
+  elNodes.appendChild(g);
+  nodeEls[id]={g, box, dot, state:n.base};
+
+  g.addEventListener('mousemove',e=>showTip(e,n));
+  g.addEventListener('mouseleave',hideTip);
+  g.addEventListener('click',()=>selectNode(id));
+}
+
+/* ===================== Estados de nodo ===================== */
+const revertTimers={};
+function setState(id, st, hold=900){
+  const ne=nodeEls[id]; if(!ne) return;
+  ne.state=st; ne.dot.setAttribute('fill',ST[st]);
+  ne.g.classList.toggle('is-trans', st==='trans');
+  ne.g.classList.toggle('is-proc', st==='proc' || st==='error');
+  ne.box.setAttribute('stroke', st==='error'?ST.error: (st==='trans'?ST.trans: (st==='proc'?ST.proc: TYPE_COLOR[NODES[id].type])));
+  if(selected===id) renderDetail(id);
+  clearTimeout(revertTimers[id]);
+  if(st!=='error'){
+    revertTimers[id]=setTimeout(()=>{
+      const base=NODES[id].base;
+      ne.state=base; ne.dot.setAttribute('fill',ST[base]);
+      ne.g.classList.remove('is-trans','is-proc');
+      ne.box.setAttribute('stroke',TYPE_COLOR[NODES[id].type]);
+      if(selected===id) renderDetail(id);
+    }, hold/SPEED);
+  }
+}
+
+/* ===================== Motor de paquetes ===================== */
+let SPEED=1, PAUSED=false, AUTO=true;
+const packets=[];
+
+function animateStep(from, to, label, color){
+  return new Promise(resolve=>{
+    const e=edgeMap[keyOf(from,to)];
+    if(!e){resolve();return;}
+    e.el.classList.add('is-live'); e.el.style.stroke=color;
+    const rev = e.from!==from; // path va to->from, hay que invertir
+
+    const circle=document.createElementNS(SVGNS,'circle');
+    circle.setAttribute('r',6); circle.setAttribute('fill',color); circle.setAttribute('class','pkt');
+    circle.style.color=color;
+    elPackets.appendChild(circle);
+
+    // etiqueta "qué se transmite"
+    const lg=document.createElementNS(SVGNS,'g'); lg.setAttribute('class','pktLbl');
+    const rect=document.createElementNS(SVGNS,'rect');
+    const txt=document.createElementNS(SVGNS,'text');
+    txt.textContent=label; txt.setAttribute('y',4);
+    const wEst=label.length*6.4+16;
+    rect.setAttribute('width',wEst); rect.setAttribute('height',18); rect.setAttribute('x',-wEst/2); rect.setAttribute('y',-9);
+    rect.setAttribute('fill',color);
+    txt.setAttribute('x',0); txt.setAttribute('text-anchor','middle');
+    lg.appendChild(rect); lg.appendChild(txt); elPackets.appendChild(lg);
+
+    // origen/destino: agentes y externos "procesan", el resto "transmite"
+    setState(from,'trans');
+    const procTypes=['agente','externo'];
+    setState(to, procTypes.includes(NODES[to].type)?'proc':'trans');
+
+    packets.push({e, rev, t:0, dur:0.95, circle, lg,
+      done(){ elPackets.removeChild(circle); elPackets.removeChild(lg); e.el.classList.remove('is-live'); e.el.style.stroke=''; resolve(); }
+    });
+  });
+}
+
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,0.05); last=now;
+  if(!PAUSED){
+    for(let i=packets.length-1;i>=0;i--){
+      const p=packets[i];
+      p.t += dt*SPEED/p.dur;
+      if(p.t>=1){ p.done(); packets.splice(i,1); continue; }
+      const frac=p.rev?1-p.t:p.t;
+      const pt=p.e.el.getPointAtLength(p.e.len*frac);
+      p.circle.setAttribute('cx',pt.x); p.circle.setAttribute('cy',pt.y);
+      p.lg.setAttribute('transform',`translate(${pt.x},${pt.y-16})`);
+    }
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ===================== Runner de escenarios ===================== */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms/SPEED));
+async function waitWhilePaused(){ while(PAUSED) await new Promise(r=>setTimeout(r,80)); }
+
+let running=false;
+async function runScenario(sc){
+  log(`▶ <b>${sc.name}</b>`, sc.color);
+  for(const [from,to,label] of sc.steps){
+    await waitWhilePaused();
+    // fallo simulado
+    if(pendingError && NODES[to].type==='externo' && Math.random()<0.9){
+      pendingError=false;
+      setState(to,'error',1600);
+      log(`✖ <b>${NODES[to].label}</b>: 401 — Sesión caducada`, ST.error, true);
+      await sleep(1300);
+      setState(to, NODES[to].base);
+      log(`↻ Reintentando…`, sc.color);
+    }
+    log(`&nbsp;&nbsp;<span style="color:${sc.color}">${NODES[from].label}</span> → <span style="color:${sc.color}">${NODES[to].label}</span> · <i>${label}</i>`, sc.color);
+    await animateStep(from,to,label,sc.color);
+    await sleep(120);
+  }
+}
+
+let scIndex=0;
+async function scheduler(){
+  if(running) return; running=true;
+  while(true){
+    if(AUTO && !PAUSED){
+      const sc=SCENARIOS[scIndex % SCENARIOS.length]; scIndex++;
+      await runScenario(sc);
+      await sleep(900);
+    } else {
+      await new Promise(r=>setTimeout(r,200));
+    }
+  }
+}
+scheduler();
+
+/* ===================== Log ===================== */
+const elLog=document.getElementById('log');
+function log(html, color, err=false){
+  const d=document.createElement('div');
+  d.className='entry'+(err?' err':'');
+  if(color) d.style.borderLeftColor=color;
+  const now=new Date();
+  const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  d.innerHTML=`<span class="t">${t}</span><span class="msg">${html}</span>`;
+  elLog.prepend(d);
+  while(elLog.children.length>60) elLog.removeChild(elLog.lastChild);
+}
+
+/* ===================== Detalle / selección ===================== */
+let selected=null;
+function selectNode(id){
+  if(selected) nodeEls[selected].g.classList.remove('sel');
+  selected=id; nodeEls[id].g.classList.add('sel');
+  renderDetail(id);
+}
+function connectionsOf(id){
+  return EDGES.filter(([a,b])=>a===id||b===id).map(([a,b])=>a===id?b:a);
+}
+function renderDetail(id){
+  const n=NODES[id], col=TYPE_COLOR[n.type], st=nodeEls[id].state;
+  const conns=connectionsOf(id).map(c=>`<li>${NODES[c].icon} ${NODES[c].label} <span style="color:var(--faint)">(${TYPE_LABEL[NODES[c].type]})</span></li>`).join('');
+  document.getElementById('detailBody').innerHTML=`
+    <div class="dtitle">${n.icon} ${n.label}</div>
+    <span class="dtype" style="background:${col}22;color:${col};border:1px solid ${col}55">${TYPE_LABEL[n.type]}</span>
+    <div class="ddesc">${n.desc}</div>
+    <div class="dstate"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:${ST[st]}"></span> Estado: <b>${ST_LABEL[st]}</b></div>
+    <div class="conns"><b>Conexiones (${connectionsOf(id).length}):</b><ul style="margin:6px 0 0;padding:0">${conns}</ul></div>`;
+}
+
+/* ===================== Tooltip ===================== */
+const tip=document.getElementById('tip');
+function showTip(e,n){
+  tip.querySelector('.tt').textContent=`${n.icon} ${n.label}`;
+  tip.querySelector('.td').textContent=`${TYPE_LABEL[n.type]} — ${n.sub||''}`;
+  tip.style.opacity=1;
+  let x=e.clientX+14, y=e.clientY+14;
+  if(x+250>window.innerWidth) x=e.clientX-256;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
+}
+function hideTip(){tip.style.opacity=0;}
+
+/* ===================== Controles ===================== */
+const trig=document.getElementById('trigger');
+trig.innerHTML='<option value="">Disparar flujo…</option>'+SCENARIOS.map((s,i)=>`<option value="${i}">${s.name}</option>`).join('');
+trig.addEventListener('change',()=>{ if(trig.value!==''){ runScenario(SCENARIOS[+trig.value]); trig.value=''; }});
+
+const pauseBtn=document.getElementById('pause');
+pauseBtn.addEventListener('click',()=>{ PAUSED=!PAUSED; pauseBtn.textContent=PAUSED?'▶ Reanudar':'⏸ Pausar'; pauseBtn.classList.toggle('active',PAUSED); });
+
+const autoBtn=document.getElementById('auto');
+autoBtn.addEventListener('click',()=>{ AUTO=!AUTO; autoBtn.classList.toggle('active',AUTO); autoBtn.textContent=AUTO?'🔄 Auto':'⏯ Manual'; });
+
+let pendingError=false;
+document.getElementById('err').addEventListener('click',()=>{ pendingError=true; log('⚠ Fallo programado para el próximo acceso externo', ST.error); });
+
+document.getElementById('speed').addEventListener('input',e=>{ SPEED=+e.target.value; });
+
+// selección inicial
+selectNode('app');
+</script>
+</body>
+</html>
