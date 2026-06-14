@@ -8,8 +8,9 @@ def main() -> None:
         from .ui.app import App
     except ImportError as exc:  # pragma: no cover
         raise SystemExit(
-            "Faltan dependencias. Instala con:\n"
-            "    pip install -r requirements.txt\n"
+            "Falta la GUI o sus dependencias. Instálala con:\n"
+            "    pip install -e .[app]\n"
+            "(o bien:  pip install -r requirements.txt)\n"
             f"Detalle: {exc}"
         )
 

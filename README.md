@@ -104,9 +104,17 @@ python -m venv .venv
 # Linux/Mac:
 source .venv/bin/activate
 
-pip install -r requirements.txt
-python run.py
+pip install -e .          # solo el agente (núcleo, sin GUI)
+# o ".[app]" si quieres también la GUI:
+pip install -e ".[app]"
+
+python run.py             # o el comando: asistente-pro
 ```
+
+> El paquete se instala como `asistente-pro`. La instalación base trae el
+> **núcleo "agente"** (Microsoft Graph + Claude) usable como librería; el extra
+> **`[app]`** añade la interfaz gráfica (`customtkinter`). El extra `[build]`
+> instala PyInstaller para generar el `.exe`.
 
 ---
 
