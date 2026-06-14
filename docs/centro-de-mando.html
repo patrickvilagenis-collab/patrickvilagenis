@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centro de Mando · Agentes, Proyectos y Repos</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:rgba(20,28,52,.72); --panel-b:rgba(120,150,220,.18);
+    --text:#e6ecff; --muted:#9fb0d6; --faint:#6c7ba6;
+    --owner:#38bdf8; --repo:#34d399; --ccagent:#a78bfa; --intagent:#fb7185; --stack:#fbbf24;
+    --ok:#22c55e; --fail:#ef4444; --run:#eab308; --idle:#64748b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; color:var(--text);
+    background:radial-gradient(1200px 800px at 15% -10%,#16224a 0,transparent 60%),
+               radial-gradient(1000px 700px at 110% 110%,#1a2340 0,transparent 55%),var(--bg);
+    height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{display:flex; align-items:center; gap:14px; padding:11px 18px; border-bottom:1px solid var(--panel-b);
+    background:linear-gradient(180deg,rgba(15,23,48,.85),rgba(15,23,48,.3)); flex-wrap:wrap}
+  header .logo{font-size:24px}
+  header h1{font-size:16px; margin:0}
+  header .sub{font-size:11.5px; color:var(--muted)}
+  .grow{flex:1}
+  input.f,select.f,button.f{
+    background:var(--panel); color:var(--text); border:1px solid var(--panel-b);
+    padding:7px 11px; border-radius:9px; font-size:13px; outline:none;
+  }
+  input.f:focus{border-color:#5b82ff}
+  button.f{cursor:pointer; transition:.15s; display:inline-flex; align-items:center; gap:6px}
+  button.f:hover{border-color:#5b82ff; background:rgba(40,60,110,.8)}
+  button.f.go{background:linear-gradient(135deg,#2563eb,#7c3aed); border:none; font-weight:600}
+  .pill{font-size:11.5px; color:var(--muted); padding:5px 10px; border:1px solid var(--panel-b); border-radius:20px; display:inline-flex; gap:6px; align-items:center}
+  .dotled{width:8px;height:8px;border-radius:50%;background:var(--idle)}
+
+  main{flex:1; display:flex; min-height:0}
+  .stage{flex:1; position:relative; min-width:0}
+  svg{width:100%; height:100%; display:block}
+  .empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; text-align:center; padding:30px; color:var(--muted)}
+  .empty h2{color:var(--text); font-weight:600; margin:0; font-size:18px}
+  .empty code{background:rgba(255,255,255,.06); padding:2px 7px; border-radius:6px; font-size:12px}
+  .empty a{color:var(--owner)}
+
+  /* sidebar */
+  .sidebar{width:360px; flex-shrink:0; border-left:1px solid var(--panel-b);
+    background:linear-gradient(180deg,rgba(13,19,40,.55),rgba(13,19,40,.85)); display:flex; flex-direction:column; min-height:0}
+  .sec{padding:13px 15px; border-bottom:1px solid var(--panel-b); overflow-y:auto}
+  .sec h2{font-size:11px; text-transform:uppercase; letter-spacing:1.1px; color:var(--faint); margin:0 0 9px; display:flex; align-items:center; gap:7px}
+  #detail{flex:0 0 auto; max-height:54%}
+  #feed{flex:1}
+  .scroll::-webkit-scrollbar{width:8px}
+  .scroll::-webkit-scrollbar-thumb{background:rgba(120,150,220,.25); border-radius:8px}
+  .rt{font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px}
+  .chip{display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:20px; margin:2px 4px 2px 0; font-weight:600}
+  .stat{display:inline-flex; gap:5px; align-items:center; font-size:12px; color:var(--muted); margin:3px 12px 3px 0}
+  .stat b{color:var(--text)}
+  .barrow{display:flex; align-items:center; gap:8px; font-size:11.5px; margin:3px 0}
+  .barrow .nm{width:74px; color:var(--muted)}
+  .bar{flex:1; height:7px; border-radius:6px; background:rgba(255,255,255,.06); overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--stack)}
+  .row{display:flex; align-items:center; gap:8px; font-size:12.5px; padding:6px 7px; border-radius:8px; background:rgba(255,255,255,.025); margin:5px 0}
+  .row .grw{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row a{color:var(--text); text-decoration:none}
+  .row a:hover{color:var(--owner)}
+  .ci{width:9px;height:9px;border-radius:50%; flex-shrink:0}
+  .muted{color:var(--muted)} .faint{color:var(--faint); font-size:11.5px}
+  .hint{font-size:12.5px; color:var(--faint); line-height:1.5}
+  .agnode{display:flex; align-items:center; gap:7px; padding:5px 8px; border-radius:8px; margin:4px 0; background:rgba(255,255,255,.03); font-size:12.5px}
+  .agnode .ic{width:18px;text-align:center}
+
+  /* graph nodes */
+  .gnode{cursor:pointer}
+  .gnode .box{transition:filter .25s, stroke-width .2s}
+  .gnode:hover .box{filter:drop-shadow(0 0 9px currentColor)}
+  .gnode.sel .box{stroke-width:3px}
+  .gnode .t1{font-size:14px; font-weight:600; fill:var(--text); pointer-events:none}
+  .gnode .t2{font-size:10.5px; fill:var(--muted); pointer-events:none}
+  .gedge{fill:none; stroke:rgba(140,165,220,.20); stroke-width:1.5}
+  .gedge.live{stroke:rgba(167,139,250,.5); stroke-width:2}
+  .pk{pointer-events:none}
+
+  footer{display:flex; gap:20px; flex-wrap:wrap; padding:8px 18px; font-size:11.5px; border-top:1px solid var(--panel-b); background:rgba(11,16,32,.7); color:var(--muted)}
+  .key{display:inline-flex; align-items:center; gap:6px}
+  .sw{width:12px;height:12px;border-radius:4px;border:1.5px solid #fff3}
+  .dot{width:10px;height:10px;border-radius:50%}
+  #tip{position:fixed; pointer-events:none; z-index:60; max-width:260px; background:rgba(8,13,28,.97);
+    border:1px solid var(--panel-b); border-radius:9px; padding:8px 11px; font-size:12px; opacity:0; transition:opacity .12s; box-shadow:0 8px 30px #0009}
+  #tip .tt{font-weight:600; margin-bottom:3px}
+  #tip .td{color:var(--muted); line-height:1.4}
+  .spin{width:14px;height:14px;border:2px solid #fff3;border-top-color:var(--owner);border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (max-width:900px){ main{flex-direction:column} .sidebar{width:auto; max-height:40vh; border-left:none; border-top:1px solid var(--panel-b)} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🛰️</div>
+  <div>
+    <h1>Centro de Mando</h1>
+    <div class="sub">Agentes de Claude Code · Agentes internos · Proyectos · Repos — en vivo</div>
+  </div>
+  <div class="grow"></div>
+  <input id="owner" class="f" style="width:170px" placeholder="usuario/org" autocomplete="off">
+  <input id="token" class="f" style="width:180px" type="password" placeholder="GitHub token (ghp_…)" autocomplete="off">
+  <button id="connect" class="f go">⚡ Conectar</button>
+  <button id="refresh" class="f" title="Actualizar ahora">↻</button>
+  <button id="autobtn" class="f" title="Auto-actualizar cada 60s">⏱ Auto</button>
+  <span id="status" class="pill"><span class="dotled" id="led"></span><span id="statusTxt">Sin conectar</span></span>
+</header>
+
+<main>
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+      <g id="edges"></g><g id="flow"></g><g id="nodes"></g>
+    </svg>
+    <div class="empty" id="empty">
+      <h2>🔐 Conecta tu cuenta de GitHub</h2>
+      <div class="hint" style="max-width:520px">
+        Introduce tu <b>usuario u organización</b> y un <b>Personal Access Token</b> (de solo lectura).
+        El token <b>se queda en tu navegador</b> (localStorage) — nunca se sube al repo.<br><br>
+        Crea uno en <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>
+        con permiso <code>repo</code> (o <code>public_repo</code> si solo son públicos) y <code>read:org</code>.
+      </div>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sec scroll" id="detail">
+      <h2>📦 Detalle</h2>
+      <div class="hint">Haz clic en un <b>repo</b> para ver su stack en vivo, sus agentes internos y los agentes de Claude Code (ramas <code>claude/*</code>) que trabajan en él, con estado de CI y PRs.</div>
+    </div>
+    <div class="sec scroll" id="feed">
+      <h2>📡 Actividad reciente</h2>
+      <div class="hint">Commits y PRs de todos tus repos aparecerán aquí en cuanto conectes.</div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span class="key"><span class="sw" style="background:var(--owner)"></span>Cuenta</span>
+  <span class="key"><span class="sw" style="background:var(--repo)"></span>Repo / proyecto</span>
+  <span class="key"><span class="sw" style="background:var(--ccagent)"></span>Agente Claude Code (rama)</span>
+  <span class="key"><span class="sw" style="background:var(--intagent)"></span>Agente interno de la app</span>
+  <span class="grow"></span>
+  <span class="key"><span class="dot" style="background:var(--ok)"></span>CI ok</span>
+  <span class="key"><span class="dot" style="background:var(--run)"></span>CI en curso</span>
+  <span class="key"><span class="dot" style="background:var(--fail)"></span>CI fallo</span>
+  <span class="key"><span class="dot" style="background:var(--idle)"></span>Sin CI</span>
+</footer>
+
+<div id="tip"><div class="tt"></div><div class="td"></div></div>
+
+<script>
+/* ============ Registro de agentes internos por repo (curado) ============ */
+const INTERNAL = {
+  'patrickvilagenis': { app:'Asistente Pro', nodes:[
+    {ic:'🧭', label:'App · Orquestador (customtkinter)'},
+    {ic:'🔌', label:'GraphClient — MSAL + REST a Microsoft Graph'},
+    {ic:'🤖', label:'AIClient — Claude API (resumen, actas, plan)'},
+    {ic:'🗃', label:'SQLite (asistente.db) — tareas y actas'},
+    {ic:'🗂', label:'config.json — claves y ajustes'},
+    {ic:'☁️', label:'Microsoft Graph · Azure AD (externos)'},
+    {ic:'🧠', label:'Claude API · Anthropic (externo)'},
+  ]},
+  'Claude-Code-Duolingo': { app:'Claude Code Duolingo', nodes:[
+    {ic:'🖥️', label:'Frontend e-learning (JavaScript)'},
+    {ic:'🎯', label:'Motor de lecciones / progreso'},
+    {ic:'🧠', label:'Claude API — contenido y feedback (si aplica)'},
+  ]},
+};
+
+/* ============ Estado ============ */
+const S = { token:'', owner:'', repos:[], byName:{}, selected:null, rate:'' };
+const $ = s => document.querySelector(s);
+const elEdges=$('#edges'), elFlow=$('#flow'), elNodes=$('#nodes'), SVGNS='http://www.w3.org/2000/svg';
+
+// restaurar de localStorage
+S.token = localStorage.getItem('cm_token') || '';
+S.owner = localStorage.getItem('cm_owner') || 'patrickvilagenis-collab';
+$('#owner').value = S.owner; $('#token').value = S.token;
+
+/* ============ Cliente GitHub ============ */
+async function gh(path){
+  const res = await fetch('https://api.github.com'+path, {
+    headers:{ 'Authorization':'Bearer '+S.token, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' }
+  });
+  const rem = res.headers.get('x-ratelimit-remaining');
+  if(rem!==null) S.rate = rem+' llamadas restantes';
+  if(res.status===401) throw new Error('Token inválido o sin permisos (401).');
+  if(res.status===403){ throw new Error('Límite de API o acceso denegado (403). '+(S.rate||'')); }
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error('GitHub '+res.status);
+  return res.json();
+}
+
+async function listRepos(){
+  // intenta como usuario, luego como org, luego búsqueda
+  let r = await gh(`/users/${S.owner}/repos?per_page=100&sort=updated&type=owner`);
+  if(r && r.length) return r;
+  r = await gh(`/orgs/${S.owner}/repos?per_page=100&sort=updated`);
+  if(r && r.length) return r;
+  const s = await gh(`/search/repositories?q=user:${encodeURIComponent(S.owner)}&per_page=100`);
+  return (s && s.items) || [];
+}
+
+function setStatus(txt, color){ $('#statusTxt').textContent=txt; $('#led').style.background=color||'var(--idle)'; }
+
+async function loadAll(){
+  if(!S.token || !S.owner){ setStatus('Faltan datos', 'var(--fail)'); return; }
+  setStatus('Cargando…','var(--run)'); $('#statusTxt').innerHTML='<span class="spin"></span> Cargando…';
+  try{
+    const repos = await listRepos();
+    if(!repos.length){ setStatus('Sin repos','var(--idle)'); return; }
+    // por repo: ramas, PRs, commits, runs CI, lenguajes (en paralelo)
+    await Promise.all(repos.map(async repo=>{
+      const o=S.owner, n=repo.name;
+      const [branches, pulls, commits, runs, langs] = await Promise.all([
+        gh(`/repos/${o}/${n}/branches?per_page=100`).catch(()=>[]),
+        gh(`/repos/${o}/${n}/pulls?state=open&per_page=50`).catch(()=>[]),
+        gh(`/repos/${o}/${n}/commits?per_page=8`).catch(()=>[]),
+        gh(`/repos/${o}/${n}/actions/runs?per_page=20`).catch(()=>null),
+        gh(`/repos/${o}/${n}/languages`).catch(()=>({})),
+      ]);
+      repo._branches = branches||[];
+      repo._pulls = pulls||[];
+      repo._commits = commits||[];
+      repo._langs = langs||{};
+      // CI por rama: última run por head_branch
+      const ciByBranch={};
+      ((runs&&runs.workflow_runs)||[]).forEach(run=>{
+        const b=run.head_branch; if(!ciByBranch[b]) ciByBranch[b]={status:run.status, conclusion:run.conclusion, url:run.html_url};
+      });
+      repo._ci = ciByBranch;
+    }));
+    S.repos = repos; S.byName = Object.fromEntries(repos.map(r=>[r.name,r]));
+    setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
+    $('#empty').style.display='none';
+    render(); renderFeed();
+    if(S.selected && S.byName[S.selected]) renderDetail(S.selected);
+  }catch(e){
+    setStatus(e.message,'var(--fail)');
+    console.error(e);
+  }
+}
+
+/* ============ Helpers de estado CI ============ */
+function ciColor(ci){
+  if(!ci) return 'var(--idle)';
+  if(ci.status && ci.status!=='completed') return 'var(--run)';
+  if(ci.conclusion==='success') return 'var(--ok)';
+  if(ci.conclusion==='failure'||ci.conclusion==='timed_out') return 'var(--fail)';
+  return 'var(--idle)';
+}
+// agentes de Claude Code = ramas claude/* (unión con ramas que tienen PR abierto)
+function ccAgents(repo){
+  const map={};
+  (repo._branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) map[b.name]={branch:b.name}; });
+  (repo._pulls||[]).forEach(p=>{ const b=p.head&&p.head.ref; if(b){ map[b]=map[b]||{branch:b}; map[b].pr=p; } });
+  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch]}));
+}
+function timeAgo(iso){
+  if(!iso) return '';
+  const s=(Date.now()-new Date(iso))/1000;
+  if(s<60) return 'hace '+Math.floor(s)+'s';
+  if(s<3600) return 'hace '+Math.floor(s/60)+'m';
+  if(s<86400) return 'hace '+Math.floor(s/3600)+'h';
+  return 'hace '+Math.floor(s/86400)+'d';
+}
+
+/* ============ Render del grafo (constelación) ============ */
+let liveEdges=[];
+function node(g,x,y,w,h,col,t1,t2,onClick,tip){
+  const grp=document.createElementNS(SVGNS,'g'); grp.setAttribute('class','gnode'); grp.style.color=col;
+  grp.setAttribute('transform',`translate(${x-w/2},${y-h/2})`);
+  const box=document.createElementNS(SVGNS,'rect'); box.setAttribute('class','box');
+  box.setAttribute('width',w); box.setAttribute('height',h); box.setAttribute('rx',13);
+  box.setAttribute('fill','rgba(16,24,46,.92)'); box.setAttribute('stroke',col); box.setAttribute('stroke-width',1.8);
+  grp.appendChild(box);
+  const a=document.createElementNS(SVGNS,'text'); a.setAttribute('class','t1'); a.setAttribute('x',14); a.setAttribute('y',t2?h/2-3:h/2+5); a.textContent=t1; grp.appendChild(a);
+  if(t2){ const b=document.createElementNS(SVGNS,'text'); b.setAttribute('class','t2'); b.setAttribute('x',14); b.setAttribute('y',h/2+13); b.textContent=t2; grp.appendChild(b); }
+  if(onClick) grp.addEventListener('click',onClick);
+  if(tip){ grp.addEventListener('mousemove',e=>showTip(e,tip[0],tip[1])); grp.addEventListener('mouseleave',hideTip); }
+  g.appendChild(grp); return grp;
+}
+function edge(x1,y1,x2,y2,live){
+  const cx=(x1+x2)/2, cy=(y1+y2)/2-30;
+  const p=document.createElementNS(SVGNS,'path');
+  p.setAttribute('d',`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+  p.setAttribute('class','gedge'+(live?' live':'')); elEdges.appendChild(p);
+  liveEdges.push({x1,y1,cx,cy,x2,y2,live});
+}
+
+function render(){
+  elEdges.innerHTML=''; elNodes.innerHTML=''; liveEdges=[];
+  const W=1600, ownerX=W/2, ownerY=80;
+  node(elNodes, ownerX, ownerY, 250, 60, 'var(--owner)', '👤 '+S.owner, S.repos.length+' repos', null,
+       ['👤 '+S.owner, 'Cuenta de GitHub · '+S.repos.length+' repositorios']);
+
+  const repos=S.repos; const n=repos.length;
+  const span=Math.min(1380, 360*Math.max(1,n)); const startX=ownerX-span/2 + span/(2*n);
+  repos.forEach((repo,i)=>{
+    const rx = n===1?ownerX : startX + i*(span/n);
+    const ry = 300;
+    const agents=ccAgents(repo);
+    const recent = repo._commits[0] && (Date.now()-new Date(repo._commits[0].commit.author.date) < 36e5*48);
+    edge(ownerX, ownerY+30, rx, ry-26, recent || agents.length>0);
+    const lang = repo.language||Object.keys(repo._langs||{})[0]||'—';
+    const grp=node(elNodes, rx, ry, 230, 64, 'var(--repo)', '📦 '+repo.name, lang+' · '+(repo.open_issues_count||0)+' issues',
+      ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+(repo._branches.length)+' ramas · '+repo._pulls.length+' PRs']);
+    if(S.selected===repo.name) grp.classList.add('sel');
+
+    // agentes de Claude Code (ramas) bajo el repo
+    const show=agents.slice(0,5);
+    show.forEach((ag,j)=>{
+      const ax = rx + (j-(show.length-1)/2)*150;
+      const ay = 470 + (j%2)*70;
+      edge(rx, ry+26, ax, ay-22, true);
+      const short = ag.branch.replace(/^claude\//,'').slice(0,16);
+      const col='var(--ccagent)';
+      const grpA=node(elNodes, ax, ay, 168, 50, col, '🤖 '+short, ag.pr?('PR #'+ag.pr.number):'rama',
+        ()=>selectRepo(repo.name),
+        ['🤖 '+ag.branch, (ag.pr?('PR #'+ag.pr.number+': '+ag.pr.title):'Rama de agente Claude Code')]);
+      // dot CI
+      const dc=document.createElementNS(SVGNS,'circle'); dc.setAttribute('cx',152); dc.setAttribute('cy',13); dc.setAttribute('r',5);
+      dc.setAttribute('fill',ciColor(ag.ci)); dc.setAttribute('stroke','#0008'); grpA.appendChild(dc);
+    });
+    if(agents.length>show.length){
+      const ax=rx, ay=620;
+      node(elNodes, ax, ay, 140, 40, 'var(--faint)', '+'+(agents.length-show.length)+' agentes', '', ()=>selectRepo(repo.name));
+    }
+    if(agents.length===0){
+      const ax=rx, ay=470;
+      edge(rx, ry+26, ax, ay-20, false);
+      node(elNodes, ax, ay, 160, 44, 'var(--idle)', '· sin agente activo', '', ()=>selectRepo(repo.name));
+    }
+  });
+  regenParticles();
+}
+
+/* ============ Partículas (flujo en vivo) ============ */
+let particles=[];
+function regenParticles(){
+  particles=[];
+  liveEdges.forEach((e,idx)=>{
+    if(!e.live) return;
+    const count=2;
+    for(let k=0;k<count;k++) particles.push({e, t:k/count, sp:0.18+Math.random()*0.12});
+  });
+}
+function qbez(e,t){ const u=1-t; return { x:u*u*e.x1+2*u*t*e.cx+t*t*e.x2, y:u*u*e.y1+2*u*t*e.cy+t*t*e.y2 }; }
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,0.05); last=now;
+  let html='';
+  particles.forEach(p=>{ p.t+=dt*p.sp; if(p.t>1)p.t-=1; const pt=qbez(p.e,p.t);
+    html+=`<circle class="pk" cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="3.5" fill="#a78bfa" opacity="0.9"/>`; });
+  elFlow.innerHTML=html;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ============ Selección + detalle ============ */
+function selectRepo(name){ S.selected=name; render(); renderDetail(name); }
+function langBars(langs){
+  const total=Object.values(langs).reduce((a,b)=>a+b,0)||1;
+  return Object.entries(langs).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>
+    `<div class="barrow"><span class="nm">${k}</span><span class="bar"><i style="width:${(v/total*100).toFixed(0)}%"></i></span><span class="faint">${(v/total*100).toFixed(0)}%</span></div>`).join('');
+}
+function renderDetail(name){
+  const r=S.byName[name]; if(!r) return;
+  const agents=ccAgents(r);
+  const intern = INTERNAL[name];
+  const internHtml = intern
+    ? `<div class="faint" style="margin:2px 0 6px">App: <b style="color:var(--text)">${intern.app}</b></div>`+
+      intern.nodes.map(x=>`<div class="agnode" style="border-left:3px solid var(--intagent)"><span class="ic">${x.ic}</span><span class="grw">${x.label}</span></div>`).join('')
+    : `<div class="hint">Arquitectura interna no mapeada — se muestra el stack real (lenguajes) arriba.</div>`;
+  const agHtml = agents.length ? agents.map(a=>`
+      <div class="row"><span class="ci" style="background:${ciColor(a.ci)}"></span>
+      <a class="grw" href="https://github.com/${S.owner}/${name}/tree/${encodeURIComponent(a.branch)}" target="_blank">🤖 ${a.branch}</a>
+      ${a.pr?`<a class="faint" href="${a.pr.html_url}" target="_blank">PR #${a.pr.number}</a>`:'<span class="faint">rama</span>'}</div>`).join('')
+    : '<div class="hint">Sin ramas <code>claude/*</code> ni PRs abiertos ahora mismo.</div>';
+  const commitsHtml = (r._commits||[]).slice(0,5).map(c=>`
+      <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
+      <span class="faint">${timeAgo(c.commit.author.date)}</span></div>`).join('') || '<div class="hint">Sin commits recientes.</div>';
+
+  $('#detail').innerHTML = `
+    <h2>📦 ${name}</h2>
+    <div class="rt">${r.description||'Proyecto'}</div>
+    <div style="margin:8px 0">
+      <span class="chip" style="background:var(--repo)22;color:var(--repo);border:1px solid var(--repo)55">${r.language||'—'}</span>
+      <span class="chip" style="background:#ffffff10">${r.default_branch}</span>
+      ${r.private?'<span class="chip" style="background:#ffffff10">privado</span>':''}
+    </div>
+    <div>
+      <span class="stat">⭐ <b>${r.stargazers_count}</b></span>
+      <span class="stat">🌿 <b>${r._branches.length}</b> ramas</span>
+      <span class="stat">🔀 <b>${r._pulls.length}</b> PRs</span>
+      <span class="stat">🐞 <b>${r.open_issues_count}</b> issues</span>
+      <span class="stat">⏱ ${timeAgo(r.updated_at)}</span>
+    </div>
+    <a class="faint" href="${r.html_url}" target="_blank">↗ abrir en GitHub</a>
+
+    <h2 style="margin-top:14px">🧩 Stack en vivo</h2>
+    ${langBars(r._langs||{}) || '<div class="hint">Sin datos de lenguajes.</div>'}
+
+    <h2 style="margin-top:14px">🛠 Agentes internos de la app</h2>
+    ${internHtml}
+
+    <h2 style="margin-top:14px">🤖 Agentes Claude Code (${agents.length})</h2>
+    ${agHtml}
+
+    <h2 style="margin-top:14px">📝 Últimos commits</h2>
+    ${commitsHtml}`;
+  $('#detail').scrollTop=0;
+}
+
+/* ============ Feed global ============ */
+function renderFeed(){
+  const items=[];
+  S.repos.forEach(r=>{
+    (r._commits||[]).slice(0,4).forEach(c=> items.push({when:c.commit.author.date, kind:'commit', repo:r.name,
+      txt:(c.commit.message.split('\n')[0]).slice(0,46), url:c.html_url}));
+    (r._pulls||[]).forEach(p=> items.push({when:p.updated_at, kind:'pr', repo:r.name,
+      txt:'PR #'+p.number+' '+p.title.slice(0,40), url:p.html_url}));
+  });
+  items.sort((a,b)=> new Date(b.when)-new Date(a.when));
+  const ic={commit:'📝', pr:'🔀'};
+  $('#feed').innerHTML = '<h2>📡 Actividad reciente</h2>' + (items.slice(0,24).map(it=>`
+    <div class="row"><span>${ic[it.kind]}</span>
+      <a class="grw" href="${it.url}" target="_blank"><b class="muted">${it.repo}</b> · ${it.txt}</a>
+      <span class="faint">${timeAgo(it.when)}</span></div>`).join('') || '<div class="hint">Sin actividad.</div>');
+}
+
+/* ============ Tooltip ============ */
+const tip=$('#tip');
+function showTip(e,t,d){ tip.querySelector('.tt').textContent=t; tip.querySelector('.td').textContent=d||'';
+  tip.style.opacity=1; let x=e.clientX+14,y=e.clientY+14; if(x+270>innerWidth)x=e.clientX-272; tip.style.left=x+'px'; tip.style.top=y+'px'; }
+function hideTip(){ tip.style.opacity=0; }
+
+/* ============ Controles ============ */
+$('#connect').addEventListener('click', ()=>{
+  S.token=$('#token').value.trim(); S.owner=$('#owner').value.trim();
+  localStorage.setItem('cm_token',S.token); localStorage.setItem('cm_owner',S.owner);
+  loadAll();
+});
+$('#refresh').addEventListener('click', loadAll);
+let autoTimer=null;
+$('#autobtn').addEventListener('click', e=>{
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; e.target.style.borderColor=''; e.target.textContent='⏱ Auto'; }
+  else { autoTimer=setInterval(loadAll,60000); e.target.style.borderColor='var(--ok)'; e.target.textContent='⏱ Auto ✓'; loadAll(); }
+});
+$('#token').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#connect').click(); });
+
+// auto-conectar si ya hay token guardado
+if(S.token && S.owner) loadAll();
+</script>
+</body>
+</html>
