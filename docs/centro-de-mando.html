@@ -468,6 +468,8 @@ $('#logout').addEventListener('click', ()=>{
   setStatus('Sesión cerrada','var(--idle)');
 });
 
+// si hay un token guardado, muestra "Salir" ya (aunque la carga aún no haya terminado)
+if(S.token) $('#logout').style.display='inline-flex';
 // auto-conectar si ya hay token guardado
 if(S.token && S.owner) loadAll();
 </script>
