@@ -1,0 +1,5 @@
+# Única dependencia del sistema de agentes: el SDK oficial de Anthropic.
+# Se requiere una versión reciente que soporte razonamiento adaptativo
+# (thinking: adaptive), output_config (structured outputs) y la herramienta
+# de búsqueda web server-side.
+anthropic>=0.49.0

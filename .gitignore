@@ -3,6 +3,9 @@ data/
 config.json
 token_cache.bin
 
+# Workspace de ejecución del agente (ficheros generados y memoria persistente)
+agente_workspace/
+
 # Entornos y build
 .venv/
 venv/

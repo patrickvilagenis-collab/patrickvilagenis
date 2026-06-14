@@ -11,6 +11,11 @@ tareas** local.
 - ✅ Gestor de tareas en SQLite local
 - 📦 Se empaqueta en un único **`.exe` portable** (Windows)
 
+> 🤖 **¿Buscas el sistema de agentes IA?** Este repo incluye además un **agente
+> autónomo** (framework de los cinco bloques: Cerebro, Manos, Memoria, Loops,
+> Verificación, con bucle ReAct) en la carpeta [`agente/`](agente/README.md).
+> Pruébalo con `python -m agente.demo`.
+
 ---
 
 ## ⚡ Resumen rápido (3 pasos)
