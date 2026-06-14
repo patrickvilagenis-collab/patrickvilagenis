@@ -3,23 +3,33 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agente"
+name = "asistente-pro"
 version = "1.0.0"
-description = "Sistema de Agentes IA: un agente agéntico en cinco bloques (Cerebro, Manos, Memoria, Loops, Verificación)."
-readme = "agente/README.md"
+description = "Asistente Pro (app de escritorio Microsoft 365 + Claude) y el sistema de Agentes IA en cinco bloques."
+readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = [
-    # Única dependencia del sistema de agentes: el SDK oficial de Anthropic.
+    # Dependencia común a la app y al agente: el SDK oficial de Anthropic.
     # Versión reciente con razonamiento adaptativo, structured outputs y
     # búsqueda web server-side.
     "anthropic>=0.49.0",
 ]
 
+[project.optional-dependencies]
+# Extras de la app de escritorio "Asistente Pro" (GUI + Microsoft 365).
+# Instala con:  pip install -e ".[app]"
+app = [
+    "customtkinter>=5.2.2",
+    "msal>=1.28.0",
+    "requests>=2.31.0",
+]
+
 [project.scripts]
-# Permite ejecutar el demo como comando tras instalar:  agente-demo "tu objetivo"
-agente-demo = "agente.demo:main"
+# Comandos disponibles tras instalar:
+agente-demo = "agente.demo:main"      # demo del sistema de agentes
+asistente-pro = "src.main:main"       # app de escritorio (requiere el extra [app])
 
 [tool.setuptools]
-# Empaquetamos solo el framework de agentes; `src/` es la app de escritorio aparte.
-packages = ["agente"]
+# Dos paquetes de nivel superior: el framework de agentes y la app de escritorio.
+packages = ["agente", "src", "src.ui"]
