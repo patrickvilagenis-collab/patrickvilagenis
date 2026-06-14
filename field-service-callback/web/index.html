@@ -3,26 +3,35 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Field Service Callback</title>
+<title>Service Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared/styles.css" />
 </head>
 <body>
-<header class="fsc-header">
-  <div>
-    <h1>🔧 Field Service Callback</h1>
-    <div class="fsc-sub">Gestión de avisos de servicio técnico</div>
-  </div>
-</header>
-<main class="fsc-wrap">
-  <section class="fsc-card">
-    <h2>Entradas</h2>
-    <p class="fsc-hint">Elige según tu rol:</p>
-    <div class="fsc-grid fsc-grid-3" style="margin-top:12px">
-      <a class="fsc-btn" href="intake/">👤 Soy cliente — pedir servicio</a>
-      <a class="fsc-btn fsc-btn-secondary" href="supervisor/">🗂️ Supervisor — dashboard</a>
-      <a class="fsc-btn fsc-btn-secondary" href="technician/">🧰 Técnico — mis tickets</a>
+<div class="app">
+  <header class="topbar"><div class="brand"><span class="logo">🔧</span> Service Desk</div></header>
+  <main class="container">
+    <h1 style="margin-bottom:4px">Bienvenido</h1>
+    <p class="muted" style="margin-bottom:20px">Elige tu acceso según tu rol.</p>
+    <div class="grid-2">
+      <a class="card" href="intake/" style="text-decoration:none;color:inherit">
+        <div style="font-size:1.8rem">👤</div>
+        <h2 style="margin:8px 0 4px">Soy cliente</h2>
+        <p class="muted small">Pedir un servicio y seguir el estado de mi aviso.</p>
+      </a>
+      <a class="card" href="technician/" style="text-decoration:none;color:inherit">
+        <div style="font-size:1.8rem">🧰</div>
+        <h2 style="margin:8px 0 4px">Soy técnico</h2>
+        <p class="muted small">Ver mis trabajos de hoy y actualizar su estado.</p>
+      </a>
+      <a class="card" href="supervisor/" style="text-decoration:none;color:inherit">
+        <div style="font-size:1.8rem">🗂️</div>
+        <h2 style="margin:8px 0 4px">Supervisión</h2>
+        <p class="muted small">Tablero, asignación de técnicos y métricas.</p>
+      </a>
     </div>
-  </section>
-</main>
+  </main>
+</div>
 </body>
 </html>

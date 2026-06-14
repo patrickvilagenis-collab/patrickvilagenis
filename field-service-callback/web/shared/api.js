@@ -92,5 +92,46 @@
     "Close": null,
   };
 
+  // Spanish labels for the lifecycle (nicer for clients/UI than the raw enum).
+  FSC.STATUS_ES = {
+    "Intake": "Recibido",
+    "Triage": "En revisión",
+    "Dispatch": "Asignado",
+    "On the way": "En camino",
+    "On site": "En sitio",
+    "Close": "Cerrado",
+  };
+  FSC.EQUIP_ES = {
+    hvac: "Climatización", refrigeration: "Refrigeración", electrical: "Eléctrico",
+    plumbing: "Fontanería", appliance: "Electrodoméstico", other: "Otro",
+  };
+
+  FSC.fmtDateTime = function (iso) {
+    if (!iso) return "—";
+    try { return new Date(iso).toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
+    catch (_) { return iso; }
+  };
+  FSC.timeAgo = function (iso) {
+    if (!iso) return "";
+    const s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (s < 60) return "hace un momento";
+    if (s < 3600) return "hace " + Math.floor(s / 60) + " min";
+    if (s < 86400) return "hace " + Math.floor(s / 3600) + " h";
+    return "hace " + Math.floor(s / 86400) + " d";
+  };
+  FSC.initials = function (name) {
+    return (name || "?").trim().split(/\s+/).slice(0, 2).map(w => w[0] ? w[0].toUpperCase() : "").join("");
+  };
+
+  // Toast helper (expects a <div class="toasts"> container, created on demand).
+  FSC.toast = function (msg, kind) {
+    let box = document.querySelector(".toasts");
+    if (!box) { box = document.createElement("div"); box.className = "toasts"; document.body.appendChild(box); }
+    const el = document.createElement("div");
+    el.className = "toast"; el.dataset.kind = kind || "info"; el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  };
+
   global.FSC = FSC;
 })(window);

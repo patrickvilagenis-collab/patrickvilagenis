@@ -385,8 +385,14 @@ def _strip_for_staff(t):
 
 
 def _customer_view(t):
+    # Customer-safe projection: status, ETA, technician, and milestone timeline
+    # (state changes only — no internal notes or staff identities).
+    timeline = [{"to_status": e["to_status"], "at": e["at"]}
+                for e in t.get("audit_log", [])]
     return {"ticket_id": t["ticket_id"], "status": t["status"],
-            "assigned_technician": t["assigned_technician"], "eta": t["eta"]}
+            "assigned_technician": t["assigned_technician"], "eta": t["eta"],
+            "equipment_type": t.get("equipment_type"), "created_at": t.get("created_at"),
+            "timeline": timeline}
 
 
 def role_from_key(key):
