@@ -235,6 +235,19 @@ async function loadAll(){
         const b=run.head_branch; if(!ciByBranch[b]) ciByBranch[b]={status:run.status, conclusion:run.conclusion, url:run.html_url};
       });
       repo._ci = ciByBranch;
+      // Qué hace cada agente: último commit de cada rama claude/* (y heads de PR)
+      const agentBr=[]; (branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) agentBr.push(b.name); });
+      (pulls||[]).forEach(p=>{ const rf=p.head&&p.head.ref; if(rf&&!agentBr.includes(rf)) agentBr.push(rf); });
+      const bc={};
+      await Promise.all(agentBr.slice(0,16).map(async bn=>{
+        const c = await gh(`/repos/${o}/${n}/commits?sha=${encodeURIComponent(bn)}&per_page=1`).catch(()=>null);
+        if(c&&c[0]) bc[bn]={message:c[0].commit.message, date:c[0].commit.author.date,
+          author:(c[0].author&&c[0].author.login)||c[0].commit.author.name||'', url:c[0].html_url};
+      }));
+      repo._branchCommit=bc;
+      // Descripción del proyecto desde el README
+      const rd = await gh(`/repos/${o}/${n}/readme`).catch(()=>null);
+      repo._readme = rd&&rd.content ? readmeBlurb(decodeB64(rd.content)) : '';
     }));
     S.repos = repos; S.byName = Object.fromEntries(repos.map(r=>[r.name,r]));
     setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
@@ -260,7 +273,27 @@ function ccAgents(repo){
   const map={};
   (repo._branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) map[b.name]={branch:b.name}; });
   (repo._pulls||[]).forEach(p=>{ const b=p.head&&p.head.ref; if(b){ map[b]=map[b]||{branch:b}; map[b].pr=p; } });
-  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch]}));
+  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch], commit:(repo._branchCommit||{})[a.branch]}));
+}
+// "A qué se dedica" un agente: el título de su PR, o el asunto de su último commit
+function agentTask(a){
+  if(a.pr) return a.pr.title;
+  if(a.commit) return a.commit.message.split('\n')[0];
+  return 'Rama de agente Claude Code (sin actividad reciente)';
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function decodeB64(b64){ try{ return decodeURIComponent(escape(atob((b64||'').replace(/\s/g,'')))); }catch(e){ try{return atob((b64||'').replace(/\s/g,''));}catch(_){return '';} } }
+function readmeBlurb(md){
+  if(!md) return '';
+  const out=[];
+  for(let l of md.split('\n')){
+    l=l.trim();
+    if(!l){ if(out.length) break; else continue; }
+    if(/^(#|!\[|<|---|=== |\| |```|> )/.test(l)) continue;   // saltar títulos, imágenes, tablas, html
+    out.push(l.replace(/[*_`#>\[\]]/g,'').replace(/\(http[^)]*\)/g,''));
+    if(out.join(' ').length>220) break;
+  }
+  return out.join(' ').slice(0,280);
 }
 function timeAgo(iso){
   if(!iso) return '';
@@ -323,7 +356,7 @@ function render(){
       const col='var(--ccagent)';
       const grpA=node(elNodes, ax, ay, 168, 50, col, '🤖 '+short, ag.pr?('PR #'+ag.pr.number):'rama',
         ()=>selectRepo(repo.name),
-        ['🤖 '+ag.branch, (ag.pr?('PR #'+ag.pr.number+': '+ag.pr.title):'Rama de agente Claude Code')]);
+        ['🤖 '+ag.branch, '🎯 '+agentTask(ag)]);
       // dot CI
       const dc=document.createElementNS(SVGNS,'circle'); dc.setAttribute('cx',152); dc.setAttribute('cy',13); dc.setAttribute('r',5);
       dc.setAttribute('fill',ciColor(ag.ci)); dc.setAttribute('stroke','#0008'); grpA.appendChild(dc);
@@ -378,13 +411,22 @@ function renderDetail(name){
     ? `<div class="faint" style="margin:2px 0 6px">App: <b style="color:var(--text)">${intern.app}</b></div>`+
       intern.nodes.map(x=>`<div class="agnode" style="border-left:3px solid var(--intagent)"><span class="ic">${x.ic}</span><span class="grw">${x.label}</span></div>`).join('')
     : `<div class="hint">Arquitectura interna no mapeada — se muestra el stack real (lenguajes) arriba.</div>`;
-  const agHtml = agents.length ? agents.map(a=>`
-      <div class="row"><span class="ci" style="background:${ciColor(a.ci)}"></span>
-      <a class="grw" href="https://github.com/${S.owner}/${name}/tree/${encodeURIComponent(a.branch)}" target="_blank">🤖 ${a.branch}</a>
-      ${a.pr?`<a class="faint" href="${a.pr.html_url}" target="_blank">PR #${a.pr.number}</a>`:'<span class="faint">rama</span>'}</div>`).join('')
+  const agHtml = agents.length ? agents.map(a=>{
+      const when = a.pr ? timeAgo(a.pr.updated_at) : (a.commit ? timeAgo(a.commit.date) : '');
+      const tag = a.pr ? `<a class="faint" href="${a.pr.html_url}" target="_blank">PR #${a.pr.number}</a>` : '<span class="faint">rama</span>';
+      return `<div class="row" style="flex-direction:column; align-items:stretch; gap:4px">
+        <div style="display:flex; align-items:center; gap:7px">
+          <span class="ci" style="background:${ciColor(a.ci)}"></span>
+          <a class="grw" href="https://github.com/${S.owner}/${name}/tree/${encodeURIComponent(a.branch)}" target="_blank">🤖 ${esc(a.branch.replace(/^claude\//,''))}</a>
+          ${tag}
+        </div>
+        <div class="faint" style="padding-left:16px; white-space:normal; line-height:1.4">
+          🎯 <b style="color:var(--muted)">${esc(agentTask(a)).slice(0,110)}</b>${when?` · <span style="color:var(--faint)">${when}</span>`:''}
+        </div>
+      </div>`; }).join('')
     : '<div class="hint">Sin ramas <code>claude/*</code> ni PRs abiertos ahora mismo.</div>';
   const commitsHtml = (r._commits||[]).slice(0,5).map(c=>`
-      <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
+      <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${esc(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
       <span class="faint">${timeAgo(c.commit.author.date)}</span></div>`).join('') || '<div class="hint">Sin commits recientes.</div>';
 
   $('#detail').innerHTML = `
@@ -403,6 +445,7 @@ function renderDetail(name){
       <span class="stat">⏱ ${timeAgo(r.updated_at)}</span>
     </div>
     <a class="faint" href="${r.html_url}" target="_blank">↗ abrir en GitHub</a>
+    ${r._readme?`<div class="hint" style="margin-top:10px; padding:9px 11px; background:rgba(255,255,255,.03); border-radius:8px; border-left:3px solid var(--repo)"><b style="color:var(--muted)">ℹ️ Sobre el proyecto:</b> ${esc(r._readme)}…</div>`:''}
 
     <h2 style="margin-top:14px">🧩 Stack en vivo</h2>
     ${langBars(r._langs||{}) || '<div class="hint">Sin datos de lenguajes.</div>'}
@@ -423,9 +466,9 @@ function renderFeed(){
   const items=[];
   S.repos.forEach(r=>{
     (r._commits||[]).slice(0,4).forEach(c=> items.push({when:c.commit.author.date, kind:'commit', repo:r.name,
-      txt:(c.commit.message.split('\n')[0]).slice(0,46), url:c.html_url}));
+      txt:esc(c.commit.message.split('\n')[0]).slice(0,46), url:c.html_url}));
     (r._pulls||[]).forEach(p=> items.push({when:p.updated_at, kind:'pr', repo:r.name,
-      txt:'PR #'+p.number+' '+p.title.slice(0,40), url:p.html_url}));
+      txt:'PR #'+p.number+' '+esc(p.title).slice(0,40), url:p.html_url}));
   });
   items.sort((a,b)=> new Date(b.when)-new Date(a.when));
   const ic={commit:'📝', pr:'🔀'};
