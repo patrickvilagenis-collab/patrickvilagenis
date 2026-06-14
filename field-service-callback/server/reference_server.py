@@ -50,7 +50,7 @@ CFG = {
     "role_key_supervisor": os.environ.get("FSC_ROLE_KEY_SUPERVISOR", "devsup"),
     "base_url": os.environ.get("FSC_BASE_URL", "http://localhost:8080"),
     "locale": os.environ.get("FSC_LOCALE", "es"),
-    "port": int(os.environ.get("FSC_PORT", "8080")),
+    "port": int(os.environ.get("FSC_PORT") or os.environ.get("PORT") or "8080"),
     # Notification delivery (real WhatsApp/SMS when configured; otherwise just logs).
     "notify_provider": os.environ.get("FSC_NOTIFY_PROVIDER", "log"),  # log | twilio | whatsapp_cloud
     "notify_from": os.environ.get("FSC_NOTIFY_FROM", ""),
