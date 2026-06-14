@@ -24,6 +24,7 @@ Run:
 import json
 import os
 import re
+import sys
 import threading
 import secrets
 import datetime
@@ -32,6 +33,7 @@ import mimetypes
 import base64
 import urllib.request
 import urllib.parse
+import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -270,8 +272,10 @@ def notify(ticket, template, event_name):
         try:
             _deliver(t["customer_phone"], body)
             status = "sent"
-        except Exception:
+            print("[notify] %s -> %s via %s : OK" % (event_name, t["customer_phone"], CFG["notify_provider"]), flush=True)
+        except Exception as exc:
             status = "failed"  # dead-letter; surfaced in supervisor view (§7.5)
+            print("[notify] %s -> %s via %s : FAILED: %s" % (event_name, t["customer_phone"], CFG["notify_provider"], exc), file=sys.stderr, flush=True)
         if status == "sent":
             t.setdefault("notified_events", []).append(event_name)
         t["notification_status"] = status
@@ -282,13 +286,17 @@ def notify(ticket, template, event_name):
 
 def _deliver(phone, body):
     """Send the message via the configured provider; always log for audit/debug.
-    Raises on provider failure so notify() records 'failed' (dead-letter, §7.5)."""
+    Raises on provider failure (or misconfig) so notify() records 'failed' (§7.5)."""
     provider = CFG["notify_provider"]
-    if provider == "twilio" and CFG["twilio_sid"] and CFG["twilio_token"]:
+    if provider == "twilio":
+        if not (CFG["twilio_sid"] and CFG["twilio_token"] and CFG["notify_from"]):
+            raise RuntimeError("provider=twilio pero faltan FSC_TWILIO_SID / FSC_TWILIO_TOKEN / FSC_NOTIFY_FROM")
         _deliver_twilio(phone, body)
-    elif provider == "whatsapp_cloud" and CFG["wa_token"] and CFG["wa_phone_id"]:
+    elif provider == "whatsapp_cloud":
+        if not (CFG["wa_token"] and CFG["wa_phone_id"]):
+            raise RuntimeError("provider=whatsapp_cloud pero faltan FSC_NOTIFY_API_KEY / FSC_WA_PHONE_ID")
         _deliver_whatsapp_cloud(phone, body)
-    # provider == "log" (or creds missing) -> no external send; just recorded below.
+    # provider == "log" -> no external send; just recorded below.
     _append_log(NOTIFY_LOG, {"at": _now(), "to": phone, "body": body, "provider": provider})
 
 
@@ -304,8 +312,12 @@ def _deliver_twilio(phone, body):
     auth = base64.b64encode(("%s:%s" % (CFG["twilio_sid"], CFG["twilio_token"])).encode()).decode()
     req.add_header("Authorization", "Basic " + auth)
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
-    with urllib.request.urlopen(req, timeout=15) as r:
-        r.read()
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            r.read()
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:600]
+        raise RuntimeError("Twilio HTTP %s: %s" % (e.code, detail))
 
 
 def _deliver_whatsapp_cloud(phone, body):
@@ -551,7 +563,10 @@ def main():
     print("  web UI     : /  ·  /intake/  ·  /supervisor/  ·  /technician/")
     print("  public API : /fsc/v1/tickets ...")
     print("  datastore  : /tickets ...  (point FSC_DATASTORE_URL here for n8n)")
-    print("  notify     : provider=%s  data dir=%s" % (CFG["notify_provider"], DATA_DIR))
+    print("  notify     : provider=%s  twilio_creds=%s  from=%s  data dir=%s" % (
+        CFG["notify_provider"],
+        "yes" if (CFG["twilio_sid"] and CFG["twilio_token"]) else "no",
+        CFG["notify_from"] or "-", DATA_DIR))
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
