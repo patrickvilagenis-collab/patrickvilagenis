@@ -24,6 +24,28 @@ not extensions of FSC. (Full constraint list: build-spec §2.2.)
 
 ---
 
+## Quickstart (run it now, no n8n needed)
+
+A zero-dependency reference backend in [`server/`](server/) implements the full
+`/fsc/v1` contract, so you can run the whole system end to end immediately:
+
+```bash
+# 1. Backend (Python stdlib only)
+cd server
+FSC_ROLE_KEY_TECHNICIAN=devtech FSC_ROLE_KEY_SUPERVISOR=devsup \
+FSC_BASE_URL=http://localhost:8080 python3 reference_server.py
+
+# 2. Web UIs (any static server) — set window.FSC_API_BASE="http://localhost:8080" in the pages
+cd .. && python3 -m http.server 5500 --directory web
+
+# 3. End-to-end acceptance test (build spec §9.7)
+cd server && python3 smoke_test.py
+```
+
+The reference backend doubles as the thin datastore behind n8n (it serves both
+`/fsc/v1/*` and the `/tickets/*` storage paths), so the two modes share one store.
+See [`server/README.md`](server/README.md).
+
 ## Prerequisites
 
 - **n8n** ≥ 1.x (self-hosted or cloud) to import the four workflows.
