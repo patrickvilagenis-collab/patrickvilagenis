@@ -11,7 +11,7 @@ export const COLLECTIONS = ['visits', 'accidents', 'oles', 'actions', 'photos', 
 
 // Default backend URL so end users only need their username + password.
 // Set to '' to make the app fully local (no login).
-export const DEFAULT_API_URL = 'https://safety-health-backend.onrender.com';
+export const DEFAULT_API_URL = 'https://safety-health-backend-hq6b.onrender.com';
 
 export function getConfig() {
   try { return { url: DEFAULT_API_URL, key: '', ...(JSON.parse(localStorage.getItem(CFG)) || {}) }; }
