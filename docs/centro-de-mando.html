@@ -112,6 +112,12 @@
   .delall{background:rgba(239,68,68,.14); color:#fda4af; border:1px solid rgba(239,68,68,.45); border-radius:8px;
     padding:6px 11px; font-size:12.5px; cursor:pointer; width:100%; margin:4px 0 6px}
   .delall:hover{background:rgba(239,68,68,.3); color:#fff}
+  .seelink{display:inline-flex; align-items:center; gap:5px; margin-top:2px; padding:4px 10px; border-radius:7px;
+    font-size:12px; font-weight:600; text-decoration:none; color:#bae6fd; background:rgba(56,189,248,.14); border:1px solid rgba(56,189,248,.4)}
+  .seelink:hover{background:rgba(56,189,248,.3); color:#fff}
+  .livebtn{display:inline-flex; align-items:center; gap:7px; margin-top:10px; margin-left:8px; padding:9px 14px; border-radius:9px;
+    font-size:13px; font-weight:600; text-decoration:none; color:#06281f; background:linear-gradient(135deg,#34d399,#10b981)}
+  .livebtn:hover{filter:brightness(1.1)}
   details > summary{list-style:none} details > summary::-webkit-details-marker{display:none}
   details > summary:before{content:"▸ "; color:var(--faint)} details[open] > summary:before{content:"▾ "}
   #toggleInactive.on{border-color:var(--ccagent); box-shadow:0 0 0 1px var(--ccagent) inset}
@@ -219,6 +225,9 @@ const APPS = {
 
 /* ============ Estado ============ */
 const S = { token:'', owner:'', repos:[], byName:{}, selected:null, rate:'' };
+const WEB = {};                      // caché: "repo|rama" -> {url, title} de la web que construyó esa rama
+const PAGES = {};                    // caché: "repo" -> url del sitio publicado en GitHub Pages (o null)
+const encRef = b => b.split('/').map(encodeURIComponent).join('/');  // codifica rama conservando las /
 let showInactive = false;            // por defecto solo se ven las ramas activas (con PR)
 let firstFit = false;                // para ajustar a pantalla solo en la primera carga
 const view = { tx:0, ty:0, k:1 };    // pan (tx,ty en coords del viewBox) y zoom (k)
@@ -286,16 +295,35 @@ async function loadAll(){
       // Qué hace cada agente: último commit de cada rama claude/* (y heads de PR)
       const agentBr=[]; (branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) agentBr.push(b.name); });
       (pulls||[]).forEach(p=>{ const rf=p.head&&p.head.ref; if(rf&&!agentBr.includes(rf)) agentBr.push(rf); });
+      if(repo.default_branch && !agentBr.includes(repo.default_branch)) agentBr.push(repo.default_branch);
       const bc={};
       await Promise.all(agentBr.slice(0,16).map(async bn=>{
-        const c = await gh(`/repos/${o}/${n}/commits?sha=${encodeURIComponent(bn)}&per_page=1`).catch(()=>null);
+        const c = await gh(`/repos/${o}/${n}/commits?sha=${encRef(bn)}&per_page=1`).catch(()=>null);
         if(c&&c[0]) bc[bn]={message:c[0].commit.message, date:c[0].commit.author.date,
           author:(c[0].author&&c[0].author.login)||c[0].commit.author.name||'', url:c[0].html_url};
+        // ¿esta rama construyó una web? (index.html en la raíz) → enlace para verla + título
+        const key=n+'|'+bn;
+        if(WEB[key]===undefined){
+          let web=null;
+          const root = await gh(`/repos/${o}/${n}/contents?ref=${encRef(bn)}`).catch(()=>null);
+          if(Array.isArray(root)){
+            const idx = root.find(f=>f.type==='file' && /^index\.html?$/i.test(f.name));
+            if(idx){
+              let title='';
+              try{ const raw=await fetch(idx.download_url); if(raw.ok){ const m=(await raw.text()).match(/<title[^>]*>([^<]+)<\/title>/i); if(m) title=m[1].trim(); } }catch(e){}
+              web={ url:`https://htmlpreview.github.io/?https://github.com/${o}/${n}/blob/${encRef(bn)}/${idx.name}`, title };
+            }
+          }
+          WEB[key]=web;
+        }
       }));
       repo._branchCommit=bc;
       // Descripción del proyecto desde el README
       const rd = await gh(`/repos/${o}/${n}/readme`).catch(()=>null);
       repo._readme = rd&&rd.content ? readmeBlurb(decodeB64(rd.content)) : '';
+      // ¿el repo tiene un sitio publicado en GitHub Pages?
+      if(PAGES[n]===undefined){ const pg = await gh(`/repos/${o}/${n}/pages`).catch(()=>null); PAGES[n] = pg&&pg.html_url ? pg.html_url : null; }
+      repo._pages = PAGES[n];
     }));
     S.repos = repos; S.byName = Object.fromEntries(repos.map(r=>[r.name,r]));
     setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
@@ -322,7 +350,7 @@ function ccAgents(repo){
   const map={};
   (repo._branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) map[b.name]={branch:b.name}; });
   (repo._pulls||[]).forEach(p=>{ const b=p.head&&p.head.ref; if(b){ map[b]=map[b]||{branch:b}; map[b].pr=p; } });
-  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch], commit:(repo._branchCommit||{})[a.branch]}))
+  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch], commit:(repo._branchCommit||{})[a.branch], web:WEB[repo.name+'|'+a.branch]}))
     // primero los activos (con PR), luego por fecha de último commit
     .sort((a,b)=> (b.pr?1:0)-(a.pr?1:0) || new Date((b.commit&&b.commit.date)||0)-new Date((a.commit&&a.commit.date)||0));
 }
@@ -495,6 +523,7 @@ function renderDetail(name){
         <div class="faint" style="padding-left:16px; white-space:normal; line-height:1.4">
           🎯 <b style="color:var(--muted)">${esc(agentTask(a)).slice(0,110)}</b>${when?` · <span style="color:var(--faint)">${when}</span>`:''}
         </div>
+        ${a.web?`<div style="padding-left:16px"><a class="seelink" href="${a.web.url}" target="_blank" rel="noopener">👁️ Ver la plataforma${a.web.title?': '+esc(a.web.title.slice(0,40)):''} ↗</a></div>`:''}
       </div>`; };
   const delCount = inactiveAg.filter(a=>!isDefault(a)).length;
   const bulkBtn = delCount>1
@@ -507,6 +536,8 @@ function renderDetail(name){
   const nTotal = agents.length, nActive = activeAg.length;
   const app = APPS[name];
   const appBtn = app ? `<a class="appbtn" href="${app.url}" target="_blank" rel="noopener">${app.icon} Abrir ${esc(app.title)} ↗</a>` : '';
+  const liveUrl = r._pages || (WEB[name+'|'+r.default_branch]||{}).url || '';
+  const liveBtn = liveUrl ? `<a class="livebtn" href="${liveUrl}" target="_blank" rel="noopener">🌐 ${r._pages?'Abrir plataforma publicada':'Ver la web (preview)'} ↗</a>` : '';
   const commitsHtml = (r._commits||[]).slice(0,5).map(c=>`
       <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${esc(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
       <span class="faint">${timeAgo(c.commit.author.date)}</span></div>`).join('') || '<div class="hint">Sin commits recientes.</div>';
@@ -527,8 +558,8 @@ function renderDetail(name){
       <span class="stat">⏱ ${timeAgo(r.updated_at)}</span>
     </div>
     <a class="faint" href="${r.html_url}" target="_blank">↗ abrir en GitHub</a>
-    ${appBtn?`<div>${appBtn}</div>`:''}
-    ${r._readme?`<div class="hint" style="margin-top:10px; padding:9px 11px; background:rgba(255,255,255,.03); border-radius:8px; border-left:3px solid var(--repo)"><b style="color:var(--muted)">ℹ️ Sobre el proyecto:</b> ${esc(r._readme)}…</div>`:''}
+    <div>${appBtn}${liveBtn}</div>
+    ${r._readme?`<div class="hint" style="margin-top:10px; padding:9px 11px; background:rgba(255,255,255,.03); border-radius:8px; border-left:3px solid var(--repo)"><b style="color:var(--muted)">ℹ️ Qué es este proyecto:</b> ${esc(r._readme)}…</div>`:'<div class="hint" style="margin-top:10px">Sin README — la descripción detallada de cada agente está más abajo.</div>'}
 
     <h2 style="margin-top:14px">🧩 Stack en vivo</h2>
     ${langBars(r._langs||{}) || '<div class="hint">Sin datos de lenguajes.</div>'}
