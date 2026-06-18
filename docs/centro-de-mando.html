@@ -437,9 +437,20 @@ function render(){
     const recent = repo._commits[0] && (Date.now()-new Date(repo._commits[0].commit.author.date) < 36e5*48);
     edge(ownerX, ownerY+30, rx, ry-26, recent || allAgents.length>0);
     const lang = repo.language||Object.keys(repo._langs||{})[0]||'—';
+    const online = !!repo._pages;   // tiene sitio publicado en GitHub Pages
+    const previewable = !online && !!WEB[repo.name+'|'+repo.default_branch];
     const grp=node(elNodes, rx, ry, 230, 64, 'var(--repo)', '📦 '+repo.name, lang+' · '+(repo.open_issues_count||0)+' issues',
-      ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+(repo._branches.length)+' ramas · '+repo._pulls.length+' PRs']);
+      ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+repo._branches.length+' ramas · '+repo._pulls.length+' PRs'+(online?' · 🟢 publicada en vivo':(previewable?' · 👁 web (preview)':''))]);
     if(S.selected===repo.name) grp.classList.add('sel');
+    // indicador de plataforma online (🟢 = publicada en Pages, 👁 = preview)
+    if(online || previewable){
+      const bdg=document.createElementNS(SVGNS,'text');
+      bdg.setAttribute('x',230-12); bdg.setAttribute('y',16); bdg.setAttribute('text-anchor','end');
+      bdg.setAttribute('font-size',10.5); bdg.setAttribute('font-weight','700');
+      bdg.setAttribute('fill', online?'#6ee7b7':'#7dd3fc'); bdg.style.pointerEvents='none';
+      bdg.textContent = online?'🟢 online':'👁 preview';
+      grp.appendChild(bdg);
+    }
 
     // agentes de Claude Code (ramas) bajo el repo
     const show=agents.slice(0,5);
