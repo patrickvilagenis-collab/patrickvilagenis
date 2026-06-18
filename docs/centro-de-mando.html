@@ -127,6 +127,8 @@
   .plattag{font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px; white-space:nowrap}
   .plattag.live{background:rgba(52,211,153,.2); color:#6ee7b7}
   .plattag.prev{background:rgba(56,189,248,.18); color:#7dd3fc}
+  .plattag.down{background:rgba(239,68,68,.18); color:#fca5a5}
+  .plattag.check{background:rgba(148,163,184,.18); color:#cbd5e1}
   details > summary{list-style:none} details > summary::-webkit-details-marker{display:none}
   details > summary:before{content:"▸ "; color:var(--faint)} details[open] > summary:before{content:"▾ "}
   #toggleInactive.on{border-color:var(--ccagent); box-shadow:0 0 0 1px var(--ccagent) inset}
@@ -342,6 +344,7 @@ async function loadAll(){
     setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
     $('#empty').style.display='none'; $('#logout').style.display='inline-flex';
     render(); renderFeed(); renderPlatforms();
+    checkAllLive();   // comprueba en 2º plano si cada plataforma responde
     if(!firstFit){ firstFit=true; requestAnimationFrame(fitView); }   // ajustar a pantalla la 1ª vez
     if(S.selected && S.byName[S.selected]) renderDetail(S.selected);
   }catch(e){
@@ -439,16 +442,19 @@ function render(){
     const lang = repo.language||Object.keys(repo._langs||{})[0]||'—';
     const online = !!repo._pages;   // tiene sitio publicado en GitHub Pages
     const previewable = !online && !!WEB[repo.name+'|'+repo.default_branch];
+    const st = online ? LIVE[repo._pages] : null;          // 'up' | 'down' | undefined(comprobando)
+    const badge = online ? (st==='up'?{t:'🟢 online',c:'#6ee7b7'}:st==='down'?{t:'🔴 sin respuesta',c:'#fca5a5'}:{t:'⏳ …',c:'#cbd5e1'})
+                  : previewable ? {t:'👁 preview',c:'#7dd3fc'} : null;
+    const tipPub = online ? ' · '+(st==='up'?'🟢 online (responde)':st==='down'?'🔴 publicada pero no responde':'⏳ comprobando…') : (previewable?' · 👁 web (preview)':'');
     const grp=node(elNodes, rx, ry, 230, 64, 'var(--repo)', '📦 '+repo.name, lang+' · '+(repo.open_issues_count||0)+' issues',
-      ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+repo._branches.length+' ramas · '+repo._pulls.length+' PRs'+(online?' · 🟢 publicada en vivo':(previewable?' · 👁 web (preview)':''))]);
+      ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+repo._branches.length+' ramas · '+repo._pulls.length+' PRs'+tipPub]);
     if(S.selected===repo.name) grp.classList.add('sel');
-    // indicador de plataforma online (🟢 = publicada en Pages, 👁 = preview)
-    if(online || previewable){
+    if(badge){
       const bdg=document.createElementNS(SVGNS,'text');
       bdg.setAttribute('x',230-12); bdg.setAttribute('y',16); bdg.setAttribute('text-anchor','end');
       bdg.setAttribute('font-size',10.5); bdg.setAttribute('font-weight','700');
-      bdg.setAttribute('fill', online?'#6ee7b7':'#7dd3fc'); bdg.style.pointerEvents='none';
-      bdg.textContent = online?'🟢 online':'👁 preview';
+      bdg.setAttribute('fill', badge.c); bdg.style.pointerEvents='none';
+      bdg.textContent = badge.t;
       grp.appendChild(bdg);
     }
 
@@ -599,15 +605,41 @@ function renderDetail(name){
   $('#detail').scrollTop=0;
 }
 
+/* ============ Comprobación de "está online" (ping no-cors) ============ */
+const LIVE = {};   // url -> 'up' | 'down'  (última comprobación)
+function pingUrl(url){
+  return new Promise(resolve=>{
+    let done=false;
+    const to=setTimeout(()=>{ if(!done){ done=true; resolve('down'); } }, 6000);
+    // no-cors: no podemos leer el status, pero si la promesa resuelve es que el servidor respondió
+    fetch(url, {mode:'no-cors', cache:'no-store'})
+      .then(()=>{ if(!done){ done=true; clearTimeout(to); resolve('up'); } })
+      .catch(()=>{ if(!done){ done=true; clearTimeout(to); resolve('down'); } });
+  });
+}
+async function checkAllLive(){
+  const urls=[...new Set(S.repos.filter(r=>r._pages).map(r=>r._pages))];
+  if(!urls.length) return;
+  await Promise.all(urls.map(async u=>{ LIVE[u]=await pingUrl(u); }));
+  render(); renderPlatforms();   // repinta con el estado real
+}
+
 /* ============ Plataformas en vivo (apps publicadas) ============ */
+function platTag(p){
+  if(p.kind!=='live') return '<span class="plattag prev">👁️ preview</span>';
+  if(p.status==='up')   return '<span class="plattag live">🟢 responde</span>';
+  if(p.status==='down') return '<span class="plattag down">🔴 sin respuesta</span>';
+  return '<span class="plattag check">⏳ comprobando…</span>';
+}
 function renderPlatforms(){
-  const live = S.repos.filter(r=>r._pages).map(r=>({name:r.name, url:r._pages, kind:'live', desc:r.description||''}));
+  const live = S.repos.filter(r=>r._pages).map(r=>({name:r.name, url:r._pages, kind:'live', status:LIVE[r._pages], desc:r.description||''}));
   const prev = S.repos.filter(r=>!r._pages && WEB[r.name+'|'+r.default_branch]).map(r=>({name:r.name, url:WEB[r.name+'|'+r.default_branch].url, kind:'prev', desc:r.description||''}));
   const all=[...live,...prev];
-  $('#platforms').innerHTML = '<h2>🌐 Plataformas en vivo ('+all.length+')</h2>' + (all.length ? all.map(p=>`
+  const upN = live.filter(p=>p.status==='up').length;
+  $('#platforms').innerHTML = `<h2>🌐 Plataformas en vivo (${all.length}${live.length?` · ${upN}/${live.length} responden`:''})</h2>` + (all.length ? all.map(p=>`
     <a class="plat" href="${p.url}" target="_blank" rel="noopener">
       <span class="grw"><b>${esc(p.name)}</b>${p.desc?`<div class="faint" style="font-weight:400">${esc(p.desc).slice(0,64)}</div>`:''}</span>
-      <span class="plattag ${p.kind}">${p.kind==='live'?'🟢 en vivo':'👁️ preview'}</span>
+      ${platTag(p)}
     </a>`).join('') : '<div class="hint">No se han detectado plataformas publicadas (Pages) todavía.</div>');
 }
 
