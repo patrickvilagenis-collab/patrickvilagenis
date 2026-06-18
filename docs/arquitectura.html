@@ -587,9 +587,10 @@ function resetView(){ view.tx=0; view.ty=0; view.k=1; applyView(); }
 function fitView(){ let bb; try{ bb=document.getElementById('nodes').getBBox(); }catch(e){ return; } if(!bb||!bb.width){ resetView(); return; }
   const pad=50, k=Math.max(K_MIN,Math.min(K_MAX,Math.min(VBW/(bb.width+pad*2),VBH/(bb.height+pad*2))));
   view.k=k; view.tx=(VBW-k*bb.width)/2-k*bb.x; view.ty=(VBH-k*bb.height)/2-k*bb.y; applyView(); }
-svgEl.addEventListener('mousedown',e=>{ pan.down=true; pan.moved=false; const p=vbPoint(e.clientX,e.clientY); pan.lx=p.x; pan.ly=p.y; svgEl.classList.add('grabbing'); });
-window.addEventListener('mousemove',e=>{ if(!pan.down) return; const p=vbPoint(e.clientX,e.clientY); const dx=p.x-pan.lx, dy=p.y-pan.ly;
-  if(Math.abs(dx)+Math.abs(dy)>2) pan.moved=true; view.tx+=dx; view.ty+=dy; pan.lx=p.x; pan.ly=p.y; applyView(); });
+svgEl.addEventListener('mousedown',e=>{ pan.down=true; pan.moved=false; pan.sx=e.clientX; pan.sy=e.clientY; const p=vbPoint(e.clientX,e.clientY); pan.lx=p.x; pan.ly=p.y; svgEl.classList.add('grabbing'); });
+window.addEventListener('mousemove',e=>{ if(!pan.down) return;
+  if(Math.abs(e.clientX-pan.sx)+Math.abs(e.clientY-pan.sy)>6) pan.moved=true;   // umbral en píxeles reales
+  const p=vbPoint(e.clientX,e.clientY); view.tx+=p.x-pan.lx; view.ty+=p.y-pan.ly; pan.lx=p.x; pan.ly=p.y; applyView(); });
 window.addEventListener('mouseup',()=>{ pan.down=false; svgEl.classList.remove('grabbing'); setTimeout(()=>pan.moved=false,0); });
 svgEl.addEventListener('wheel',e=>{ e.preventDefault(); const p=vbPoint(e.clientX,e.clientY); zoomAt(p.x,p.y,e.deltaY<0?1.12:1/1.12); },{passive:false});
 window.addEventListener('keydown',e=>{ if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement&&document.activeElement.tagName)) return;
