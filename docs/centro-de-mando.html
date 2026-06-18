@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centro de Mando · Agentes, Proyectos y Repos</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:rgba(20,28,52,.72); --panel-b:rgba(120,150,220,.18);
+    --text:#e6ecff; --muted:#9fb0d6; --faint:#6c7ba6;
+    --owner:#38bdf8; --repo:#34d399; --ccagent:#a78bfa; --intagent:#fb7185; --stack:#fbbf24;
+    --ok:#22c55e; --fail:#ef4444; --run:#eab308; --idle:#64748b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif; color:var(--text);
+    background:radial-gradient(1200px 800px at 15% -10%,#16224a 0,transparent 60%),
+               radial-gradient(1000px 700px at 110% 110%,#1a2340 0,transparent 55%),var(--bg);
+    height:100vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{display:flex; align-items:center; gap:14px; padding:11px 18px; border-bottom:1px solid var(--panel-b);
+    background:linear-gradient(180deg,rgba(15,23,48,.85),rgba(15,23,48,.3)); flex-wrap:wrap}
+  header .logo{font-size:24px}
+  header h1{font-size:16px; margin:0}
+  header .sub{font-size:11.5px; color:var(--muted)}
+  .grow{flex:1}
+  input.f,select.f,button.f{
+    background:var(--panel); color:var(--text); border:1px solid var(--panel-b);
+    padding:7px 11px; border-radius:9px; font-size:13px; outline:none;
+  }
+  input.f:focus{border-color:#5b82ff}
+  button.f{cursor:pointer; transition:.15s; display:inline-flex; align-items:center; gap:6px}
+  button.f:hover{border-color:#5b82ff; background:rgba(40,60,110,.8)}
+  button.f.go{background:linear-gradient(135deg,#2563eb,#7c3aed); border:none; font-weight:600}
+  .pill{font-size:11.5px; color:var(--muted); padding:5px 10px; border:1px solid var(--panel-b); border-radius:20px; display:inline-flex; gap:6px; align-items:center}
+  .dotled{width:8px;height:8px;border-radius:50%;background:var(--idle)}
+
+  main{flex:1; display:flex; min-height:0}
+  .stage{flex:1; position:relative; min-width:0}
+  svg{width:100%; height:100%; display:block}
+  .empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; text-align:center; padding:30px; color:var(--muted)}
+  .empty h2{color:var(--text); font-weight:600; margin:0; font-size:18px}
+  .empty code{background:rgba(255,255,255,.06); padding:2px 7px; border-radius:6px; font-size:12px}
+  .empty a{color:var(--owner)}
+
+  /* sidebar */
+  .sidebar{width:360px; flex-shrink:0; border-left:1px solid var(--panel-b);
+    background:linear-gradient(180deg,rgba(13,19,40,.55),rgba(13,19,40,.85)); display:flex; flex-direction:column; min-height:0}
+  .sec{padding:13px 15px; border-bottom:1px solid var(--panel-b); overflow-y:auto}
+  .sec h2{font-size:11px; text-transform:uppercase; letter-spacing:1.1px; color:var(--faint); margin:0 0 9px; display:flex; align-items:center; gap:7px}
+  #detail{flex:0 0 auto; max-height:54%}
+  #feed{flex:1}
+  .scroll::-webkit-scrollbar{width:8px}
+  .scroll::-webkit-scrollbar-thumb{background:rgba(120,150,220,.25); border-radius:8px}
+  .rt{font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px}
+  .chip{display:inline-block; font-size:10.5px; padding:2px 8px; border-radius:20px; margin:2px 4px 2px 0; font-weight:600}
+  .stat{display:inline-flex; gap:5px; align-items:center; font-size:12px; color:var(--muted); margin:3px 12px 3px 0}
+  .stat b{color:var(--text)}
+  .barrow{display:flex; align-items:center; gap:8px; font-size:11.5px; margin:3px 0}
+  .barrow .nm{width:74px; color:var(--muted)}
+  .bar{flex:1; height:7px; border-radius:6px; background:rgba(255,255,255,.06); overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--stack)}
+  .row{display:flex; align-items:center; gap:8px; font-size:12.5px; padding:6px 7px; border-radius:8px; background:rgba(255,255,255,.025); margin:5px 0}
+  .row .grw{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row a{color:var(--text); text-decoration:none}
+  .row a:hover{color:var(--owner)}
+  .ci{width:9px;height:9px;border-radius:50%; flex-shrink:0}
+  .muted{color:var(--muted)} .faint{color:var(--faint); font-size:11.5px}
+  .hint{font-size:12.5px; color:var(--faint); line-height:1.5}
+  .agnode{display:flex; align-items:center; gap:7px; padding:5px 8px; border-radius:8px; margin:4px 0; background:rgba(255,255,255,.03); font-size:12.5px}
+  .agnode .ic{width:18px;text-align:center}
+
+  /* graph nodes */
+  .gnode{cursor:pointer}
+  .gnode .box{transition:filter .25s, stroke-width .2s}
+  .gnode:hover .box{filter:drop-shadow(0 0 9px currentColor)}
+  .gnode.sel .box{stroke-width:3px}
+  .gnode .t1{font-size:14px; font-weight:600; fill:var(--text); pointer-events:none}
+  .gnode .t2{font-size:10.5px; fill:var(--muted); pointer-events:none}
+  .gedge{fill:none; stroke:rgba(140,165,220,.20); stroke-width:1.5}
+  .gedge.live{stroke:rgba(167,139,250,.5); stroke-width:2}
+  .pk{pointer-events:none}
+
+  footer{display:flex; gap:20px; flex-wrap:wrap; padding:8px 18px; font-size:11.5px; border-top:1px solid var(--panel-b); background:rgba(11,16,32,.7); color:var(--muted)}
+  .key{display:inline-flex; align-items:center; gap:6px}
+  .sw{width:12px;height:12px;border-radius:4px;border:1.5px solid #fff3}
+  .dot{width:10px;height:10px;border-radius:50%}
+  #tip{position:fixed; pointer-events:none; z-index:60; max-width:260px; background:rgba(8,13,28,.97);
+    border:1px solid var(--panel-b); border-radius:9px; padding:8px 11px; font-size:12px; opacity:0; transition:opacity .12s; box-shadow:0 8px 30px #0009}
+  #tip .tt{font-weight:600; margin-bottom:3px}
+  #tip .td{color:var(--muted); line-height:1.4}
+  .spin{width:14px;height:14px;border:2px solid #fff3;border-top-color:var(--owner);border-radius:50%;display:inline-block;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  /* pan / zoom */
+  svg{cursor:grab} svg.grabbing{cursor:grabbing}
+  .viewctl{position:absolute; left:14px; bottom:14px; display:flex; gap:5px; z-index:6;
+    background:rgba(8,13,28,.72); border:1px solid var(--panel-b); border-radius:11px; padding:6px; backdrop-filter:blur(6px)}
+  .viewctl button{width:33px; height:33px; padding:0; font-size:16px; border-radius:8px; background:var(--panel);
+    color:var(--text); border:1px solid var(--panel-b); cursor:pointer; transition:.15s; display:flex; align-items:center; justify-content:center}
+  .viewctl button:hover{border-color:#5b82ff; background:rgba(40,60,110,.85)}
+  .viewctl .zlevel{min-width:46px; display:flex; align-items:center; justify-content:center; font-size:11.5px; color:var(--muted)}
+  .navhint{position:absolute; right:14px; bottom:14px; z-index:6; font-size:11px; color:var(--faint);
+    background:rgba(8,13,28,.62); border:1px solid var(--panel-b); padding:5px 10px; border-radius:8px}
+  /* botón para abrir apps integradas (topología, etc.) */
+  .appbtn{display:inline-flex; align-items:center; gap:7px; margin-top:10px; padding:9px 14px; border-radius:9px;
+    font-size:13px; font-weight:600; text-decoration:none; color:#fff; background:linear-gradient(135deg,#7c3aed,#2563eb)}
+  .appbtn:hover{filter:brightness(1.12)}
+  .delbtn{margin-left:auto; background:rgba(239,68,68,.12); color:#fda4af; border:1px solid rgba(239,68,68,.4);
+    border-radius:7px; padding:3px 8px; font-size:12px; cursor:pointer; transition:.15s}
+  .delbtn:hover{background:rgba(239,68,68,.28); color:#fff}
+  .delall{background:rgba(239,68,68,.14); color:#fda4af; border:1px solid rgba(239,68,68,.45); border-radius:8px;
+    padding:6px 11px; font-size:12.5px; cursor:pointer; width:100%; margin:4px 0 6px}
+  .delall:hover{background:rgba(239,68,68,.3); color:#fff}
+  .seelink{display:inline-flex; align-items:center; gap:5px; margin-top:2px; padding:4px 10px; border-radius:7px;
+    font-size:12px; font-weight:600; text-decoration:none; color:#bae6fd; background:rgba(56,189,248,.14); border:1px solid rgba(56,189,248,.4)}
+  .seelink:hover{background:rgba(56,189,248,.3); color:#fff}
+  .livebtn{display:inline-flex; align-items:center; gap:7px; margin-top:10px; margin-left:8px; padding:9px 14px; border-radius:9px;
+    font-size:13px; font-weight:600; text-decoration:none; color:#06281f; background:linear-gradient(135deg,#34d399,#10b981)}
+  .livebtn:hover{filter:brightness(1.1)}
+  #platforms{flex:0 0 auto; max-height:30%}
+  #detail{max-height:46% !important}
+  .plat{display:flex; align-items:center; gap:8px; padding:9px 11px; margin:5px 0; border-radius:9px; text-decoration:none;
+    background:rgba(52,211,153,.10); border:1px solid rgba(52,211,153,.3); color:var(--text)}
+  .plat:hover{background:rgba(52,211,153,.2)}
+  .plat .grw{flex:1; min-width:0}
+  .plattag{font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px; white-space:nowrap}
+  .plattag.live{background:rgba(52,211,153,.2); color:#6ee7b7}
+  .plattag.prev{background:rgba(56,189,248,.18); color:#7dd3fc}
+  .plattag.down{background:rgba(239,68,68,.18); color:#fca5a5}
+  .plattag.check{background:rgba(148,163,184,.18); color:#cbd5e1}
+  details > summary{list-style:none} details > summary::-webkit-details-marker{display:none}
+  details > summary:before{content:"▸ "; color:var(--faint)} details[open] > summary:before{content:"▾ "}
+  #toggleInactive.on{border-color:var(--ccagent); box-shadow:0 0 0 1px var(--ccagent) inset}
+  @media (max-width:900px){ main{flex-direction:column} .sidebar{width:auto; max-height:40vh; border-left:none; border-top:1px solid var(--panel-b)} }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🛰️</div>
+  <div>
+    <h1>Centro de Mando</h1>
+    <div class="sub">Agentes de Claude Code · Agentes internos · Proyectos · Repos — en vivo</div>
+  </div>
+  <div class="grow"></div>
+  <input id="owner" class="f" style="width:170px" placeholder="usuario/org" autocomplete="off">
+  <input id="token" class="f" style="width:180px" type="password" placeholder="GitHub token (ghp_…)" autocomplete="off">
+  <button id="connect" class="f go">⚡ Conectar</button>
+  <button id="refresh" class="f" title="Actualizar ahora">↻</button>
+  <button id="autobtn" class="f" title="Auto-actualizar cada 60s">⏱ Auto</button>
+  <button id="toggleInactive" class="f" title="Mostrar u ocultar las ramas inactivas (sesiones anteriores)">🌿 Inactivas: ocultas</button>
+  <button id="logout" class="f" title="Cerrar sesión y olvidar el token" style="display:none">🚪 Salir</button>
+  <span id="status" class="pill"><span class="dotled" id="led"></span><span id="statusTxt">Sin conectar</span></span>
+</header>
+
+<main>
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+      <g id="viewport">
+        <g id="edges"></g><g id="flow"></g><g id="nodes"></g>
+      </g>
+    </svg>
+    <div class="viewctl">
+      <button id="panL" title="Mover a la izquierda (←)">◀</button>
+      <button id="zoomOut" title="Alejar (−)">−</button>
+      <span class="zlevel" id="zlevel">100%</span>
+      <button id="zoomIn" title="Acercar (+)">+</button>
+      <button id="panR" title="Mover a la derecha (→)">▶</button>
+      <button id="fitView" title="Ajustar el árbol a la pantalla (F)">⤢</button>
+      <button id="resetView" title="Centrar y restablecer zoom (0)">⟲</button>
+    </div>
+    <div class="navhint">🖱️ Arrastra para mover · rueda para zoom · ← → ↑ ↓ teclas</div>
+    <div class="empty" id="empty">
+      <h2>🔐 Conecta tu cuenta de GitHub</h2>
+      <div class="hint" style="max-width:520px">
+        Introduce tu <b>usuario u organización</b> y un <b>Personal Access Token</b> (de solo lectura).
+        El token <b>se queda en tu navegador</b> (localStorage) — nunca se sube al repo.<br><br>
+        Crea uno en <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>
+        con permiso <code>repo</code> (o <code>public_repo</code> si solo son públicos) y <code>read:org</code>.
+      </div>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sec scroll" id="platforms">
+      <h2>🌐 Plataformas en vivo</h2>
+      <div class="hint">Conéctate y aquí saldrán enlaces directos a todas tus apps publicadas.</div>
+    </div>
+    <div class="sec scroll" id="detail">
+      <h2>📦 Detalle</h2>
+      <div class="hint">Haz clic en un <b>repo</b> para ver su stack en vivo, sus agentes internos y los agentes de Claude Code (ramas <code>claude/*</code>) que trabajan en él, con estado de CI y PRs.</div>
+    </div>
+    <div class="sec scroll" id="feed">
+      <h2>📡 Actividad reciente</h2>
+      <div class="hint">Commits y PRs de todos tus repos aparecerán aquí en cuanto conectes.</div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span class="key"><span class="sw" style="background:var(--owner)"></span>Cuenta</span>
+  <span class="key"><span class="sw" style="background:var(--repo)"></span>Repo / proyecto</span>
+  <span class="key"><span class="sw" style="background:var(--ccagent)"></span>Agente Claude Code (rama)</span>
+  <span class="key"><span class="sw" style="background:var(--intagent)"></span>Agente interno de la app</span>
+  <span class="grow"></span>
+  <span class="key"><span class="dot" style="background:var(--ok)"></span>CI ok</span>
+  <span class="key"><span class="dot" style="background:var(--run)"></span>CI en curso</span>
+  <span class="key"><span class="dot" style="background:var(--fail)"></span>CI fallo</span>
+  <span class="key"><span class="dot" style="background:var(--idle)"></span>Sin CI</span>
+</footer>
+
+<div id="tip"><div class="tt"></div><div class="td"></div></div>
+
+<script>
+/* ============ Registro de agentes internos por repo (curado) ============ */
+const INTERNAL = {
+  'patrickvilagenis': { app:'Asistente Pro', nodes:[
+    {ic:'🧭', label:'App · Orquestador (customtkinter)'},
+    {ic:'🔌', label:'GraphClient — MSAL + REST a Microsoft Graph'},
+    {ic:'🤖', label:'AIClient — Claude API (resumen, actas, plan)'},
+    {ic:'🗃', label:'SQLite (asistente.db) — tareas y actas'},
+    {ic:'🗂', label:'config.json — claves y ajustes'},
+    {ic:'☁️', label:'Microsoft Graph · Azure AD (externos)'},
+    {ic:'🧠', label:'Claude API · Anthropic (externo)'},
+  ]},
+  'Claude-Code-Duolingo': { app:'Claude Code Duolingo', nodes:[
+    {ic:'🖥️', label:'Frontend e-learning (JavaScript)'},
+    {ic:'🎯', label:'Motor de lecciones / progreso'},
+    {ic:'🧠', label:'Claude API — contenido y feedback (si aplica)'},
+  ]},
+};
+
+/* ============ Apps integradas (visualizaciones/herramientas por repo) ============
+   Patrón reutilizable: para añadir una nueva app a un repo, registra aquí
+   { repo: { title, url, icon } }. La url es relativa a este archivo (misma carpeta
+   docs/) y se abre en una pestaña nueva, preservando el estado del Centro de Mando. */
+const APPS = {
+  'patrickvilagenis': { title:'Asistente Pro — Topología del sistema', url:'arquitectura.html', icon:'🧭' },
+};
+
+/* ============ Estado ============ */
+const S = { token:'', owner:'', repos:[], byName:{}, selected:null, rate:'' };
+const WEB = {};                      // caché: "repo|rama" -> {url, title} de la web que construyó esa rama
+const PAGES = {};                    // caché: "repo" -> url del sitio publicado en GitHub Pages (o null)
+const encRef = b => b.split('/').map(encodeURIComponent).join('/');  // codifica rama conservando las /
+let showInactive = false;            // por defecto solo se ven las ramas activas (con PR)
+let firstFit = false;                // para ajustar a pantalla solo en la primera carga
+const view = { tx:0, ty:0, k:1 };    // pan (tx,ty en coords del viewBox) y zoom (k)
+const $ = s => document.querySelector(s);
+const svgEl=$('#svg'), viewport=$('#viewport');
+const elEdges=$('#edges'), elFlow=$('#flow'), elNodes=$('#nodes'), SVGNS='http://www.w3.org/2000/svg';
+
+// restaurar de localStorage
+S.token = localStorage.getItem('cm_token') || '';
+S.owner = localStorage.getItem('cm_owner') || 'patrickvilagenis-collab';
+$('#owner').value = S.owner; $('#token').value = S.token;
+
+/* ============ Cliente GitHub ============ */
+async function gh(path){
+  const res = await fetch('https://api.github.com'+path, {
+    headers:{ 'Authorization':'Bearer '+S.token, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' }
+  });
+  const rem = res.headers.get('x-ratelimit-remaining');
+  if(rem!==null) S.rate = rem+' llamadas restantes';
+  if(res.status===401) throw new Error('Token inválido o sin permisos (401).');
+  if(res.status===403){ throw new Error('Límite de API o acceso denegado (403). '+(S.rate||'')); }
+  if(res.status===404) return null;
+  if(!res.ok) throw new Error('GitHub '+res.status);
+  return res.json();
+}
+
+async function listRepos(){
+  // intenta como usuario, luego como org, luego búsqueda
+  let r = await gh(`/users/${S.owner}/repos?per_page=100&sort=updated&type=owner`);
+  if(r && r.length) return r;
+  r = await gh(`/orgs/${S.owner}/repos?per_page=100&sort=updated`);
+  if(r && r.length) return r;
+  const s = await gh(`/search/repositories?q=user:${encodeURIComponent(S.owner)}&per_page=100`);
+  return (s && s.items) || [];
+}
+
+function setStatus(txt, color){ $('#statusTxt').textContent=txt; $('#led').style.background=color||'var(--idle)'; }
+
+async function loadAll(){
+  if(!S.token || !S.owner){ setStatus('Faltan datos', 'var(--fail)'); return; }
+  setStatus('Cargando…','var(--run)'); $('#statusTxt').innerHTML='<span class="spin"></span> Cargando…';
+  try{
+    const repos = await listRepos();
+    if(!repos.length){ setStatus('Sin repos','var(--idle)'); return; }
+    // por repo: ramas, PRs, commits, runs CI, lenguajes (en paralelo)
+    await Promise.all(repos.map(async repo=>{
+      const o=S.owner, n=repo.name;
+      const [branches, pulls, commits, runs, langs] = await Promise.all([
+        gh(`/repos/${o}/${n}/branches?per_page=100`).catch(()=>[]),
+        gh(`/repos/${o}/${n}/pulls?state=open&per_page=50`).catch(()=>[]),
+        gh(`/repos/${o}/${n}/commits?per_page=8`).catch(()=>[]),
+        gh(`/repos/${o}/${n}/actions/runs?per_page=20`).catch(()=>null),
+        gh(`/repos/${o}/${n}/languages`).catch(()=>({})),
+      ]);
+      repo._branches = branches||[];
+      repo._pulls = pulls||[];
+      repo._commits = commits||[];
+      repo._langs = langs||{};
+      // CI por rama: última run por head_branch
+      const ciByBranch={};
+      ((runs&&runs.workflow_runs)||[]).forEach(run=>{
+        const b=run.head_branch; if(!ciByBranch[b]) ciByBranch[b]={status:run.status, conclusion:run.conclusion, url:run.html_url};
+      });
+      repo._ci = ciByBranch;
+      // Qué hace cada agente: último commit de cada rama claude/* (y heads de PR)
+      const agentBr=[]; (branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) agentBr.push(b.name); });
+      (pulls||[]).forEach(p=>{ const rf=p.head&&p.head.ref; if(rf&&!agentBr.includes(rf)) agentBr.push(rf); });
+      if(repo.default_branch && !agentBr.includes(repo.default_branch)) agentBr.push(repo.default_branch);
+      const bc={};
+      await Promise.all(agentBr.slice(0,16).map(async bn=>{
+        const c = await gh(`/repos/${o}/${n}/commits?sha=${encRef(bn)}&per_page=1`).catch(()=>null);
+        if(c&&c[0]) bc[bn]={message:c[0].commit.message, date:c[0].commit.author.date,
+          author:(c[0].author&&c[0].author.login)||c[0].commit.author.name||'', url:c[0].html_url};
+        // ¿esta rama construyó una web? (index.html en la raíz) → enlace para verla + título
+        const key=n+'|'+bn;
+        if(WEB[key]===undefined){
+          let web=null;
+          const root = await gh(`/repos/${o}/${n}/contents?ref=${encRef(bn)}`).catch(()=>null);
+          if(Array.isArray(root)){
+            const idx = root.find(f=>f.type==='file' && /^index\.html?$/i.test(f.name));
+            if(idx){
+              let title='';
+              try{ const raw=await fetch(idx.download_url); if(raw.ok){ const m=(await raw.text()).match(/<title[^>]*>([^<]+)<\/title>/i); if(m) title=m[1].trim(); } }catch(e){}
+              web={ url:`https://htmlpreview.github.io/?https://github.com/${o}/${n}/blob/${encRef(bn)}/${idx.name}`, title };
+            }
+          }
+          WEB[key]=web;
+        }
+      }));
+      repo._branchCommit=bc;
+      // Descripción del proyecto desde el README
+      const rd = await gh(`/repos/${o}/${n}/readme`).catch(()=>null);
+      repo._readme = rd&&rd.content ? readmeBlurb(decodeB64(rd.content)) : '';
+      // ¿el repo tiene un sitio publicado en GitHub Pages?
+      if(PAGES[n]===undefined){ const pg = await gh(`/repos/${o}/${n}/pages`).catch(()=>null); PAGES[n] = pg&&pg.html_url ? pg.html_url : null; }
+      repo._pages = PAGES[n];
+    }));
+    S.repos = repos; S.byName = Object.fromEntries(repos.map(r=>[r.name,r]));
+    setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
+    $('#empty').style.display='none'; $('#logout').style.display='inline-flex';
+    render(); renderFeed(); renderPlatforms();
+    checkAllLive();   // comprueba en 2º plano si cada plataforma responde
+    if(!firstFit){ firstFit=true; requestAnimationFrame(fitView); }   // ajustar a pantalla la 1ª vez
+    if(S.selected && S.byName[S.selected]) renderDetail(S.selected);
+  }catch(e){
+    setStatus(e.message,'var(--fail)');
+    console.error(e);
+  }
+}
+
+/* ============ Helpers de estado CI ============ */
+function ciColor(ci){
+  if(!ci) return 'var(--idle)';
+  if(ci.status && ci.status!=='completed') return 'var(--run)';
+  if(ci.conclusion==='success') return 'var(--ok)';
+  if(ci.conclusion==='failure'||ci.conclusion==='timed_out') return 'var(--fail)';
+  return 'var(--idle)';
+}
+// agentes de Claude Code = ramas claude/* (unión con ramas que tienen PR abierto)
+function ccAgents(repo){
+  const map={};
+  (repo._branches||[]).forEach(b=>{ if(b.name.startsWith('claude/')) map[b.name]={branch:b.name}; });
+  (repo._pulls||[]).forEach(p=>{ const b=p.head&&p.head.ref; if(b){ map[b]=map[b]||{branch:b}; map[b].pr=p; } });
+  return Object.values(map).map(a=>({...a, ci:repo._ci[a.branch], commit:(repo._branchCommit||{})[a.branch], web:WEB[repo.name+'|'+a.branch]}))
+    // primero los activos (con PR), luego por fecha de último commit
+    .sort((a,b)=> (b.pr?1:0)-(a.pr?1:0) || new Date((b.commit&&b.commit.date)||0)-new Date((a.commit&&a.commit.date)||0));
+}
+// "A qué se dedica" un agente: el título de su PR, o el asunto de su último commit
+function agentTask(a){
+  if(a.pr) return a.pr.title;
+  if(a.commit) return a.commit.message.split('\n')[0];
+  return 'Rama de agente Claude Code (sin actividad reciente)';
+}
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function decodeB64(b64){ try{ return decodeURIComponent(escape(atob((b64||'').replace(/\s/g,'')))); }catch(e){ try{return atob((b64||'').replace(/\s/g,''));}catch(_){return '';} } }
+function readmeBlurb(md){
+  if(!md) return '';
+  const out=[];
+  for(let l of md.split('\n')){
+    l=l.trim();
+    if(!l){ if(out.length) break; else continue; }
+    if(/^(#|!\[|<|---|=== |\| |```|> )/.test(l)) continue;   // saltar títulos, imágenes, tablas, html
+    out.push(l.replace(/[*_`#>\[\]]/g,'').replace(/\(http[^)]*\)/g,''));
+    if(out.join(' ').length>220) break;
+  }
+  return out.join(' ').slice(0,280);
+}
+function timeAgo(iso){
+  if(!iso) return '';
+  const s=(Date.now()-new Date(iso))/1000;
+  if(s<60) return 'hace '+Math.floor(s)+'s';
+  if(s<3600) return 'hace '+Math.floor(s/60)+'m';
+  if(s<86400) return 'hace '+Math.floor(s/3600)+'h';
+  return 'hace '+Math.floor(s/86400)+'d';
+}
+
+/* ============ Render del grafo (constelación) ============ */
+let liveEdges=[];
+function node(g,x,y,w,h,col,t1,t2,onClick,tip){
+  const grp=document.createElementNS(SVGNS,'g'); grp.setAttribute('class','gnode'); grp.style.color=col;
+  grp.setAttribute('transform',`translate(${x-w/2},${y-h/2})`);
+  const box=document.createElementNS(SVGNS,'rect'); box.setAttribute('class','box');
+  box.setAttribute('width',w); box.setAttribute('height',h); box.setAttribute('rx',13);
+  box.setAttribute('fill','rgba(16,24,46,.92)'); box.setAttribute('stroke',col); box.setAttribute('stroke-width',1.8);
+  grp.appendChild(box);
+  const a=document.createElementNS(SVGNS,'text'); a.setAttribute('class','t1'); a.setAttribute('x',14); a.setAttribute('y',t2?h/2-3:h/2+5); a.textContent=t1; grp.appendChild(a);
+  if(t2){ const b=document.createElementNS(SVGNS,'text'); b.setAttribute('class','t2'); b.setAttribute('x',14); b.setAttribute('y',h/2+13); b.textContent=t2; grp.appendChild(b); }
+  if(onClick) grp.addEventListener('click',e=>{ if(pan.moved) return; onClick(e); });  // no seleccionar si se arrastró
+  if(tip){ grp.addEventListener('mousemove',e=>showTip(e,tip[0],tip[1])); grp.addEventListener('mouseleave',hideTip); }
+  g.appendChild(grp); return grp;
+}
+function edge(x1,y1,x2,y2,live){
+  const cx=(x1+x2)/2, cy=(y1+y2)/2-30;
+  const p=document.createElementNS(SVGNS,'path');
+  p.setAttribute('d',`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+  p.setAttribute('class','gedge'+(live?' live':'')); elEdges.appendChild(p);
+  liveEdges.push({x1,y1,cx,cy,x2,y2,live});
+}
+
+function render(){
+  elEdges.innerHTML=''; elNodes.innerHTML=''; liveEdges=[];
+  const W=1600, ownerX=W/2, ownerY=80;
+  node(elNodes, ownerX, ownerY, 250, 60, 'var(--owner)', '👤 '+S.owner, S.repos.length+' repos', null,
+       ['👤 '+S.owner, 'Cuenta de GitHub · '+S.repos.length+' repositorios']);
+
+  const repos=S.repos; const n=repos.length;
+  const span=Math.min(1380, 360*Math.max(1,n)); const startX=ownerX-span/2 + span/(2*n);
+  repos.forEach((repo,i)=>{
+    const rx = n===1?ownerX : startX + i*(span/n);
+    const ry = 300;
+    const allAgents=ccAgents(repo);
+    const activeAg=allAgents.filter(a=>a.pr), inactiveAg=allAgents.filter(a=>!a.pr);
+    // por defecto solo ramas activas; el desplegable/botón muestra también las inactivas
+    const agents = showInactive ? allAgents : activeAg;
+    const recent = repo._commits[0] && (Date.now()-new Date(repo._commits[0].commit.author.date) < 36e5*48);
+    edge(ownerX, ownerY+30, rx, ry-26, recent || allAgents.length>0);
+    const lang = repo.language||Object.keys(repo._langs||{})[0]||'—';
+    const online = !!repo._pages;   // tiene sitio publicado en GitHub Pages
+    const previewable = !online && !!WEB[repo.name+'|'+repo.default_branch];
+    const st = online ? LIVE[repo._pages] : null;          // 'up' | 'down' | undefined(comprobando)
+    const badge = online ? (st==='up'?{t:'🟢 online',c:'#6ee7b7'}:st==='down'?{t:'🔴 sin respuesta',c:'#fca5a5'}:{t:'⏳ …',c:'#cbd5e1'})
+                  : previewable ? {t:'👁 preview',c:'#7dd3fc'} : null;
+    const tipPub = online ? ' · '+(st==='up'?'🟢 online (responde)':st==='down'?'🔴 publicada pero no responde':'⏳ comprobando…') : (previewable?' · 👁 web (preview)':'');
+    const grp=node(elNodes, rx, ry, 230, 64, 'var(--repo)', '📦 '+repo.name, lang+' · '+(repo.open_issues_count||0)+' issues',
+      ()=>selectRepo(repo.name), ['📦 '+repo.name, (repo.description||'Proyecto')+' · '+repo._branches.length+' ramas · '+repo._pulls.length+' PRs'+tipPub]);
+    if(S.selected===repo.name) grp.classList.add('sel');
+    if(badge){
+      const bdg=document.createElementNS(SVGNS,'text');
+      bdg.setAttribute('x',230-12); bdg.setAttribute('y',16); bdg.setAttribute('text-anchor','end');
+      bdg.setAttribute('font-size',10.5); bdg.setAttribute('font-weight','700');
+      bdg.setAttribute('fill', badge.c); bdg.style.pointerEvents='none';
+      bdg.textContent = badge.t;
+      grp.appendChild(bdg);
+    }
+
+    // agentes de Claude Code (ramas) bajo el repo
+    const show=agents.slice(0,5);
+    show.forEach((ag,j)=>{
+      const ax = rx + (j-(show.length-1)/2)*150;
+      const ay = 470 + (j%2)*70;
+      edge(rx, ry+26, ax, ay-22, true);
+      const short = ag.branch.replace(/^claude\//,'').slice(0,16);
+      const col='var(--ccagent)';
+      const subA = ag.pr ? ('🟢 PR #'+ag.pr.number) : (ag.commit ? timeAgo(ag.commit.date) : 'rama');
+      const grpA=node(elNodes, ax, ay, 168, 50, col, '🤖 '+short, subA,
+        ()=>selectRepo(repo.name),
+        ['🤖 '+ag.branch+(ag.pr?'  (activo · PR #'+ag.pr.number+')':'  (rama de sesión anterior)'), '🎯 '+agentTask(ag)]);
+      // dot CI
+      const dc=document.createElementNS(SVGNS,'circle'); dc.setAttribute('cx',152); dc.setAttribute('cy',13); dc.setAttribute('r',5);
+      dc.setAttribute('fill',ciColor(ag.ci)); dc.setAttribute('stroke','#0008'); grpA.appendChild(dc);
+    });
+    if(agents.length>show.length){
+      const ax=rx, ay=620;
+      node(elNodes, ax, ay, 140, 40, 'var(--faint)', '+'+(agents.length-show.length)+' más', '', ()=>selectRepo(repo.name));
+    }
+    // nodo desplegable: muestra cuántas ramas inactivas hay ocultas; clic = mostrarlas
+    if(!showInactive && inactiveAg.length){
+      const ax=rx, ay = activeAg.length? 620 : 470;
+      edge(rx, ry+26, ax, ay-20, false);
+      node(elNodes, ax, ay, 178, 44, 'var(--faint)', '🌿 +'+inactiveAg.length+' inactivas', 'clic para mostrar',
+        ()=>{ showInactive=true; syncInactiveBtn(); render(); if(S.selected)renderDetail(S.selected); });
+    }
+    if(allAgents.length===0){
+      const ax=rx, ay=470;
+      edge(rx, ry+26, ax, ay-20, false);
+      node(elNodes, ax, ay, 160, 44, 'var(--idle)', '· sin agentes', '', ()=>selectRepo(repo.name));
+    }
+  });
+  regenParticles();
+}
+
+/* ============ Partículas (flujo en vivo) ============ */
+let particles=[];
+function regenParticles(){
+  particles=[];
+  liveEdges.forEach((e,idx)=>{
+    if(!e.live) return;
+    const count=2;
+    for(let k=0;k<count;k++) particles.push({e, t:k/count, sp:0.18+Math.random()*0.12});
+  });
+}
+function qbez(e,t){ const u=1-t; return { x:u*u*e.x1+2*u*t*e.cx+t*t*e.x2, y:u*u*e.y1+2*u*t*e.cy+t*t*e.y2 }; }
+let last=performance.now();
+function loop(now){
+  const dt=Math.min((now-last)/1000,0.05); last=now;
+  let html='';
+  particles.forEach(p=>{ p.t+=dt*p.sp; if(p.t>1)p.t-=1; const pt=qbez(p.e,p.t);
+    html+=`<circle class="pk" cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="3.5" fill="#a78bfa" opacity="0.9"/>`; });
+  elFlow.innerHTML=html;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ============ Selección + detalle ============ */
+function selectRepo(name){ S.selected=name; render(); renderDetail(name); }
+function langBars(langs){
+  const total=Object.values(langs).reduce((a,b)=>a+b,0)||1;
+  return Object.entries(langs).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([k,v])=>
+    `<div class="barrow"><span class="nm">${k}</span><span class="bar"><i style="width:${(v/total*100).toFixed(0)}%"></i></span><span class="faint">${(v/total*100).toFixed(0)}%</span></div>`).join('');
+}
+function renderDetail(name){
+  const r=S.byName[name]; if(!r) return;
+  const agents=ccAgents(r);
+  const intern = INTERNAL[name];
+  const internHtml = intern
+    ? `<div class="faint" style="margin:2px 0 6px">App: <b style="color:var(--text)">${intern.app}</b></div>`+
+      intern.nodes.map(x=>`<div class="agnode" style="border-left:3px solid var(--intagent)"><span class="ic">${x.ic}</span><span class="grw">${x.label}</span></div>`).join('')
+    : `<div class="hint">Arquitectura interna no mapeada — se muestra el stack real (lenguajes) arriba.</div>`;
+  const activeAg = agents.filter(a=>a.pr), inactiveAg = agents.filter(a=>!a.pr);
+  const agInfo = `<div class="hint" style="margin-bottom:7px">Cada agente es una <b>sesión de Claude Code</b> que trabajó en una <b>rama</b> de <u>este mismo proyecto</u> (no son apps distintas). <b style="color:var(--ok)">🟢 Activo</b> = tiene un PR abierto en revisión; el resto son <b>ramas de sesiones anteriores</b>.</div>`;
+  const isDefault = a => a.branch===r.default_branch;
+  const agCard = a=>{
+      const when = a.pr ? timeAgo(a.pr.updated_at) : (a.commit ? timeAgo(a.commit.date) : '');
+      const tag = a.pr
+        ? `<span class="chip" style="background:var(--ok)22;color:var(--ok);border:1px solid var(--ok)55">🟢 activo · <a href="${a.pr.html_url}" target="_blank" style="color:var(--ok)">PR #${a.pr.number}</a></span>`
+        : '<span class="faint">rama de sesión anterior</span>';
+      // solo se pueden borrar ramas inactivas (sin PR) y que no sean la rama principal
+      const canDelete = !a.pr && !isDefault(a);
+      const right = canDelete
+        ? `<button class="delbtn" title="Borrar esta rama inactiva" onclick='event.stopPropagation();__cmDel(${JSON.stringify(name)},${JSON.stringify(a.branch)})'>🗑 Borrar</button>`
+        : (isDefault(a) ? '<span class="faint" title="Rama principal — protegida" style="margin-left:auto">🔒 principal</span>' : '');
+      return `<div class="row" style="flex-direction:column; align-items:stretch; gap:4px">
+        <div style="display:flex; align-items:center; gap:7px">
+          <span class="ci" style="background:${ciColor(a.ci)}"></span>
+          <a class="grw" href="https://github.com/${S.owner}/${name}/tree/${encodeURIComponent(a.branch)}" target="_blank">🤖 ${esc(a.branch.replace(/^claude\//,''))}</a>
+          ${tag}${right}
+        </div>
+        <div class="faint" style="padding-left:16px; white-space:normal; line-height:1.4">
+          🎯 <b style="color:var(--muted)">${esc(agentTask(a)).slice(0,110)}</b>${when?` · <span style="color:var(--faint)">${when}</span>`:''}
+        </div>
+        ${a.web?`<div style="padding-left:16px"><a class="seelink" href="${a.web.url}" target="_blank" rel="noopener">👁️ Ver la plataforma${a.web.title?': '+esc(a.web.title.slice(0,40)):''} ↗</a></div>`:''}
+      </div>`; };
+  const delCount = inactiveAg.filter(a=>!isDefault(a)).length;
+  const bulkBtn = delCount>1
+    ? `<button class="delall" onclick='__cmDelAll(${JSON.stringify(name)})'>🗑 Borrar las ${delCount} ramas inactivas</button>` : '';
+  const agHtml = agInfo
+    + (activeAg.length ? activeAg.map(agCard).join('') : '<div class="hint">Ningún agente activo (con PR) ahora mismo.</div>')
+    + (inactiveAg.length
+        ? `<details ${showInactive?'open':''} style="margin-top:6px"><summary style="cursor:pointer; color:var(--muted); font-size:12.5px; padding:6px 0">🌿 ${inactiveAg.length} ramas inactivas (sesiones anteriores)</summary>${bulkBtn}${inactiveAg.map(agCard).join('')}</details>`
+        : '');
+  const nTotal = agents.length, nActive = activeAg.length;
+  const app = APPS[name];
+  const appBtn = app ? `<a class="appbtn" href="${app.url}" target="_blank" rel="noopener">${app.icon} Abrir ${esc(app.title)} ↗</a>` : '';
+  const liveUrl = r._pages || (WEB[name+'|'+r.default_branch]||{}).url || '';
+  const liveBtn = liveUrl ? `<a class="livebtn" href="${liveUrl}" target="_blank" rel="noopener">🌐 ${r._pages?'Abrir plataforma publicada':'Ver la web (preview)'} ↗</a>` : '';
+  const commitsHtml = (r._commits||[]).slice(0,5).map(c=>`
+      <div class="row"><span class="grw"><a href="${c.html_url}" target="_blank">${esc(c.commit.message.split('\n')[0]).slice(0,52)}</a></span>
+      <span class="faint">${timeAgo(c.commit.author.date)}</span></div>`).join('') || '<div class="hint">Sin commits recientes.</div>';
+
+  $('#detail').innerHTML = `
+    <h2>📦 ${name}</h2>
+    <div class="rt">${r.description||'Proyecto'}</div>
+    <div style="margin:8px 0">
+      <span class="chip" style="background:var(--repo)22;color:var(--repo);border:1px solid var(--repo)55">${r.language||'—'}</span>
+      <span class="chip" style="background:#ffffff10">${r.default_branch}</span>
+      ${r.private?'<span class="chip" style="background:#ffffff10">privado</span>':''}
+    </div>
+    <div>
+      <span class="stat">⭐ <b>${r.stargazers_count}</b></span>
+      <span class="stat">🌿 <b>${r._branches.length}</b> ramas</span>
+      <span class="stat">🔀 <b>${r._pulls.length}</b> PRs</span>
+      <span class="stat">🐞 <b>${r.open_issues_count}</b> issues</span>
+      <span class="stat">⏱ ${timeAgo(r.updated_at)}</span>
+    </div>
+    <a class="faint" href="${r.html_url}" target="_blank">↗ abrir en GitHub</a>
+    <div>${appBtn}${liveBtn}</div>
+    ${r._readme?`<div class="hint" style="margin-top:10px; padding:9px 11px; background:rgba(255,255,255,.03); border-radius:8px; border-left:3px solid var(--repo)"><b style="color:var(--muted)">ℹ️ Qué es este proyecto:</b> ${esc(r._readme)}…</div>`:'<div class="hint" style="margin-top:10px">Sin README — la descripción detallada de cada agente está más abajo.</div>'}
+
+    <h2 style="margin-top:14px">🧩 Stack en vivo</h2>
+    ${langBars(r._langs||{}) || '<div class="hint">Sin datos de lenguajes.</div>'}
+
+    <h2 style="margin-top:14px">🛠 Agentes internos de la app</h2>
+    ${internHtml}
+
+    <h2 style="margin-top:14px">🤖 Agentes Claude Code · ${nActive} activos / ${agents.length} ramas</h2>
+    ${agHtml}
+
+    <h2 style="margin-top:14px">📝 Últimos commits</h2>
+    ${commitsHtml}`;
+  $('#detail').scrollTop=0;
+}
+
+/* ============ Comprobación de "está online" (ping no-cors) ============ */
+const LIVE = {};   // url -> 'up' | 'down'  (última comprobación)
+function pingUrl(url){
+  return new Promise(resolve=>{
+    let done=false;
+    const to=setTimeout(()=>{ if(!done){ done=true; resolve('down'); } }, 6000);
+    // no-cors: no podemos leer el status, pero si la promesa resuelve es que el servidor respondió
+    fetch(url, {mode:'no-cors', cache:'no-store'})
+      .then(()=>{ if(!done){ done=true; clearTimeout(to); resolve('up'); } })
+      .catch(()=>{ if(!done){ done=true; clearTimeout(to); resolve('down'); } });
+  });
+}
+async function checkAllLive(){
+  const urls=[...new Set(S.repos.filter(r=>r._pages).map(r=>r._pages))];
+  if(!urls.length) return;
+  await Promise.all(urls.map(async u=>{ LIVE[u]=await pingUrl(u); }));
+  render(); renderPlatforms();   // repinta con el estado real
+}
+
+/* ============ Plataformas en vivo (apps publicadas) ============ */
+function platTag(p){
+  if(p.kind!=='live') return '<span class="plattag prev">👁️ preview</span>';
+  if(p.status==='up')   return '<span class="plattag live">🟢 responde</span>';
+  if(p.status==='down') return '<span class="plattag down">🔴 sin respuesta</span>';
+  return '<span class="plattag check">⏳ comprobando…</span>';
+}
+function renderPlatforms(){
+  const live = S.repos.filter(r=>r._pages).map(r=>({name:r.name, url:r._pages, kind:'live', status:LIVE[r._pages], desc:r.description||''}));
+  const prev = S.repos.filter(r=>!r._pages && WEB[r.name+'|'+r.default_branch]).map(r=>({name:r.name, url:WEB[r.name+'|'+r.default_branch].url, kind:'prev', desc:r.description||''}));
+  const all=[...live,...prev];
+  const upN = live.filter(p=>p.status==='up').length;
+  $('#platforms').innerHTML = `<h2>🌐 Plataformas en vivo (${all.length}${live.length?` · ${upN}/${live.length} responden`:''})</h2>` + (all.length ? all.map(p=>`
+    <a class="plat" href="${p.url}" target="_blank" rel="noopener">
+      <span class="grw"><b>${esc(p.name)}</b>${p.desc?`<div class="faint" style="font-weight:400">${esc(p.desc).slice(0,64)}</div>`:''}</span>
+      ${platTag(p)}
+    </a>`).join('') : '<div class="hint">No se han detectado plataformas publicadas (Pages) todavía.</div>');
+}
+
+/* ============ Feed global ============ */
+function renderFeed(){
+  const items=[];
+  S.repos.forEach(r=>{
+    (r._commits||[]).slice(0,4).forEach(c=> items.push({when:c.commit.author.date, kind:'commit', repo:r.name,
+      txt:esc(c.commit.message.split('\n')[0]).slice(0,46), url:c.html_url}));
+    (r._pulls||[]).forEach(p=> items.push({when:p.updated_at, kind:'pr', repo:r.name,
+      txt:'PR #'+p.number+' '+esc(p.title).slice(0,40), url:p.html_url}));
+  });
+  items.sort((a,b)=> new Date(b.when)-new Date(a.when));
+  const ic={commit:'📝', pr:'🔀'};
+  $('#feed').innerHTML = '<h2>📡 Actividad reciente</h2>' + (items.slice(0,24).map(it=>`
+    <div class="row"><span>${ic[it.kind]}</span>
+      <a class="grw" href="${it.url}" target="_blank"><b class="muted">${it.repo}</b> · ${it.txt}</a>
+      <span class="faint">${timeAgo(it.when)}</span></div>`).join('') || '<div class="hint">Sin actividad.</div>');
+}
+
+/* ============ Tooltip ============ */
+const tip=$('#tip');
+function showTip(e,t,d){ tip.querySelector('.tt').textContent=t; tip.querySelector('.td').textContent=d||'';
+  tip.style.opacity=1; let x=e.clientX+14,y=e.clientY+14; if(x+270>innerWidth)x=e.clientX-272; tip.style.left=x+'px'; tip.style.top=y+'px'; }
+function hideTip(){ tip.style.opacity=0; }
+
+/* ============ Pan / Zoom / Navegación ============ */
+const pan = { down:false, moved:false, lx:0, ly:0 };
+const K_MIN=0.35, K_MAX=4;
+function applyView(){
+  viewport.setAttribute('transform', `translate(${view.tx.toFixed(2)},${view.ty.toFixed(2)}) scale(${view.k.toFixed(3)})`);
+  const zl=$('#zlevel'); if(zl) zl.textContent=Math.round(view.k*100)+'%';
+}
+// convierte un punto de pantalla a coordenadas del viewBox (independiente del zoom propio)
+function vbPoint(clientX, clientY){
+  const p=svgEl.createSVGPoint(); p.x=clientX; p.y=clientY;
+  const m=svgEl.getScreenCTM(); return m ? p.matrixTransform(m.inverse()) : {x:clientX,y:clientY};
+}
+// zoom manteniendo fijo el punto (px,py) en coords del viewBox
+function zoomAt(px, py, factor){
+  const k2=Math.max(K_MIN, Math.min(K_MAX, view.k*factor));
+  const wx=(px-view.tx)/view.k, wy=(py-view.ty)/view.k;   // punto en coords "mundo"
+  view.k=k2; view.tx=px-k2*wx; view.ty=py-k2*wy; applyView();
+}
+function zoomCenter(factor){ zoomAt(800,450,factor); }   // centro del viewBox
+function resetView(){ view.tx=0; view.ty=0; view.k=1; applyView(); }
+// ajusta el contenido (bounding box de los nodos) a la pantalla
+function fitView(){
+  let bb; try{ bb=elNodes.getBBox(); }catch(e){ return; }
+  if(!bb || !bb.width){ resetView(); return; }
+  const vbW=1600, vbH=900, pad=50;
+  const k=Math.max(K_MIN, Math.min(K_MAX, Math.min(vbW/(bb.width+pad*2), vbH/(bb.height+pad*2))));
+  view.k=k;
+  view.tx=(vbW-k*bb.width)/2 - k*bb.x;
+  view.ty=(vbH-k*bb.height)/2 - k*bb.y;
+  applyView();
+}
+
+// arrastrar para mover (en cualquier punto del lienzo)
+svgEl.addEventListener('mousedown', e=>{ pan.down=true; pan.moved=false; pan.sx=e.clientX; pan.sy=e.clientY; const p=vbPoint(e.clientX,e.clientY); pan.lx=p.x; pan.ly=p.y; svgEl.classList.add('grabbing'); });
+window.addEventListener('mousemove', e=>{ if(!pan.down) return;
+  if(Math.abs(e.clientX-pan.sx)+Math.abs(e.clientY-pan.sy)>6) pan.moved=true;   // umbral en píxeles reales
+  const p=vbPoint(e.clientX,e.clientY); view.tx+=p.x-pan.lx; view.ty+=p.y-pan.ly; pan.lx=p.x; pan.ly=p.y; applyView(); });
+window.addEventListener('mouseup', ()=>{ pan.down=false; svgEl.classList.remove('grabbing'); setTimeout(()=>pan.moved=false,0); });
+// zoom con rueda, centrado en el cursor
+svgEl.addEventListener('wheel', e=>{ e.preventDefault(); const p=vbPoint(e.clientX,e.clientY); zoomAt(p.x,p.y, e.deltaY<0?1.12:1/1.12); }, {passive:false});
+// teclas de cursor: desplazamiento horizontal/vertical y zoom (cuando no se escribe en un input)
+window.addEventListener('keydown', e=>{
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) return;
+  const step=90;
+  if(e.key==='ArrowLeft'){ view.tx+=step; applyView(); e.preventDefault(); }
+  else if(e.key==='ArrowRight'){ view.tx-=step; applyView(); e.preventDefault(); }
+  else if(e.key==='ArrowUp'){ view.ty+=step; applyView(); e.preventDefault(); }
+  else if(e.key==='ArrowDown'){ view.ty-=step; applyView(); e.preventDefault(); }
+  else if(e.key==='+'||e.key==='='){ zoomCenter(1.15); }
+  else if(e.key==='-'||e.key==='_'){ zoomCenter(1/1.15); }
+  else if(e.key==='0'){ resetView(); }
+  else if(e.key==='f'||e.key==='F'){ fitView(); }
+});
+$('#zoomIn').addEventListener('click', ()=>zoomCenter(1.2));
+$('#zoomOut').addEventListener('click', ()=>zoomCenter(1/1.2));
+$('#resetView').addEventListener('click', resetView);
+$('#fitView').addEventListener('click', fitView);
+$('#panL').addEventListener('click', ()=>{ view.tx+=140; applyView(); });
+$('#panR').addEventListener('click', ()=>{ view.tx-=140; applyView(); });
+
+/* ============ Borrado de ramas inactivas ============ */
+async function delRef(repoName, branch){
+  const url=`https://api.github.com/repos/${S.owner}/${repoName}/git/refs/heads/${branch.split('/').map(encodeURIComponent).join('/')}`;
+  const res=await fetch(url,{method:'DELETE',headers:{'Authorization':'Bearer '+S.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});
+  return res.status;
+}
+function dropBranchLocal(r, branch){
+  r._branches=(r._branches||[]).filter(b=>b.name!==branch);
+  if(r._branchCommit) delete r._branchCommit[branch];
+}
+async function deleteBranch(repoName, branch){
+  const r=S.byName[repoName]; if(!r) return;
+  if(branch===r.default_branch){ alert('La rama principal no se puede borrar.'); return; }
+  if(!confirm(`¿Borrar la rama inactiva?\n\n${branch}\n(repo: ${repoName})\n\nEsta acción NO se puede deshacer.`)) return;
+  try{
+    setStatus('Borrando '+branch+'…','var(--run)');
+    const st=await delRef(repoName, branch);
+    if(st===204){ dropBranchLocal(r,branch); setStatus('Rama borrada ✓ '+branch,'var(--ok)'); render(); renderDetail(repoName); renderFeed(); }
+    else { if(st===403) alert('Tu token no tiene permiso para borrar ramas.\nNecesita el scope "repo" (o "public_repo" en repos públicos) con escritura.');
+           else if(st===422) alert('No se pudo borrar: rama protegida o ya inexistente.');
+           else alert('No se pudo borrar (código '+st+').');
+           setStatus('No se borró ('+st+')','var(--fail)'); }
+  }catch(e){ alert('Error de red al borrar: '+e.message); setStatus('Error al borrar','var(--fail)'); }
+}
+async function deleteInactiveAll(repoName){
+  const r=S.byName[repoName]; if(!r) return;
+  const targets=ccAgents(r).filter(a=>!a.pr && a.branch!==r.default_branch).map(a=>a.branch);
+  if(!targets.length){ alert('No hay ramas inactivas que borrar.'); return; }
+  if(!confirm(`Vas a BORRAR ${targets.length} ramas inactivas de ${repoName}:\n\n`+targets.join('\n')+`\n\nEsta acción NO se puede deshacer. ¿Continuar?`)) return;
+  let ok=0, fail=0;
+  for(const b of targets){
+    setStatus(`Borrando ${ok+fail+1}/${targets.length}…`,'var(--run)');
+    let st=0; try{ st=await delRef(repoName,b); }catch(e){}
+    if(st===204){ ok++; dropBranchLocal(r,b); }
+    else { fail++; if(st===403){ alert('Token sin permiso de escritura (403). Se detiene el borrado.'); break; } }
+  }
+  setStatus(`Borradas ${ok}/${targets.length}`+(fail?` · ${fail} con error`:''), fail?'var(--fail)':'var(--ok)');
+  render(); renderDetail(repoName); renderFeed();
+}
+window.__cmDel = deleteBranch;        // usado por los botones inline de las tarjetas
+window.__cmDelAll = deleteInactiveAll;
+
+/* ============ Toggle ramas inactivas ============ */
+function syncInactiveBtn(){
+  const b=$('#toggleInactive');
+  b.textContent = '🌿 Inactivas: '+(showInactive?'visibles':'ocultas');
+  b.classList.toggle('on', showInactive);
+}
+$('#toggleInactive').addEventListener('click', ()=>{
+  showInactive=!showInactive; syncInactiveBtn();
+  if(S.repos.length){ render(); if(S.selected) renderDetail(S.selected); }
+});
+syncInactiveBtn();
+applyView();
+
+/* ============ Controles ============ */
+$('#connect').addEventListener('click', ()=>{
+  S.token=$('#token').value.trim(); S.owner=$('#owner').value.trim();
+  localStorage.setItem('cm_token',S.token); localStorage.setItem('cm_owner',S.owner);
+  loadAll();
+});
+$('#refresh').addEventListener('click', loadAll);
+let autoTimer=null;
+$('#autobtn').addEventListener('click', e=>{
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; e.target.style.borderColor=''; e.target.textContent='⏱ Auto'; }
+  else { autoTimer=setInterval(loadAll,60000); e.target.style.borderColor='var(--ok)'; e.target.textContent='⏱ Auto ✓'; loadAll(); }
+});
+$('#token').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#connect').click(); });
+$('#logout').addEventListener('click', ()=>{
+  // olvidar el token guardado y volver a la pantalla de conexión
+  localStorage.removeItem('cm_token');
+  S.token=''; S.repos=[]; S.byName={}; S.selected=null; S.rate=''; firstFit=false;
+  $('#token').value='';
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; $('#autobtn').style.borderColor=''; $('#autobtn').textContent='⏱ Auto'; }
+  elEdges.innerHTML=''; elNodes.innerHTML=''; elFlow.innerHTML=''; liveEdges=[]; particles=[];
+  $('#detail').innerHTML='<h2>📦 Detalle</h2><div class="hint">Conecta para ver el detalle de un repo.</div>';
+  $('#platforms').innerHTML='<h2>🌐 Plataformas en vivo</h2><div class="hint">Conéctate y aquí saldrán enlaces directos a todas tus apps publicadas.</div>';
+  $('#feed').innerHTML='<h2>📡 Actividad reciente</h2><div class="hint">Conéctate para ver la actividad.</div>';
+  $('#empty').style.display='flex';
+  $('#logout').style.display='none';
+  setStatus('Sesión cerrada','var(--idle)');
+});
+
+// si hay un token guardado, muestra "Salir" ya (aunque la carga aún no haya terminado)
+if(S.token) $('#logout').style.display='inline-flex';
+// auto-conectar si ya hay token guardado
+if(S.token && S.owner) loadAll();
+</script>
+</body>
+</html>
