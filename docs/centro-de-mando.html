@@ -118,6 +118,15 @@
   .livebtn{display:inline-flex; align-items:center; gap:7px; margin-top:10px; margin-left:8px; padding:9px 14px; border-radius:9px;
     font-size:13px; font-weight:600; text-decoration:none; color:#06281f; background:linear-gradient(135deg,#34d399,#10b981)}
   .livebtn:hover{filter:brightness(1.1)}
+  #platforms{flex:0 0 auto; max-height:30%}
+  #detail{max-height:46% !important}
+  .plat{display:flex; align-items:center; gap:8px; padding:9px 11px; margin:5px 0; border-radius:9px; text-decoration:none;
+    background:rgba(52,211,153,.10); border:1px solid rgba(52,211,153,.3); color:var(--text)}
+  .plat:hover{background:rgba(52,211,153,.2)}
+  .plat .grw{flex:1; min-width:0}
+  .plattag{font-size:10.5px; font-weight:600; padding:2px 8px; border-radius:20px; white-space:nowrap}
+  .plattag.live{background:rgba(52,211,153,.2); color:#6ee7b7}
+  .plattag.prev{background:rgba(56,189,248,.18); color:#7dd3fc}
   details > summary{list-style:none} details > summary::-webkit-details-marker{display:none}
   details > summary:before{content:"▸ "; color:var(--faint)} details[open] > summary:before{content:"▾ "}
   #toggleInactive.on{border-color:var(--ccagent); box-shadow:0 0 0 1px var(--ccagent) inset}
@@ -171,6 +180,10 @@
   </div>
 
   <aside class="sidebar">
+    <div class="sec scroll" id="platforms">
+      <h2>🌐 Plataformas en vivo</h2>
+      <div class="hint">Conéctate y aquí saldrán enlaces directos a todas tus apps publicadas.</div>
+    </div>
     <div class="sec scroll" id="detail">
       <h2>📦 Detalle</h2>
       <div class="hint">Haz clic en un <b>repo</b> para ver su stack en vivo, sus agentes internos y los agentes de Claude Code (ramas <code>claude/*</code>) que trabajan en él, con estado de CI y PRs.</div>
@@ -328,7 +341,7 @@ async function loadAll(){
     S.repos = repos; S.byName = Object.fromEntries(repos.map(r=>[r.name,r]));
     setStatus(`${repos.length} repos · ${S.rate}`,'var(--ok)');
     $('#empty').style.display='none'; $('#logout').style.display='inline-flex';
-    render(); renderFeed();
+    render(); renderFeed(); renderPlatforms();
     if(!firstFit){ firstFit=true; requestAnimationFrame(fitView); }   // ajustar a pantalla la 1ª vez
     if(S.selected && S.byName[S.selected]) renderDetail(S.selected);
   }catch(e){
@@ -575,6 +588,18 @@ function renderDetail(name){
   $('#detail').scrollTop=0;
 }
 
+/* ============ Plataformas en vivo (apps publicadas) ============ */
+function renderPlatforms(){
+  const live = S.repos.filter(r=>r._pages).map(r=>({name:r.name, url:r._pages, kind:'live', desc:r.description||''}));
+  const prev = S.repos.filter(r=>!r._pages && WEB[r.name+'|'+r.default_branch]).map(r=>({name:r.name, url:WEB[r.name+'|'+r.default_branch].url, kind:'prev', desc:r.description||''}));
+  const all=[...live,...prev];
+  $('#platforms').innerHTML = '<h2>🌐 Plataformas en vivo ('+all.length+')</h2>' + (all.length ? all.map(p=>`
+    <a class="plat" href="${p.url}" target="_blank" rel="noopener">
+      <span class="grw"><b>${esc(p.name)}</b>${p.desc?`<div class="faint" style="font-weight:400">${esc(p.desc).slice(0,64)}</div>`:''}</span>
+      <span class="plattag ${p.kind}">${p.kind==='live'?'🟢 en vivo':'👁️ preview'}</span>
+    </a>`).join('') : '<div class="hint">No se han detectado plataformas publicadas (Pages) todavía.</div>');
+}
+
 /* ============ Feed global ============ */
 function renderFeed(){
   const items=[];
@@ -734,6 +759,7 @@ $('#logout').addEventListener('click', ()=>{
   if(autoTimer){ clearInterval(autoTimer); autoTimer=null; $('#autobtn').style.borderColor=''; $('#autobtn').textContent='⏱ Auto'; }
   elEdges.innerHTML=''; elNodes.innerHTML=''; elFlow.innerHTML=''; liveEdges=[]; particles=[];
   $('#detail').innerHTML='<h2>📦 Detalle</h2><div class="hint">Conecta para ver el detalle de un repo.</div>';
+  $('#platforms').innerHTML='<h2>🌐 Plataformas en vivo</h2><div class="hint">Conéctate y aquí saldrán enlaces directos a todas tus apps publicadas.</div>';
   $('#feed').innerHTML='<h2>📡 Actividad reciente</h2><div class="hint">Conéctate para ver la actividad.</div>';
   $('#empty').style.display='flex';
   $('#logout').style.display='none';
